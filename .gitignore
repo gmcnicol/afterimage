@@ -111,6 +111,8 @@ node_modules/
 **/*.tsbuildinfo
 dist/
 **/dist/
+dist-electron/
+**/dist-electron/
 build/
 lib/
 lib-cov/
@@ -260,6 +262,10 @@ scratch/
 
 # Keep fixture media if intentionally checked in under test-fixtures
 !packages/test-fixtures/**
+packages/test-fixtures/node_modules/
+packages/test-fixtures/dist/
+packages/test-fixtures/.turbo/
+packages/test-fixtures/*.tsbuildinfo
 !**/*.keep
 
 # ------------------------------------------------------------------------------

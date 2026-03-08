@@ -2,12 +2,17 @@ import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { getExportProfileById } from '../../export-profiles/src';
 import { fixtureProject } from '../../test-fixtures/src';
 import { parseProject } from '../../schema-validators/src';
 import {
   buildAnalysisPlan,
-  buildRenderPlan,
+  buildExportPlan,
+  buildPreviewPlan,
+  buildThumbnailPlan,
+  buildWaveformPlan,
   executeCommandSpec,
+  getToolchainHealth,
   resolveFfmpegTools,
   type CommandExecutionResult
 } from '../src';
@@ -15,19 +20,18 @@ import {
 describe('@afterimage/ffmpeg-compiler', () => {
   const project = parseProject(fixtureProject);
 
-  it('builds a deterministic analysis plan snapshot', () => {
-    const plan = buildAnalysisPlan(project, {
-      sourceId: 'source-alpha',
+  it('builds deterministic analysis, thumbnail, waveform, preview, and export plans', () => {
+    expect(buildAnalysisPlan(project, {
+      assetId: 'asset-alpha',
       probeOutputPath: 'artifacts/source-alpha.ffprobe.json',
-      analysisOutputPath: 'artifacts/source-alpha.analysis.json'
-    });
-
-    expect(plan).toMatchInlineSnapshot(`
+      analysisOutputPath: 'artifacts/source-alpha.analysis.log'
+    })).toMatchInlineSnapshot(`
       {
         "artifacts": {
-          "analysisOutputPath": "artifacts/source-alpha.analysis.json",
+          "analysisOutputPath": "artifacts/source-alpha.analysis.log",
           "probeOutputPath": "artifacts/source-alpha.ffprobe.json",
         },
+        "assetId": "asset-alpha",
         "commands": [
           {
             "args": [
@@ -43,7 +47,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "expectedOutputs": [
               "artifacts/source-alpha.ffprobe.json",
             ],
-            "label": "probe:source-alpha",
+            "label": "probe:asset-alpha",
           },
           {
             "args": [
@@ -62,67 +66,73 @@ describe('@afterimage/ffmpeg-compiler', () => {
             ],
             "binary": "ffmpeg",
             "expectedOutputs": [
-              "artifacts/source-alpha.analysis.json",
+              "artifacts/source-alpha.analysis.log",
             ],
-            "label": "scene-detect:source-alpha",
+            "label": "scene-detect:asset-alpha",
           },
         ],
         "projectId": "project-core-engine-fixture",
         "sceneThreshold": 0.4,
-        "sourceId": "source-alpha",
       }
     `);
-  });
 
-  it('builds a deterministic render plan snapshot', () => {
-    const plan = buildRenderPlan(project, {
-      outputPath: 'renders/core-engine-fixture.mp4',
-      profile: {
-        width: 1280,
-        height: 720,
-        frameRate: 30,
-        container: 'mp4',
-        videoCodec: 'libx264',
-        audioCodec: 'aac'
-      }
-    });
+    expect(buildThumbnailPlan(project, {
+      assetId: 'asset-alpha',
+      outputPattern: '.afterimage/thumbnails/source-alpha-%03d.jpg',
+      manifestOutputPath: '.afterimage/analysis/source-alpha.thumbnails.json'
+    }).command.args).toContain('.afterimage/thumbnails/source-alpha-%03d.jpg');
 
-    expect(plan).toMatchInlineSnapshot(`
+    expect(buildWaveformPlan(project, {
+      assetId: 'asset-music',
+      outputPath: '.afterimage/waveforms/asset-music.png'
+    }).command.args).toContain('.afterimage/waveforms/asset-music.png');
+
+    expect(buildPreviewPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }).command.args).toContain('.afterimage/preview/variant-main.mp4');
+
+    expect(buildExportPlan(project, {
+      outputPath: 'exports/studio-fixture.mov',
+      profile: getExportProfileById('landscape-master')
+    })).toMatchInlineSnapshot(`
       {
         "command": {
           "args": [
             "-y",
             "-i",
             "fixtures/clips/source-alpha.mp4",
+            "-i",
+            "fixtures/audio/score-alpha.wav",
             "-filter_complex",
-            "[0:v]trim=start=0.500:duration=2.500,setpts=PTS-STARTPTS,gblur=sigma=0.900,eq=saturation=0.938[v0];[0:a]atrim=start=0.500:duration=2.500,asetpts=PTS-STARTPTS[a0];[v0][a0]concat=n=1:v=1:a=1[vconcat][aconcat];[vconcat]fps=30.000,scale=1280:720,format=yuv420p[vout]",
+            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=0.900,eq=saturation=0.938[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]fps=30.000,scale=1920:1080,format=yuv420p[vout];[1:a]atrim=start=0:duration=2.000,asetpts=PTS-STARTPTS[amusic]",
             "-map",
             "[vout]",
             "-c:v",
             "libx264",
             "-preset",
-            "medium",
+            "slow",
             "-crf",
-            "18",
+            "16",
             "-map",
-            "[aconcat]",
+            "[amusic]",
             "-c:a",
             "aac",
             "-b:a",
-            "192k",
+            "320k",
             "-f",
-            "mp4",
-            "renders/core-engine-fixture.mp4",
+            "mov",
+            "exports/studio-fixture.mov",
           ],
           "binary": "ffmpeg",
           "expectedOutputs": [
-            "renders/core-engine-fixture.mp4",
+            "exports/studio-fixture.mov",
           ],
-          "label": "render:project-core-engine-fixture",
+          "label": "render:project-core-engine-fixture:variant-main",
         },
-        "outputPath": "renders/core-engine-fixture.mp4",
+        "outputPath": "exports/studio-fixture.mov",
         "projectId": "project-core-engine-fixture",
         "sequenceId": "sequence-main",
+        "variantId": "variant-main",
       }
     `);
   });
@@ -158,7 +168,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(pathResolved.ffprobe.path).toBe(ffprobePath);
   });
 
-  it('executes command specs through an injected runner', async () => {
+  it('executes command specs and probes toolchain health through injected runners', async () => {
     const result = await executeCommandSpec(
       {
         label: 'mock-command',
@@ -175,5 +185,37 @@ describe('@afterimage/ffmpeg-compiler', () => {
     );
 
     expect(result.stdout).toContain('ffmpeg version');
+
+    const health = await getToolchainHealth({
+      ffmpeg: {
+        path: '/custom/ffmpeg',
+        source: 'env',
+        provenance: {
+          source: 'env',
+          license: 'LGPL',
+          lgplOnly: true,
+          notes: 'test'
+        }
+      },
+      ffprobe: {
+        path: '/custom/ffprobe',
+        source: 'env',
+        provenance: {
+          source: 'env',
+          license: 'LGPL',
+          lgplOnly: true,
+          notes: 'test'
+        }
+      }
+    }, {
+      runner: async (binary): Promise<CommandExecutionResult> => ({
+        exitCode: 0,
+        stdout: `${binary} version test`,
+        stderr: ''
+      })
+    });
+
+    expect(health.available).toBe(true);
+    expect(health.versions.ffmpeg.versionLine).toContain('/custom/ffmpeg version test');
   });
 });

@@ -1,4 +1,15 @@
-import type { AnalysisFile, AnalysisSummary, ProbeMetadata, ProbeStream, SceneCut } from '@afterimage/project-model';
+import type {
+  AnalysisFile,
+  AnalysisSummary,
+  CutCandidate,
+  LumaSummary,
+  MotionSummary,
+  ProbeMetadata,
+  ProbeStream,
+  SceneCut,
+  ThumbnailReference,
+  WaveformSummary
+} from '@afterimage/project-model';
 import { normalizeAnalysisFile } from '@afterimage/project-model';
 
 interface FfprobeStreamInput {
@@ -27,6 +38,12 @@ export interface SceneDetectionParseResult {
   summary: AnalysisSummary;
 }
 
+export interface CutGenerationOptions {
+  analysisRefId?: string;
+  status?: CutCandidate['status'];
+  thumbnailTemplate?: (index: number, timeMs: number) => string | undefined;
+}
+
 function parseInteger(value: string | undefined): number | undefined {
   if (!value) {
     return undefined;
@@ -51,6 +68,10 @@ function normalizeCodecType(codecType: string | undefined): ProbeStream['codecTy
   }
 
   return 'unknown';
+}
+
+function clampUnit(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 export function parseFfprobeOutput(input: string | FfprobeOutput): ProbeMetadata {
@@ -103,11 +124,116 @@ export function parseSceneDetectionOutput(log: string): SceneDetectionParseResul
   };
 }
 
-export function createAnalysisFile(id: string, sourceId: string, probe: ProbeMetadata, sceneCuts: SceneCut[]): AnalysisFile {
+export function buildThumbnailManifest(assetId: string, sceneCuts: SceneCut[], thumbnailTemplate: (index: number, timeMs: number) => string | undefined): ThumbnailReference[] {
+  return sceneCuts.map((sceneCut, index) => ({
+    id: `${assetId}-thumbnail-${index + 1}`,
+    timeMs: sceneCut.timeMs,
+    path: thumbnailTemplate(index, sceneCut.timeMs) ?? `thumbnails/${assetId}-${index + 1}.jpg`
+  }));
+}
+
+export function buildWaveformSummary(durationMs: number, points = 24): WaveformSummary {
+  const peaks = Array.from({ length: points }, (_, index) => {
+    const phase = (index / Math.max(points - 1, 1)) * Math.PI * 3;
+    return clampUnit(0.25 + Math.abs(Math.sin(phase)) * 0.75);
+  });
+
+  return {
+    durationMs,
+    peaks
+  };
+}
+
+export function inferLumaSummary(sceneCuts: SceneCut[]): LumaSummary {
+  if (sceneCuts.length === 0) {
+    return {
+      average: 0.5,
+      minimum: 0.5,
+      maximum: 0.5
+    };
+  }
+
+  const values = sceneCuts.map((sceneCut) => clampUnit(0.2 + sceneCut.score * 0.6));
+  const total = values.reduce((sum, value) => sum + value, 0);
+
+  return {
+    average: clampUnit(total / values.length),
+    minimum: clampUnit(Math.min(...values)),
+    maximum: clampUnit(Math.max(...values))
+  };
+}
+
+export function inferMotionSummary(sceneCuts: SceneCut[]): MotionSummary {
+  if (sceneCuts.length === 0) {
+    return {
+      average: 0.1,
+      peak: 0.1
+    };
+  }
+
+  const values = sceneCuts.map((sceneCut) => clampUnit(sceneCut.score));
+  const total = values.reduce((sum, value) => sum + value, 0);
+
+  return {
+    average: clampUnit(total / values.length),
+    peak: clampUnit(Math.max(...values))
+  };
+}
+
+export function generateCutCandidatesFromAnalysis(
+  analysis: AnalysisFile,
+  options: CutGenerationOptions = {}
+): CutCandidate[] {
+  const boundaries = [0, ...analysis.sceneCuts.map((cut) => cut.timeMs), analysis.probe.durationMs]
+    .filter((boundary, index, values) => boundary >= 0 && values.indexOf(boundary) === index)
+    .sort((left, right) => left - right);
+  const luma = analysis.luma ?? inferLumaSummary(analysis.sceneCuts);
+  const motion = analysis.motion ?? inferMotionSummary(analysis.sceneCuts);
+
+  return boundaries.slice(0, -1).map((startMs, index) => {
+    const endMs = boundaries[index + 1];
+    const sceneCut = analysis.sceneCuts[index];
+    const thumbnail = analysis.thumbnails?.[Math.min(index, (analysis.thumbnails?.length ?? 1) - 1)];
+
+    return {
+      id: `${analysis.assetId}-cut-${index + 1}`,
+      assetId: analysis.assetId,
+      analysisRefId: options.analysisRefId,
+      startMs,
+      endMs,
+      durationMs: Math.max(1, endMs - startMs),
+      sceneScore: sceneCut?.score,
+      motion,
+      luma,
+      thumbnailPath: thumbnail?.path,
+      status: options.status ?? 'new',
+      favorite: false,
+      tags: [],
+      binIds: []
+    };
+  });
+}
+
+export function createAnalysisFile(
+  id: string,
+  assetId: string,
+  probe: ProbeMetadata,
+  sceneCuts: SceneCut[],
+  options: {
+    thumbnails?: ThumbnailReference[];
+    waveform?: WaveformSummary;
+    luma?: LumaSummary;
+    motion?: MotionSummary;
+  } = {}
+): AnalysisFile {
   return normalizeAnalysisFile({
     id,
-    sourceId,
+    assetId,
     probe,
-    sceneCuts
+    sceneCuts,
+    thumbnails: options.thumbnails,
+    waveform: options.waveform,
+    luma: options.luma,
+    motion: options.motion
   });
 }

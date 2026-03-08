@@ -18,15 +18,94 @@
       "type": "string",
       "enum": ["set", "toggle", "scale", "trigger"]
     },
-    "projectSource": {
+    "probeStreamType": {
+      "type": "string",
+      "enum": ["video", "audio", "subtitle", "data", "unknown"]
+    },
+    "mediaType": {
+      "type": "string",
+      "enum": ["video", "image", "audio"]
+    },
+    "importStatus": {
+      "type": "string",
+      "enum": ["ready", "excluded", "missing"]
+    },
+    "analysisStatus": {
+      "type": "string",
+      "enum": ["pending", "queued", "running", "completed", "failed"]
+    },
+    "cutStatus": {
+      "type": "string",
+      "enum": ["new", "kept", "rejected", "favorite"]
+    },
+    "transitionStyle": {
+      "type": "string",
+      "enum": ["cut", "crossfade"]
+    },
+    "filterStackScope": {
+      "type": "string",
+      "enum": ["sequence", "clip", "preset"]
+    },
+    "automationTargetProperty": {
+      "type": "string",
+      "enum": ["mix", "amount", "contrast", "brightness", "saturation", "blur", "bloom", "chromaOffset", "glitch"]
+    },
+    "assistedGenerationStrategy": {
+      "type": "string",
+      "enum": ["manual", "chronological", "marker-aware", "motif", "seeded-constrained"]
+    },
+    "jsonPrimitive": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" }
+      ]
+    },
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "default": []
+    },
+    "pathRef": {
       "type": "object",
-      "required": ["id", "path"],
+      "required": ["absolutePath"],
+      "properties": {
+        "absolutePath": { "type": "string", "minLength": 1 },
+        "relativePath": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["createdAt"],
+      "properties": {
+        "createdAt": { "type": "string", "minLength": 1 },
+        "updatedAt": { "type": "string", "minLength": 1 },
+        "projectFileName": { "type": "string", "minLength": 1 },
+        "currentProfileSet": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "mediaAsset": {
+      "type": "object",
+      "required": ["id", "filename", "mediaType", "path", "hasAudio"],
       "properties": {
         "id": { "$ref": "#/$defs/idString" },
-        "path": { "type": "string", "minLength": 1 },
+        "filename": { "type": "string", "minLength": 1 },
+        "mediaType": { "$ref": "#/$defs/mediaType" },
+        "path": { "$ref": "#/$defs/pathRef" },
         "label": { "type": "string", "minLength": 1 },
-        "hasVideo": { "type": "boolean", "default": true },
-        "hasAudio": { "type": "boolean", "default": true }
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 0 },
+        "height": { "type": "integer", "minimum": 0 },
+        "frameRate": { "type": "number", "minimum": 0 },
+        "hasAudio": { "type": "boolean", "default": true },
+        "importStatus": { "$ref": "#/$defs/importStatus", "default": "ready" },
+        "analysisStatus": { "$ref": "#/$defs/analysisStatus", "default": "pending" },
+        "favorite": { "type": "boolean", "default": false },
+        "tags": { "$ref": "#/$defs/stringArray" },
+        "notes": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -56,59 +135,11 @@
       },
       "additionalProperties": false
     },
-    "sequenceItem": {
-      "type": "object",
-      "required": ["id", "sourceId", "timelineStartMs", "sourceStartMs", "durationMs"],
-      "properties": {
-        "id": { "$ref": "#/$defs/idString" },
-        "sourceId": { "$ref": "#/$defs/idString" },
-        "timelineStartMs": { "type": "integer", "minimum": 0 },
-        "sourceStartMs": { "type": "integer", "minimum": 0 },
-        "durationMs": { "type": "integer", "minimum": 1 },
-        "presetId": { "$ref": "#/$defs/idString" }
-      },
-      "additionalProperties": false
-    },
-    "sequence": {
-      "type": "object",
-      "required": ["id", "name", "items"],
-      "properties": {
-        "id": { "$ref": "#/$defs/idString" },
-        "name": { "type": "string", "minLength": 1 },
-        "items": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/sequenceItem" },
-          "default": []
-        }
-      },
-      "additionalProperties": false
-    },
-    "sceneCut": {
-      "type": "object",
-      "required": ["timeMs", "score"],
-      "properties": {
-        "timeMs": { "type": "integer", "minimum": 0 },
-        "score": { "type": "number", "minimum": 0, "maximum": 1 }
-      },
-      "additionalProperties": false
-    },
-    "analysisSummary": {
-      "type": "object",
-      "required": ["sceneCount"],
-      "properties": {
-        "sceneCount": { "type": "integer", "minimum": 0 },
-        "durationMs": { "type": "integer", "minimum": 0 }
-      },
-      "additionalProperties": false
-    },
     "probeStream": {
       "type": "object",
       "required": ["codecType"],
       "properties": {
-        "codecType": {
-          "type": "string",
-          "enum": ["video", "audio", "subtitle", "data", "unknown"]
-        },
+        "codecType": { "$ref": "#/$defs/probeStreamType" },
         "codecName": { "type": "string" },
         "width": { "type": "integer", "minimum": 0 },
         "height": { "type": "integer", "minimum": 0 },
@@ -133,14 +164,292 @@
       },
       "additionalProperties": false
     },
-    "analysisRef": {
+    "sceneCut": {
       "type": "object",
-      "required": ["id", "sourceId", "path"],
+      "required": ["timeMs", "score"],
+      "properties": {
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "thumbnailReference": {
+      "type": "object",
+      "required": ["id", "timeMs", "path"],
       "properties": {
         "id": { "$ref": "#/$defs/idString" },
-        "sourceId": { "$ref": "#/$defs/idString" },
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "path": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "waveformSummary": {
+      "type": "object",
+      "required": ["durationMs", "peaks"],
+      "properties": {
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "peaks": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "lumaSummary": {
+      "type": "object",
+      "required": ["average", "minimum", "maximum"],
+      "properties": {
+        "average": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minimum": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximum": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "motionSummary": {
+      "type": "object",
+      "required": ["average", "peak"],
+      "properties": {
+        "average": { "type": "number", "minimum": 0, "maximum": 1 },
+        "peak": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "analysisSummary": {
+      "type": "object",
+      "required": ["sceneCount"],
+      "properties": {
+        "sceneCount": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "thumbnailCount": { "type": "integer", "minimum": 0 },
+        "waveformGenerated": { "type": "boolean" },
+        "lumaAverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "motionAverage": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "analysisRef": {
+      "type": "object",
+      "required": ["id", "assetId", "path"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "assetId": { "$ref": "#/$defs/idString" },
         "path": { "type": "string", "minLength": 1 },
+        "thumbnailManifestPath": { "type": "string", "minLength": 1 },
+        "waveformPath": { "type": "string", "minLength": 1 },
         "summary": { "$ref": "#/$defs/analysisSummary" }
+      },
+      "additionalProperties": false
+    },
+    "cutCandidate": {
+      "type": "object",
+      "required": ["id", "assetId", "startMs", "endMs", "durationMs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "assetId": { "$ref": "#/$defs/idString" },
+        "analysisRefId": { "$ref": "#/$defs/idString" },
+        "startMs": { "type": "integer", "minimum": 0 },
+        "endMs": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 1 },
+        "sceneScore": { "type": "number", "minimum": 0, "maximum": 1 },
+        "motion": { "$ref": "#/$defs/motionSummary" },
+        "luma": { "$ref": "#/$defs/lumaSummary" },
+        "thumbnailPath": { "type": "string", "minLength": 1 },
+        "tags": { "$ref": "#/$defs/stringArray" },
+        "note": { "type": "string" },
+        "status": { "$ref": "#/$defs/cutStatus", "default": "new" },
+        "favorite": { "type": "boolean", "default": false },
+        "binIds": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "bin": {
+      "type": "object",
+      "required": ["id", "name", "cutIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "cutIds": { "$ref": "#/$defs/stringArray" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "marker": {
+      "type": "object",
+      "required": ["id", "timeMs", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["marker", "beat", "chapter"],
+          "default": "marker"
+        }
+      },
+      "additionalProperties": false
+    },
+    "section": {
+      "type": "object",
+      "required": ["id", "startMs", "endMs", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "startMs": { "type": "integer", "minimum": 0 },
+        "endMs": { "type": "integer", "minimum": 0 },
+        "label": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "filterInstance": {
+      "type": "object",
+      "required": ["id", "type", "orderIndex"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "type": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean", "default": true },
+        "orderIndex": { "type": "integer", "minimum": 0 },
+        "parameters": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/jsonPrimitive" },
+          "default": {}
+        },
+        "mix": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+        "seed": { "type": "integer", "minimum": 0 },
+        "automationLaneIds": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "filterStack": {
+      "type": "object",
+      "required": ["id", "name", "scope", "filters"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "scope": { "$ref": "#/$defs/filterStackScope" },
+        "family": { "$ref": "#/$defs/presetFamily" },
+        "filters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/filterInstance" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "sequenceClip": {
+      "type": "object",
+      "required": ["id", "assetId", "timelineStartMs", "sourceStartMs", "durationMs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "assetId": { "$ref": "#/$defs/idString" },
+        "cutId": { "$ref": "#/$defs/idString" },
+        "timelineStartMs": { "type": "integer", "minimum": 0 },
+        "sourceStartMs": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 1 },
+        "transition": { "$ref": "#/$defs/transitionStyle", "default": "cut" },
+        "transitionDurationMs": { "type": "integer", "minimum": 0 },
+        "presetId": { "$ref": "#/$defs/idString" },
+        "stackOverrideId": { "$ref": "#/$defs/idString" },
+        "tags": { "$ref": "#/$defs/stringArray" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "assistedGeneration": {
+      "type": "object",
+      "required": ["strategy"],
+      "properties": {
+        "strategy": { "$ref": "#/$defs/assistedGenerationStrategy" },
+        "seed": { "type": "integer", "minimum": 0 },
+        "parameters": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1 },
+          "additionalProperties": true,
+          "default": {}
+        },
+        "sourcePoolIds": { "$ref": "#/$defs/stringArray" },
+        "durationTargetMs": { "type": "integer", "minimum": 0 },
+        "exclusionTags": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "musicAlignment": {
+      "type": "object",
+      "properties": {
+        "primaryAssetId": { "$ref": "#/$defs/idString" },
+        "beatMarkers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/marker" },
+          "default": []
+        },
+        "chapterPoints": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "default": []
+        },
+        "snapToBeatGrid": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "variant": {
+      "type": "object",
+      "required": ["id", "sequenceId", "name", "clips"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "sequenceId": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "clips": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sequenceClip" },
+          "default": []
+        },
+        "markers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/marker" },
+          "default": []
+        },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/section" },
+          "default": []
+        },
+        "stackId": { "$ref": "#/$defs/idString" },
+        "favorite": { "type": "boolean", "default": false },
+        "locked": { "type": "boolean", "default": false },
+        "assistedGeneration": { "$ref": "#/$defs/assistedGeneration" },
+        "musicAlignment": { "$ref": "#/$defs/musicAlignment" }
+      },
+      "additionalProperties": false
+    },
+    "sequence": {
+      "type": "object",
+      "required": ["id", "name", "variantIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "variantIds": { "$ref": "#/$defs/stringArray" },
+        "defaultVariantId": { "$ref": "#/$defs/idString" },
+        "favorite": { "type": "boolean", "default": false },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "automationKeyframe": {
+      "type": "object",
+      "required": ["id", "timeMs", "value"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "value": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "automationSectionValue": {
+      "type": "object",
+      "required": ["sectionId", "value"],
+      "properties": {
+        "sectionId": { "$ref": "#/$defs/idString" },
+        "value": { "type": "number" }
       },
       "additionalProperties": false
     },
@@ -166,6 +475,70 @@
           "items": { "$ref": "#/$defs/midiBinding" },
           "default": []
         }
+      },
+      "additionalProperties": false
+    },
+    "midiIntent": {
+      "type": "object",
+      "required": ["id", "mappingId", "source"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "mappingId": { "$ref": "#/$defs/idString" },
+        "source": { "type": "string", "minLength": 1 },
+        "quantizeMs": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "automationTarget": {
+      "type": "object",
+      "required": ["filterId", "property"],
+      "properties": {
+        "filterId": { "$ref": "#/$defs/idString" },
+        "property": { "$ref": "#/$defs/automationTargetProperty" }
+      },
+      "additionalProperties": false
+    },
+    "automationLane": {
+      "type": "object",
+      "required": ["id", "name", "target", "keyframes"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "target": { "$ref": "#/$defs/automationTarget" },
+        "enabled": { "type": "boolean", "default": true },
+        "keyframes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/automationKeyframe" },
+          "default": []
+        },
+        "sectionValues": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/automationSectionValue" },
+          "default": []
+        },
+        "midiIntent": { "$ref": "#/$defs/midiIntent" }
+      },
+      "additionalProperties": false
+    },
+    "exportSelection": {
+      "type": "object",
+      "required": ["profileId"],
+      "properties": {
+        "profileId": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean", "default": true },
+        "overwriteExisting": { "type": "boolean", "default": true },
+        "lastOutputDirectory": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "featureFlags": {
+      "type": "object",
+      "properties": {
+        "recordedMidiAutomation": { "type": "boolean", "default": false },
+        "advancedBeatDetection": { "type": "boolean", "default": false },
+        "proxyGeneration": { "type": "boolean", "default": false },
+        "advancedAssistedSequencing": { "type": "boolean", "default": false },
+        "complexTransitions": { "type": "boolean", "default": false }
       },
       "additionalProperties": false
     }

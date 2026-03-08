@@ -1,6 +1,6 @@
 {
-  "id": "analysis-source-alpha",
-  "sourceId": "source-alpha",
+  "id": "analysis-asset-alpha",
+  "assetId": "asset-alpha",
   "probe": {
     "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
     "durationMs": 5000,
@@ -25,8 +25,29 @@
     { "timeMs": 1200, "score": 0.61 },
     { "timeMs": 2600, "score": 0.77 }
   ],
+  "thumbnails": [
+    { "id": "thumb-1", "timeMs": 1200, "path": "fixtures/thumbnails/source-alpha-1.jpg" },
+    { "id": "thumb-2", "timeMs": 2600, "path": "fixtures/thumbnails/source-alpha-2.jpg" }
+  ],
+  "waveform": {
+    "durationMs": 5000,
+    "peaks": [0.18, 0.32, 0.55, 0.74, 0.61, 0.48]
+  },
+  "luma": {
+    "average": 0.614,
+    "minimum": 0.42,
+    "maximum": 0.81
+  },
+  "motion": {
+    "average": 0.69,
+    "peak": 0.77
+  },
   "summary": {
     "sceneCount": 2,
-    "durationMs": 5000
+    "durationMs": 5000,
+    "thumbnailCount": 2,
+    "waveformGenerated": true,
+    "lumaAverage": 0.614,
+    "motionAverage": 0.69
   }
 }

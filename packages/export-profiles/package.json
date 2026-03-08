@@ -1,0 +1,17 @@
+{
+  "name": "@afterimage/export-profiles",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "lint": "node -e \"console.log('lint placeholder: @afterimage/export-profiles')\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@afterimage/project-model": "workspace:*"
+  }
+}

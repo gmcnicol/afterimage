@@ -3,73 +3,77 @@ import { fixtureAnalysis, fixtureMidiMapping, fixtureProject } from '../../test-
 import { parseAnalysis, parseMidiMapping, parseProject, validatePreset, validateProject } from '../src';
 
 describe('@afterimage/schema-validators', () => {
-  it('parses the canonical hybrid project and applies defaults', () => {
+  it('parses the v2 canonical project and applies defaults', () => {
     const parsed = parseProject({
       ...fixtureProject,
+      featureFlags: undefined,
+      tags: undefined,
+      exportSelections: undefined
+    });
+
+    expect(parsed.version).toBe(2);
+    expect(parsed.featureFlags.proxyGeneration).toBe(false);
+    expect(parsed.exportSelections).toEqual([]);
+    expect(parsed.tags).toEqual([]);
+  });
+
+  it('migrates a phase 1 project shape into the v2 canonical project', () => {
+    const migrated = parseProject({
+      id: 'project-legacy',
+      name: 'Legacy Project',
+      mode: 'studio',
+      version: 1,
       sources: [
         {
-          id: 'source-beta',
-          path: 'fixtures/clips/source-beta.mp4'
+          id: 'source-alpha',
+          path: 'fixtures/clips/source-alpha.mp4',
+          hasVideo: true,
+          hasAudio: true
         }
       ],
       presets: [],
       sequence: {
-        id: 'sequence-minimal',
-        name: 'Minimal',
-        items: []
-      },
-      midiMappings: undefined,
-      analysisRefs: undefined
+        id: 'sequence-main',
+        name: 'Main Sequence',
+        items: [
+          {
+            id: 'segment-intro',
+            sourceId: 'source-alpha',
+            timelineStartMs: 0,
+            sourceStartMs: 0,
+            durationMs: 1000
+          }
+        ]
+      }
     });
 
-    expect(parsed).toMatchInlineSnapshot(`
-      {
-        "analysisRefs": [],
-        "description": "Tiny deterministic fixture project for Phase 1.",
-        "id": "project-core-engine-fixture",
-        "midiMappings": [],
-        "mode": "studio",
-        "name": "Core Engine Fixture",
-        "presets": [],
-        "sequence": {
-          "id": "sequence-minimal",
-          "items": [],
-          "name": "Minimal",
-        },
-        "sources": [
-          {
-            "hasAudio": true,
-            "hasVideo": true,
-            "id": "source-beta",
-            "path": "fixtures/clips/source-beta.mp4",
-          },
-        ],
-        "version": 1,
-      }
-    `);
+    expect(migrated.assets[0].id).toBe('source-alpha');
+    expect(migrated.cutCandidates[0].id).toBe('cut-segment-intro');
+    expect(migrated.variants[0].clips[0].cutId).toBe('cut-segment-intro');
   });
 
   it('returns structured validation issues for invalid input', () => {
     expect(validateProject({
       ...fixtureProject,
-      sources: [],
-      analysisRefs: [],
-      sequence: {
-        ...fixtureProject.sequence,
-        items: [
-          {
-            ...fixtureProject.sequence.items[0],
-            sourceId: 'missing-source'
-          }
-        ]
-      }
+      variants: [
+        {
+          ...fixtureProject.variants[0],
+          clips: [
+            {
+              ...fixtureProject.variants[0].clips[0],
+              assetId: 'missing-asset'
+            }
+          ]
+        }
+      ]
     })).toEqual({
       ok: false,
+      code: 'invalid-project-file',
       errors: [
         {
           keyword: 'missing-reference',
-          message: 'Sequence item "segment-intro" references missing source "missing-source".',
-          path: 'sequence.items.segment-intro.sourceId',
+          message: 'Sequence clip "clip-intro" references missing asset "missing-asset".',
+          path: 'variants.variant-main.clips.clip-intro.assetId',
           source: 'integrity'
         }
       ]
@@ -81,6 +85,7 @@ describe('@afterimage/schema-validators', () => {
       filters: []
     })).toEqual({
       ok: false,
+      code: 'schema-validation-failure',
       errors: [
         {
           keyword: 'required',
@@ -93,7 +98,7 @@ describe('@afterimage/schema-validators', () => {
   });
 
   it('parses standalone analysis and midi sidecars', () => {
-    expect(parseAnalysis(fixtureAnalysis).summary?.sceneCount).toBe(2);
+    expect(parseAnalysis(fixtureAnalysis).summary?.thumbnailCount).toBe(2);
     expect(parseMidiMapping(fixtureMidiMapping).bindings[0].id).toBe('binding-cut-trigger');
   });
 });
