@@ -16,7 +16,7 @@ Define the mandatory delivery order and the hand-off boundaries between phases.
 - No phase may depend on undocumented behaviour from an earlier phase.
 - Shared contracts must be stable before downstream runtimes rely on them.
 - Each phase must end with demoable software, not just design notes.
-- Each phase must produce learning notes in `docs/peps/`.
+- Each phase must follow `task-completion-and-learning-capture.md`.
 
 ## Shared deliverables expected across all phases
 - updated docs
@@ -25,4 +25,4 @@ Define the mandatory delivery order and the hand-off boundaries between phases.
 - at least one short PEP note if any real lesson emerged
 
 ## Exit rule
-A phase is only complete when its exit criteria file says it is complete and the result is runnable.
+A phase is only complete when its phase document exit criteria are met, the result is runnable, and task completion follows `task-completion-and-learning-capture.md`.

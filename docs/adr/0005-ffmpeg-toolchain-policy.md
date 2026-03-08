@@ -1,4 +1,4 @@
-# ADR-0005: FFmpeg Toolchain Policy
+# ADR 0005: FFmpeg Toolchain Policy
 
 ## Status
 

@@ -22,35 +22,14 @@ This order is mandatory unless an ADR explicitly changes it.
 
 Every phase must capture lessons as work proceeds.
 
-Create short PEP-style notes in `docs/peps/` for:
+Use the shared policy in `task-completion-and-learning-capture.md` as the source of truth for:
 
-- important learnings
-- repeated pitfalls
-- bugs caused by wrong assumptions
-- successes worth preserving
-- implementation patterns to continue
-- patterns to avoid
-
-These notes must be:
-
-- short
-- specific
-- written in plain English
-- committed alongside or immediately after the related change
+- when a task is complete
+- when to create or update a PEP note
+- what kinds of lessons must be recorded
+- the required fallback when there were no new learnings
 
 Use the template in `docs/implementation/templates/pep-note-template.md`.
-
-## Required cadence for learning notes
-
-Create a note when any of the following happens:
-
-- a bug costs more than 30 minutes to diagnose
-- a design assumption turns out wrong
-- an FFmpeg command or graph behaves unexpectedly
-- a cross-platform issue appears
-- a latency or stability issue is discovered
-- a workflow or coding pattern works especially well
-- a lesson would prevent future rework
 
 ## Naming
 
@@ -80,37 +59,9 @@ python3 scripts/new_pep_note.py "ffmpeg binary provenance"
 - `phase-003-live-desktop-streaming.md`
 - `phase-004-live-appliance-headless.md`
 
-## Codex Learning Capture Requirement
+## Shared implementation policy
 
-Codex owns the engineering-memory process for this repository.
+Read `task-completion-and-learning-capture.md` before treating implementation work as done.
 
-At the end of every meaningful task, Codex must do exactly one of the following:
-
-1. create a new short PEP
-2. update an existing short PEP
-3. record that there were no new learnings
-
-This is mandatory for all implementation phases.
-
-A "meaningful task" includes any work that discovers or confirms:
-
-- a pitfall to avoid
-- a success pattern worth repeating
-- a portability issue
-- a packaging or runtime constraint
-- a design rule that should become permanent
-- a false start that should not be retried
-- a performance characteristic that affects future design
-
-PEPs are operational memory. They must stay short, concrete, and biased toward rules.
-
-Preferred principle:
-
-- one learning per PEP
-- one rule per PEP
-- no essays
-- no vague retrospectives
-
-Phase documents must be treated as build instructions.
-PEPs must be treated as "how not to be stupid next time".
-
+Phase documents are build instructions.
+PEPs are operational memory about how not to repeat mistakes.
