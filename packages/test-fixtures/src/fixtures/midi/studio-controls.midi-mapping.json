@@ -1,0 +1,12 @@
+{
+  "id": "midi-main",
+  "name": "Studio Controls",
+  "bindings": [
+    {
+      "id": "binding-cut-trigger",
+      "source": "cc:1:10",
+      "target": "sequence-main.segment-intro",
+      "mode": "trigger"
+    }
+  ]
+}

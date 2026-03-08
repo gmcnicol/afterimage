@@ -2,25 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afterimage.local/schemas/sequence.schema.json",
   "title": "Sequence",
-  "type": "object",
-  "required": ["id", "name", "items"],
-  "properties": {
-    "id": { "type": "string", "minLength": 1 },
-    "name": { "type": "string", "minLength": 1 },
-    "items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["sourceId", "startMs", "durationMs"],
-        "properties": {
-          "sourceId": { "type": "string" },
-          "startMs": { "type": "integer", "minimum": 0 },
-          "durationMs": { "type": "integer", "minimum": 1 },
-          "presetId": { "type": "string" }
-        },
-        "additionalProperties": false
-      }
+  "allOf": [
+    {
+      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/sequence"
     }
-  },
-  "additionalProperties": false
+  ]
 }

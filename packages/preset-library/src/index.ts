@@ -1,6 +1,13 @@
-import type { Preset } from '@afterimage/project-model';
+import type { Preset, PresetFamily } from '@afterimage/project-model';
+import { parsePreset } from '@afterimage/schema-validators';
 
-export const starterPresets: Preset[] = [
+export interface PresetLibrary {
+  presets: Preset[];
+  byId: Record<string, Preset>;
+  byFamily: Record<PresetFamily, Preset[]>;
+}
+
+const starterPresetDefinitions = [
   {
     id: 'preset-vhs-rental-tape',
     name: 'Rental Tape',
@@ -19,4 +26,36 @@ export const starterPresets: Preset[] = [
       { type: 'desaturation-lfo', amount: 0.4 }
     ]
   }
-];
+] as const satisfies readonly Preset[];
+
+export const starterPresets = starterPresetDefinitions.map((preset) => parsePreset(preset));
+
+function createEmptyFamilyIndex(): Record<PresetFamily, Preset[]> {
+  return {
+    vhs: [],
+    liminal: [],
+    'imagined-futures': [],
+    glitch: []
+  };
+}
+
+export function loadPresetLibrary(input: readonly Preset[] = starterPresets): PresetLibrary {
+  const presets = [...input].map((preset) => parsePreset(preset)).sort((left, right) => left.id.localeCompare(right.id));
+  const byId: Record<string, Preset> = {};
+  const byFamily = createEmptyFamilyIndex();
+
+  for (const preset of presets) {
+    byId[preset.id] = preset;
+    byFamily[preset.family].push(preset);
+  }
+
+  return {
+    presets,
+    byId,
+    byFamily
+  };
+}
+
+export function getPresetById(library: PresetLibrary, presetId: string): Preset | undefined {
+  return library.byId[presetId];
+}
