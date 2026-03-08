@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@afterimage/project-model": ["packages/project-model/src"],
+      "@afterimage/schema-validators": ["packages/schema-validators/src"],
+      "@afterimage/ffmpeg-compiler": ["packages/ffmpeg-compiler/src"],
+      "@afterimage/media-analysis": ["packages/media-analysis/src"],
+      "@afterimage/preset-library": ["packages/preset-library/src"],
+      "@afterimage/midi-engine": ["packages/midi-engine/src"],
+      "@afterimage/ui": ["packages/ui/src"]
+    }
+  }
+}

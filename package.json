@@ -1,0 +1,15 @@
+{
+  "name": "afterimage",
+  "private": true,
+  "packageManager": "pnpm@10",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev:studio": "pnpm --dir apps/studio-desktop dev",
+    "dev:live": "pnpm --dir apps/live-desktop dev",
+    "dev:appliance": "cd apps/live-appliance && go run ./cmd/afterimage-appliance"
+  }
+}

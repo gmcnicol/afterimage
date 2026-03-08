@@ -1,0 +1,15 @@
+[Unit]
+Description=Afterimage Live Appliance
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/afterimage
+EnvironmentFile=/opt/afterimage/config.env
+ExecStart=/opt/afterimage/afterimage-appliance
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

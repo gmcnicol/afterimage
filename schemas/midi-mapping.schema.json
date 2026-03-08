@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afterimage.local/schemas/midi-mapping.schema.json",
+  "title": "MIDI Mapping",
+  "type": "object",
+  "required": ["id", "name", "bindings"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "mode"],
+        "properties": {
+          "source": { "type": "string" },
+          "target": { "type": "string" },
+          "mode": { "type": "string", "enum": ["set", "toggle", "scale", "trigger"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

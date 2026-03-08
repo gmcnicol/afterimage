@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afterimage.local/schemas/project.schema.json",
+  "title": "Afterimage Project",
+  "type": "object",
+  "required": ["id", "name", "mode", "version"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "enum": ["studio", "live-desktop", "live-appliance"] },
+    "version": { "type": "integer", "minimum": 1 },
+    "description": { "type": "string" },
+    "presetIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "sequenceId": { "type": "string" },
+    "analysisIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}

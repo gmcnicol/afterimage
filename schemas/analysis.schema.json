@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afterimage.local/schemas/analysis.schema.json",
+  "title": "Analysis Result",
+  "type": "object",
+  "required": ["id", "sourceId", "sceneCuts"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "sourceId": { "type": "string", "minLength": 1 },
+    "sceneCuts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timeMs", "score"],
+        "properties": {
+          "timeMs": { "type": "integer", "minimum": 0 },
+          "score": { "type": "number", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
