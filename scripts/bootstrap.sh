@@ -20,7 +20,7 @@ need_cmd pnpm
 need_cmd go
 
 log "installing root workspace tooling"
-pnpm add -Dw turbo typescript @types/node
+pnpm add -Dw turbo typescript @types/node vitest
 
 log "installing Studio Desktop dependencies"
 pnpm --dir "$ROOT_DIR/apps/studio-desktop" add react react-dom \
@@ -52,7 +52,11 @@ pnpm --dir "$ROOT_DIR/apps/live-desktop" add -D \
 log "installing shared package dependencies"
 pnpm --dir "$ROOT_DIR/packages/ui" add react react-dom
 pnpm --dir "$ROOT_DIR/packages/ui" add -D @types/react @types/react-dom
-pnpm --dir "$ROOT_DIR/packages/schema-validators" add ajv
+pnpm --dir "$ROOT_DIR/packages/schema-validators" add ajv @afterimage/project-model@workspace:*
+pnpm --dir "$ROOT_DIR/packages/preset-library" add @afterimage/project-model@workspace:* @afterimage/schema-validators@workspace:*
+pnpm --dir "$ROOT_DIR/packages/media-analysis" add @afterimage/project-model@workspace:*
+pnpm --dir "$ROOT_DIR/packages/ffmpeg-compiler" add @afterimage/project-model@workspace:*
+pnpm --dir "$ROOT_DIR/packages/test-fixtures" add @afterimage/project-model@workspace:*
 
 log "tidying Go module"
 (

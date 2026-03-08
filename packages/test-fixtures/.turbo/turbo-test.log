@@ -1,0 +1,5 @@
+
+> @afterimage/test-fixtures@0.0.0 test /Users/gareth/src/afterimage/packages/test-fixtures
+> node -e "console.log('test placeholder: @afterimage/test-fixtures')"
+
+test placeholder: @afterimage/test-fixtures

@@ -3,21 +3,20 @@
   "$id": "https://afterimage.local/schemas/analysis.schema.json",
   "title": "Analysis Result",
   "type": "object",
-  "required": ["id", "sourceId", "sceneCuts"],
+  "required": ["id", "sourceId", "probe", "sceneCuts"],
   "properties": {
-    "id": { "type": "string", "minLength": 1 },
-    "sourceId": { "type": "string", "minLength": 1 },
+    "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+    "sourceId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+    "probe": {
+      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/probeMetadata"
+    },
     "sceneCuts": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["timeMs", "score"],
-        "properties": {
-          "timeMs": { "type": "integer", "minimum": 0 },
-          "score": { "type": "number", "minimum": 0 }
-        },
-        "additionalProperties": false
-      }
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/sceneCut" },
+      "default": []
+    },
+    "summary": {
+      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/analysisSummary"
     }
   },
   "additionalProperties": false
