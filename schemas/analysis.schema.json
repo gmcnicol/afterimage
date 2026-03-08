@@ -1,23 +1,27 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afterimage.local/schemas/analysis.schema.json",
-  "title": "Analysis Result",
+  "title": "Afterimage Analysis Sidecar",
   "type": "object",
-  "required": ["id", "sourceId", "probe", "sceneCuts"],
+  "required": ["id", "assetId", "probe", "sceneCuts"],
   "properties": {
     "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
-    "sourceId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
-    "probe": {
-      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/probeMetadata"
-    },
+    "assetId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+    "probe": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/probeMetadata" },
     "sceneCuts": {
       "type": "array",
       "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/sceneCut" },
       "default": []
     },
-    "summary": {
-      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/analysisSummary"
-    }
+    "thumbnails": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/thumbnailReference" },
+      "default": []
+    },
+    "waveform": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/waveformSummary" },
+    "luma": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/lumaSummary" },
+    "motion": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/motionSummary" },
+    "summary": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/analysisSummary" }
   },
   "additionalProperties": false
 }

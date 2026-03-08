@@ -1,14 +1,26 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
+import { getExportProfileById, type ExportProfileDefinition, type ExportProfileId } from '@afterimage/export-profiles';
 import {
+  getAssetById,
+  getAutomationLaneById,
+  getCutCandidateById,
+  getDefaultSequence,
+  getDefaultVariant,
+  getFilterStackById,
   getPresetById,
-  getSourceById,
+  getSequenceById,
+  getVariantById,
   normalizeProject,
+  type AutomationLane,
+  type FilterInstance,
+  type FilterStack,
   type NormalizedProjectFile,
   type PresetFilter,
   type ProjectFile,
-  type ProjectSource
+  type SequenceClip,
+  type Variant
 } from '@afterimage/project-model';
 
 type ResolutionSource = 'env' | 'path';
@@ -23,22 +35,69 @@ export interface CommandSpec {
 }
 
 export interface AnalysisRequest {
-  sourceId: string;
+  assetId: string;
   probeOutputPath: string;
   analysisOutputPath: string;
   overwrite?: boolean;
   sceneThreshold?: number;
 }
 
+export interface ThumbnailRequest {
+  assetId: string;
+  outputPattern: string;
+  manifestOutputPath: string;
+  overwrite?: boolean;
+  width?: number;
+}
+
+export interface WaveformRequest {
+  assetId: string;
+  outputPath: string;
+  overwrite?: boolean;
+  width?: number;
+  height?: number;
+}
+
+export interface PreviewRequest {
+  sequenceId?: string;
+  variantId?: string;
+  outputPath: string;
+  overwrite?: boolean;
+  width?: number;
+  height?: number;
+  frameRate?: number;
+}
+
+export interface ExportRequest {
+  sequenceId?: string;
+  variantId?: string;
+  outputPath: string;
+  overwrite?: boolean;
+  profile: ExportProfileDefinition;
+}
+
 export interface AnalysisPlan {
   projectId: string;
-  sourceId: string;
+  assetId: string;
   sceneThreshold: number;
   artifacts: {
     probeOutputPath: string;
     analysisOutputPath: string;
   };
   commands: [CommandSpec, CommandSpec];
+}
+
+export interface ThumbnailPlan {
+  projectId: string;
+  assetId: string;
+  command: CommandSpec;
+  manifestOutputPath: string;
+}
+
+export interface WaveformPlan {
+  projectId: string;
+  assetId: string;
+  command: CommandSpec;
 }
 
 export interface RenderProfile {
@@ -57,13 +116,40 @@ export interface RenderRequest {
   outputPath: string;
   overwrite?: boolean;
   profile: RenderProfile;
+  sequenceId?: string;
+  variantId?: string;
+}
+
+export interface PreviewPlan {
+  projectId: string;
+  sequenceId: string;
+  variantId: string;
+  outputPath: string;
+  command: CommandSpec;
 }
 
 export interface RenderPlan {
   projectId: string;
   sequenceId: string;
+  variantId: string;
   outputPath: string;
   command: CommandSpec;
+}
+
+export interface ToolVersionInfo {
+  path: string;
+  versionLine?: string;
+  available: boolean;
+}
+
+export interface ToolHealthReport {
+  available: boolean;
+  versions: {
+    ffmpeg: ToolVersionInfo;
+    ffprobe: ToolVersionInfo;
+    ffplay?: ToolVersionInfo;
+  };
+  warnings: string[];
 }
 
 export interface FfmpegProvenance {
@@ -99,6 +185,7 @@ export interface CommandExecutionResult {
 export interface CommandRunnerOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
+  signal?: AbortSignal;
 }
 
 export type CommandRunner = (
@@ -108,7 +195,6 @@ export type CommandRunner = (
 ) => Promise<CommandExecutionResult>;
 
 const DEFAULT_SCENE_THRESHOLD = 0.4;
-const EXECUTABLE_ACCESS_MODE = 0o111;
 
 function formatSeconds(milliseconds: number): string {
   return (milliseconds / 1000).toFixed(3);
@@ -119,35 +205,157 @@ function formatDecimal(value: number, digits = 3): string {
 }
 
 function normalizeForPlanning(project: ProjectFile | NormalizedProjectFile): NormalizedProjectFile {
-  return 'analysisRefs' in project && 'midiMappings' in project ? normalizeProject(project) : normalizeProject(project as ProjectFile);
+  return normalizeProject(project as ProjectFile);
 }
 
-function ensureSource(project: NormalizedProjectFile, sourceId: string): ProjectSource {
-  const source = getSourceById(project, sourceId);
-  if (!source) {
-    throw new Error(`Missing source "${sourceId}" in project "${project.id}".`);
+function ensureAsset(project: NormalizedProjectFile, assetId: string) {
+  const asset = getAssetById(project, assetId);
+  if (!asset) {
+    throw new Error(`Missing asset "${assetId}" in project "${project.id}".`);
   }
 
-  return source;
+  return asset;
 }
 
-function compilePresetFilters(filters: PresetFilter[]): string[] {
-  return filters.map((filter) => {
-    const effectiveAmount = filter.amount * (filter.mix ?? 1);
+function resolveTimeline(project: NormalizedProjectFile, sequenceId?: string, variantId?: string): { sequenceId: string; variant: Variant } {
+  const sequence = sequenceId ? getSequenceById(project, sequenceId) : getDefaultSequence(project);
+  if (!sequence) {
+    throw new Error(`Project "${project.id}" does not define a sequence.`);
+  }
 
-    switch (filter.type) {
-      case 'tracking-wobble':
-        return `gblur=sigma=${formatDecimal(0.2 + (effectiveAmount * 2))}`;
-      case 'chroma-bleed':
-        return `eq=saturation=${formatDecimal(1 - (effectiveAmount * 0.25))}`;
-      case 'fluorescent-flicker':
-        return `eq=brightness=${formatDecimal(effectiveAmount * 0.08)}`;
-      case 'desaturation-lfo':
-        return `eq=saturation=${formatDecimal(1 - effectiveAmount)}`;
-      default:
-        throw new Error(`Unsupported preset filter "${filter.type}" in Phase 1 render compiler.`);
+  const variant = variantId
+    ? getVariantById(project, variantId)
+    : (sequence.defaultVariantId ? getVariantById(project, sequence.defaultVariantId) : getDefaultVariant(project, sequence.id));
+
+  if (!variant) {
+    throw new Error(`Sequence "${sequence.id}" does not define a variant.`);
+  }
+
+  return {
+    sequenceId: sequence.id,
+    variant
+  };
+}
+
+function compilePresetFilters(filters: PresetFilter[]): FilterInstance[] {
+  return filters.map((filter, index) => ({
+    id: `preset-filter-${index + 1}`,
+    type: filter.type,
+    enabled: true,
+    orderIndex: index,
+    parameters: {
+      amount: filter.amount
+    },
+    mix: filter.mix ?? 1,
+    seed: filter.seed
+  }));
+}
+
+function evaluateAutomationLane(lane: AutomationLane, timeMs: number, fallback: number): number {
+  const enabled = lane.enabled ?? true;
+  if (!enabled || lane.keyframes.length === 0) {
+    return fallback;
+  }
+
+  const ordered = [...lane.keyframes].sort((left, right) => left.timeMs - right.timeMs);
+
+  if (timeMs <= ordered[0].timeMs) {
+    return ordered[0].value;
+  }
+
+  if (timeMs >= ordered[ordered.length - 1].timeMs) {
+    return ordered[ordered.length - 1].value;
+  }
+
+  for (let index = 0; index < ordered.length - 1; index += 1) {
+    const left = ordered[index];
+    const right = ordered[index + 1];
+    if (timeMs >= left.timeMs && timeMs <= right.timeMs) {
+      const span = Math.max(1, right.timeMs - left.timeMs);
+      const ratio = (timeMs - left.timeMs) / span;
+      return left.value + ((right.value - left.value) * ratio);
     }
-  });
+  }
+
+  return fallback;
+}
+
+function applyAutomationToFilter(project: NormalizedProjectFile, filter: FilterInstance, timeMs: number): FilterInstance {
+  let next = {
+    ...filter,
+    parameters: { ...(filter.parameters ?? {}) }
+  };
+
+  for (const laneId of filter.automationLaneIds ?? []) {
+    const lane = getAutomationLaneById(project, laneId);
+    if (!lane) {
+      continue;
+    }
+
+    const fallback = lane.target.property === 'mix'
+      ? Number(next.mix ?? 1)
+      : Number(next.parameters?.[lane.target.property] ?? next.parameters?.amount ?? 0);
+    const value = evaluateAutomationLane(lane, timeMs, fallback);
+
+    if (lane.target.property === 'mix') {
+      next.mix = value;
+    } else {
+      next.parameters = {
+        ...next.parameters,
+        [lane.target.property]: value
+      };
+    }
+  }
+
+  return next;
+}
+
+function compileFilterExpression(filter: FilterInstance): string {
+  const amount = Number(filter.parameters?.amount ?? filter.parameters?.intensity ?? 0.2);
+  const effectiveAmount = amount * Number(filter.mix ?? 1);
+
+  switch (filter.type) {
+    case 'tracking-wobble':
+      return `gblur=sigma=${formatDecimal(0.2 + (effectiveAmount * 2))}`;
+    case 'chroma-bleed':
+      return `eq=saturation=${formatDecimal(1 - (effectiveAmount * 0.25))}`;
+    case 'fluorescent-flicker':
+      return `eq=brightness=${formatDecimal(effectiveAmount * 0.08)}`;
+    case 'desaturation-lfo':
+      return `eq=saturation=${formatDecimal(1 - effectiveAmount)}`;
+    case 'contrast-pulse':
+      return `eq=contrast=${formatDecimal(1 + (effectiveAmount * 0.4))}`;
+    case 'bloom-soft':
+      return `gblur=sigma=${formatDecimal(0.4 + (effectiveAmount * 4))}`;
+    case 'glitch-bands':
+      return `noise=alls=${formatDecimal(4 + (effectiveAmount * 24), 1)}:allf=t`;
+    case 'blur':
+      return `gblur=sigma=${formatDecimal(0.4 + (effectiveAmount * 5))}`;
+    case 'contrast':
+      return `eq=contrast=${formatDecimal(1 + effectiveAmount)}`;
+    case 'brightness':
+      return `eq=brightness=${formatDecimal((effectiveAmount - 0.5) * 0.2)}`;
+    default:
+      return `eq=saturation=${formatDecimal(1 - (effectiveAmount * 0.15))}`;
+  }
+}
+
+function collectClipFilters(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip): string[] {
+  const midpointMs = clip.timelineStartMs + Math.round(clip.durationMs / 2);
+  const sequenceStack = variant.stackId ? getFilterStackById(project, variant.stackId) : undefined;
+  const clipStack = clip.stackOverrideId ? getFilterStackById(project, clip.stackOverrideId) : undefined;
+  const preset = clip.presetId ? getPresetById(project, clip.presetId) : undefined;
+  const presetFilters = preset ? compilePresetFilters(preset.filters) : [];
+  const stackFilters = [
+    ...(sequenceStack?.filters ?? []),
+    ...(clipStack?.filters ?? [])
+  ];
+
+  return [...presetFilters, ...stackFilters]
+    .map((filter) => applyAutomationToFilter(project, filter, midpointMs))
+    .filter((filter) => filter.enabled !== false)
+    .sort((left, right) => left.orderIndex - right.orderIndex || left.id.localeCompare(right.id))
+    .map(compileFilterExpression);
 }
 
 function resolveToolFromPath(binaryName: string, env: NodeJS.ProcessEnv): string | undefined {
@@ -192,7 +400,7 @@ function resolveRequiredTool(binaryName: 'ffmpeg' | 'ffprobe', envVar: 'AFTERIMA
       source: 'path',
       license: 'LGPL',
       lgplOnly: true,
-      notes: `Resolved from PATH. Record the upstream binary source and version before redistribution.`
+      notes: 'Resolved from PATH. Record the upstream binary source and version before redistribution.'
     }
   };
 }
@@ -240,16 +448,8 @@ export function resolveFfmpegTools(options: ResolveFfmpegToolsOptions = {}): Res
   };
 }
 
-export function buildAnalysisPlan(
-  project: ProjectFile | NormalizedProjectFile,
-  request: AnalysisRequest,
-  tools?: ResolvedFfmpegTools
-): AnalysisPlan {
-  const normalizedProject = normalizeForPlanning(project);
-  const source = ensureSource(normalizedProject, request.sourceId);
-  const sceneThreshold = request.sceneThreshold ?? DEFAULT_SCENE_THRESHOLD;
-
-  const resolvedTools = tools ?? {
+function makePlanningTools(tools?: ResolvedFfmpegTools): ResolvedFfmpegTools {
+  return tools ?? {
     ffmpeg: {
       path: 'ffmpeg',
       source: 'path',
@@ -271,28 +471,39 @@ export function buildAnalysisPlan(
       }
     }
   };
+}
+
+export function buildAnalysisPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: AnalysisRequest,
+  tools?: ResolvedFfmpegTools
+): AnalysisPlan {
+  const normalizedProject = normalizeForPlanning(project);
+  const asset = ensureAsset(normalizedProject, request.assetId);
+  const sceneThreshold = request.sceneThreshold ?? DEFAULT_SCENE_THRESHOLD;
+  const resolvedTools = makePlanningTools(tools);
 
   const ffprobeCommand: CommandSpec = {
-    label: `probe:${request.sourceId}`,
+    label: `probe:${request.assetId}`,
     binary: resolvedTools.ffprobe.path,
     args: [
       '-v', 'error',
       '-print_format', 'json',
       '-show_format',
       '-show_streams',
-      source.path
+      asset.path.absolutePath
     ],
     expectedOutputs: [request.probeOutputPath]
   };
 
   const ffmpegCommand: CommandSpec = {
-    label: `scene-detect:${request.sourceId}`,
+    label: `scene-detect:${request.assetId}`,
     binary: resolvedTools.ffmpeg.path,
     args: [
       '-hide_banner',
       '-loglevel', 'info',
       request.overwrite === false ? '-n' : '-y',
-      '-i', source.path,
+      '-i', asset.path.absolutePath,
       '-filter:v', `select='gt(scene,${formatDecimal(sceneThreshold)})',metadata=print:file=-`,
       '-an',
       '-f', 'null',
@@ -303,7 +514,7 @@ export function buildAnalysisPlan(
 
   return {
     projectId: normalizedProject.id,
-    sourceId: request.sourceId,
+    assetId: request.assetId,
     sceneThreshold,
     artifacts: {
       probeOutputPath: request.probeOutputPath,
@@ -313,18 +524,218 @@ export function buildAnalysisPlan(
   };
 }
 
-function collectRenderInputs(project: NormalizedProjectFile): ProjectSource[] {
-  const seen = new Set<string>();
-  const inputs: ProjectSource[] = [];
+export function buildThumbnailPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: ThumbnailRequest,
+  tools?: ResolvedFfmpegTools
+): ThumbnailPlan {
+  const normalizedProject = normalizeForPlanning(project);
+  const asset = ensureAsset(normalizedProject, request.assetId);
+  const resolvedTools = makePlanningTools(tools);
 
-  for (const item of project.sequence.items) {
-    if (!seen.has(item.sourceId)) {
-      seen.add(item.sourceId);
-      inputs.push(ensureSource(project, item.sourceId));
+  return {
+    projectId: normalizedProject.id,
+    assetId: request.assetId,
+    manifestOutputPath: request.manifestOutputPath,
+    command: {
+      label: `thumbnails:${request.assetId}`,
+      binary: resolvedTools.ffmpeg.path,
+      args: [
+        request.overwrite === false ? '-n' : '-y',
+        '-i', asset.path.absolutePath,
+        '-vf', `fps=1,scale=${request.width ?? 640}:-1`,
+        '-q:v', '4',
+        request.outputPattern
+      ],
+      expectedOutputs: [request.manifestOutputPath]
+    }
+  };
+}
+
+export function buildWaveformPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: WaveformRequest,
+  tools?: ResolvedFfmpegTools
+): WaveformPlan {
+  const normalizedProject = normalizeForPlanning(project);
+  const asset = ensureAsset(normalizedProject, request.assetId);
+  const resolvedTools = makePlanningTools(tools);
+
+  return {
+    projectId: normalizedProject.id,
+    assetId: request.assetId,
+    command: {
+      label: `waveform:${request.assetId}`,
+      binary: resolvedTools.ffmpeg.path,
+      args: [
+        request.overwrite === false ? '-n' : '-y',
+        '-i', asset.path.absolutePath,
+        '-filter_complex', `aformat=channel_layouts=stereo,showwavespic=s=${request.width ?? 960}x${request.height ?? 240}`,
+        '-frames:v', '1',
+        request.outputPath
+      ],
+      expectedOutputs: [request.outputPath]
+    }
+  };
+}
+
+function getVariantDuration(variant: Variant): number {
+  return variant.clips.reduce((max, clip) => Math.max(max, clip.timelineStartMs + clip.durationMs), 0);
+}
+
+function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): { assetId: string; path: string }[] {
+  const seen = new Set<string>();
+  const inputs: { assetId: string; path: string }[] = [];
+
+  for (const clip of variant.clips) {
+    if (!seen.has(clip.assetId)) {
+      const asset = ensureAsset(project, clip.assetId);
+      seen.add(clip.assetId);
+      inputs.push({ assetId: clip.assetId, path: asset.path.absolutePath });
     }
   }
 
+  const musicAssetId = variant.musicAlignment?.primaryAssetId;
+  if (musicAssetId && !seen.has(musicAssetId)) {
+    const asset = ensureAsset(project, musicAssetId);
+    inputs.push({ assetId: musicAssetId, path: asset.path.absolutePath });
+  }
+
   return inputs;
+}
+
+function buildRenderCommand(
+  project: NormalizedProjectFile,
+  variant: Variant,
+  sequenceId: string,
+  request: RenderRequest | ExportRequest | PreviewRequest,
+  profile: RenderProfile,
+  tools?: ResolvedFfmpegTools
+): RenderPlan | PreviewPlan {
+  const resolvedTools = makePlanningTools(tools);
+  const inputs = collectRenderInputs(project, variant);
+  const inputIndexByAssetId = new Map(inputs.map((input, index) => [input.assetId, index]));
+  const filterSegments: string[] = [];
+  const videoConcatInputs: string[] = [];
+  const audioConcatInputs: string[] = [];
+  const musicAssetId = variant.musicAlignment?.primaryAssetId;
+  const musicInputIndex = musicAssetId ? inputIndexByAssetId.get(musicAssetId) : undefined;
+  const includeClipAudio = musicInputIndex === undefined && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
+
+  variant.clips.forEach((clip, index) => {
+    const inputIndex = inputIndexByAssetId.get(clip.assetId);
+    if (inputIndex === undefined) {
+      throw new Error(`Missing input index for asset "${clip.assetId}".`);
+    }
+
+    const videoFilters = [
+      `trim=start=${formatSeconds(clip.sourceStartMs)}:duration=${formatSeconds(clip.durationMs)}`,
+      'setpts=PTS-STARTPTS',
+      ...collectClipFilters(project, variant, clip)
+    ];
+
+    filterSegments.push(`[${inputIndex}:v]${videoFilters.join(',')}[v${index}]`);
+    videoConcatInputs.push(`[v${index}]`);
+
+    if (includeClipAudio) {
+      filterSegments.push(`[${inputIndex}:a]atrim=start=${formatSeconds(clip.sourceStartMs)}:duration=${formatSeconds(clip.durationMs)},asetpts=PTS-STARTPTS[a${index}]`);
+      audioConcatInputs.push(`[a${index}]`);
+    }
+  });
+
+  if (includeClipAudio) {
+    filterSegments.push(`${videoConcatInputs.join('')}${audioConcatInputs.join('')}concat=n=${variant.clips.length}:v=1:a=1[vconcat][aconcat]`);
+  } else {
+    filterSegments.push(`${videoConcatInputs.join('')}concat=n=${variant.clips.length}:v=1:a=0[vconcat]`);
+  }
+
+  filterSegments.push(`[vconcat]fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},format=yuv420p[vout]`);
+
+  if (musicInputIndex !== undefined) {
+    filterSegments.push(`[${musicInputIndex}:a]atrim=start=0:duration=${formatSeconds(getVariantDuration(variant))},asetpts=PTS-STARTPTS[amusic]`);
+  }
+
+  const args = [
+    request.overwrite === false ? '-n' : '-y',
+    ...inputs.flatMap((input) => ['-i', input.path]),
+    '-filter_complex', filterSegments.join(';'),
+    '-map', '[vout]',
+    '-c:v', profile.videoCodec,
+    '-preset', profile.videoPreset ?? 'medium',
+    '-crf', String(profile.crf ?? 18)
+  ];
+
+  if (musicInputIndex !== undefined) {
+    args.push('-map', '[amusic]');
+  } else if (includeClipAudio) {
+    args.push('-map', '[aconcat]');
+  }
+
+  if (musicInputIndex !== undefined || includeClipAudio) {
+    args.push(
+      '-c:a', profile.audioCodec,
+      '-b:a', `${profile.audioBitrateKbps ?? 192}k`
+    );
+  }
+
+  args.push('-f', profile.container, request.outputPath);
+
+  const plan = {
+    projectId: project.id,
+    sequenceId,
+    variantId: variant.id,
+    outputPath: request.outputPath,
+    command: {
+      label: `render:${project.id}:${variant.id}`,
+      binary: resolvedTools.ffmpeg.path,
+      args,
+      expectedOutputs: [request.outputPath]
+    }
+  };
+
+  return plan;
+}
+
+export function buildPreviewPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: PreviewRequest,
+  tools?: ResolvedFfmpegTools
+): PreviewPlan {
+  const normalizedProject = normalizeForPlanning(project);
+  const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
+
+  return buildRenderCommand(normalizedProject, variant, sequenceId, request, {
+    width: request.width ?? 960,
+    height: request.height ?? 540,
+    frameRate: request.frameRate ?? 24,
+    container: 'mp4',
+    videoCodec: 'libx264',
+    audioCodec: 'aac',
+    crf: 26,
+    videoPreset: 'fast',
+    audioBitrateKbps: 128
+  }, tools) as PreviewPlan;
+}
+
+export function buildExportPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: ExportRequest,
+  tools?: ResolvedFfmpegTools
+): RenderPlan {
+  const normalizedProject = normalizeForPlanning(project);
+  const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
+
+  return buildRenderCommand(normalizedProject, variant, sequenceId, request, {
+    width: request.profile.width,
+    height: request.profile.height,
+    frameRate: request.profile.frameRate,
+    container: request.profile.container,
+    videoCodec: request.profile.videoCodec,
+    audioCodec: request.profile.audioCodec,
+    crf: request.profile.crf,
+    videoPreset: request.profile.videoPreset,
+    audioBitrateKbps: request.profile.audioBitrateKbps
+  }, tools) as RenderPlan;
 }
 
 export function buildRenderPlan(
@@ -333,110 +744,27 @@ export function buildRenderPlan(
   tools?: ResolvedFfmpegTools
 ): RenderPlan {
   const normalizedProject = normalizeForPlanning(project);
-  const resolvedTools = tools ?? {
-    ffmpeg: {
-      path: 'ffmpeg',
-      source: 'path',
-      provenance: {
-        source: 'path',
-        license: 'LGPL',
-        lgplOnly: true,
-        notes: 'Unresolved placeholder binary name for deterministic command planning.'
-      }
-    },
-    ffprobe: {
-      path: 'ffprobe',
-      source: 'path',
-      provenance: {
-        source: 'path',
-        license: 'LGPL',
-        lgplOnly: true,
-        notes: 'Unresolved placeholder binary name for deterministic command planning.'
-      }
-    }
-  };
+  const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
 
-  const inputs = collectRenderInputs(normalizedProject);
-  const inputIndexBySourceId = new Map(inputs.map((source, index) => [source.id, index]));
-  const includeAudio = normalizedProject.sequence.items.every((item) => ensureSource(normalizedProject, item.sourceId).hasAudio !== false);
-  const filterSegments: string[] = [];
-  const concatInputs: string[] = [];
+  return buildRenderCommand(normalizedProject, variant, sequenceId, request, request.profile, tools) as RenderPlan;
+}
 
-  normalizedProject.sequence.items.forEach((item, index) => {
-    const inputIndex = inputIndexBySourceId.get(item.sourceId);
-    if (inputIndex === undefined) {
-      throw new Error(`Missing input index for source "${item.sourceId}".`);
-    }
-
-    const preset = item.presetId ? getPresetById(normalizedProject, item.presetId) : undefined;
-    const presetFilters = preset ? compilePresetFilters(preset.filters) : [];
-    const videoFilters = [
-      `trim=start=${formatSeconds(item.sourceStartMs)}:duration=${formatSeconds(item.durationMs)}`,
-      'setpts=PTS-STARTPTS',
-      ...presetFilters
-    ];
-
-    filterSegments.push(`[${inputIndex}:v]${videoFilters.join(',')}[v${index}]`);
-    concatInputs.push(`[v${index}]`);
-
-    if (includeAudio) {
-      filterSegments.push(
-        `[${inputIndex}:a]atrim=start=${formatSeconds(item.sourceStartMs)}:duration=${formatSeconds(item.durationMs)},asetpts=PTS-STARTPTS[a${index}]`
-      );
-      concatInputs.push(`[a${index}]`);
-    }
-  });
-
-  if (includeAudio) {
-    filterSegments.push(
-      `${concatInputs.join('')}concat=n=${normalizedProject.sequence.items.length}:v=1:a=1[vconcat][aconcat]`
-    );
-    filterSegments.push(
-      `[vconcat]fps=${formatDecimal(request.profile.frameRate)},scale=${request.profile.width}:${request.profile.height},format=yuv420p[vout]`
-    );
-  } else {
-    filterSegments.push(
-      `${concatInputs.join('')}concat=n=${normalizedProject.sequence.items.length}:v=1:a=0[vconcat]`
-    );
-    filterSegments.push(
-      `[vconcat]fps=${formatDecimal(request.profile.frameRate)},scale=${request.profile.width}:${request.profile.height},format=yuv420p[vout]`
-    );
-  }
-
-  const args = [
-    request.overwrite === false ? '-n' : '-y',
-    ...inputs.flatMap((source) => ['-i', source.path]),
-    '-filter_complex', filterSegments.join(';'),
-    '-map', '[vout]',
-    '-c:v', request.profile.videoCodec,
-    '-preset', request.profile.videoPreset ?? 'medium',
-    '-crf', String(request.profile.crf ?? 18)
-  ];
-
-  if (includeAudio) {
-    args.push(
-      '-map', '[aconcat]',
-      '-c:a', request.profile.audioCodec,
-      '-b:a', `${request.profile.audioBitrateKbps ?? 192}k`
-    );
-  }
-
-  args.push('-f', request.profile.container, request.outputPath);
-
-  return {
-    projectId: normalizedProject.id,
-    sequenceId: normalizedProject.sequence.id,
-    outputPath: request.outputPath,
-    command: {
-      label: `render:${normalizedProject.id}`,
-      binary: resolvedTools.ffmpeg.path,
-      args,
-      expectedOutputs: [request.outputPath]
-    }
-  };
+export function buildProfileExportPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: Omit<ExportRequest, 'profile'> & { profileId: ExportProfileId },
+  tools?: ResolvedFfmpegTools
+): RenderPlan {
+  return buildExportPlan(project, {
+    ...request,
+    profile: getExportProfileById(request.profileId)
+  }, tools);
 }
 
 async function defaultCommandRunner(binary: string, args: string[], options: CommandRunnerOptions): Promise<CommandExecutionResult> {
+  if (options.signal?.aborted) {
+    throw new DOMException('Command aborted before start.', 'AbortError');
+  }
+
   return await new Promise((resolve, reject) => {
     const child = spawn(binary, args, {
       cwd: options.cwd,
@@ -447,6 +775,13 @@ async function defaultCommandRunner(binary: string, args: string[], options: Com
     let stdout = '';
     let stderr = '';
 
+    const abortHandler = () => {
+      child.kill('SIGTERM');
+      reject(new DOMException(`Command "${binary}" aborted.`, 'AbortError'));
+    };
+
+    options.signal?.addEventListener('abort', abortHandler, { once: true });
+
     child.stdout.on('data', (chunk) => {
       stdout += chunk.toString();
     });
@@ -455,8 +790,13 @@ async function defaultCommandRunner(binary: string, args: string[], options: Com
       stderr += chunk.toString();
     });
 
-    child.on('error', reject);
+    child.on('error', (error) => {
+      options.signal?.removeEventListener('abort', abortHandler);
+      reject(error);
+    });
+
     child.on('close', (exitCode) => {
+      options.signal?.removeEventListener('abort', abortHandler);
       resolve({
         exitCode: exitCode ?? 1,
         stdout,
@@ -473,7 +813,8 @@ export async function executeCommandSpec(
   const runner = options.runner ?? defaultCommandRunner;
   const result = await runner(command.binary, command.args, {
     cwd: options.cwd ?? command.cwd,
-    env: options.env ? { ...options.env, ...command.env } : (command.env ? { ...process.env, ...command.env } : options.env)
+    env: options.env ? { ...options.env, ...command.env } : (command.env ? { ...process.env, ...command.env } : options.env),
+    signal: options.signal
   });
 
   if ((options.rejectOnNonZeroExit ?? true) && result.exitCode !== 0) {
@@ -481,4 +822,50 @@ export async function executeCommandSpec(
   }
 
   return result;
+}
+
+export async function getToolchainHealth(
+  tools: ResolvedFfmpegTools,
+  options: { runner?: CommandRunner; env?: NodeJS.ProcessEnv } = {}
+): Promise<ToolHealthReport> {
+  const runner = options.runner ?? defaultCommandRunner;
+  const warnings: string[] = [];
+
+  async function inspect(tool: ResolvedToolBinary | undefined, binaryName: string): Promise<ToolVersionInfo | undefined> {
+    if (!tool) {
+      warnings.push(`${binaryName} is not available.`);
+      return undefined;
+    }
+
+    try {
+      const result = await runner(tool.path, ['-version'], { env: options.env });
+      const versionLine = (result.stdout || result.stderr).split(/\r?\n/).find(Boolean);
+      return {
+        path: tool.path,
+        versionLine,
+        available: result.exitCode === 0
+      };
+    } catch (error) {
+      warnings.push(`${binaryName} version probe failed: ${error instanceof Error ? error.message : String(error)}`);
+      return {
+        path: tool.path,
+        available: false
+      };
+    }
+  }
+
+  const ffmpeg = await inspect(tools.ffmpeg, 'ffmpeg');
+  const ffprobe = await inspect(tools.ffprobe, 'ffprobe');
+  const ffplay = await inspect(tools.ffplay, 'ffplay');
+  const available = Boolean(ffmpeg?.available && ffprobe?.available);
+
+  return {
+    available,
+    versions: {
+      ffmpeg: ffmpeg ?? { path: '', available: false },
+      ffprobe: ffprobe ?? { path: '', available: false },
+      ffplay
+    },
+    warnings
+  };
 }

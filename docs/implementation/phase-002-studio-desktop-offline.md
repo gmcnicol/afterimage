@@ -1,7 +1,7 @@
 # Phase 002: Studio Desktop (Offline)
 
 ## Status
-Planned
+Completed
 
 ## Objective
 Build the desktop authoring product for offline media analysis, sequencing, filter design, and high-quality export.
@@ -25,19 +25,19 @@ Build the desktop authoring product for offline media analysis, sequencing, filt
 - Pi deployment
 
 ## Deliverables
-- working desktop app shell
-- offline analysis workflow
-- sequence editing workflow
-- export workflow
-- project persistence
-- presets usable from UI
-- render queue or render action using the shared engine
+- working Electron desktop shell with typed preload IPC and panel-based authoring workspace
+- offline analysis workflow with background jobs, analysis sidecars, and cut generation
+- sequence editing workflow with variants, markers, sections, style stacks, and automation lanes
+- export workflow with preview cache and deterministic multi-profile export planning
+- project persistence with Phase 1 to Phase 2 migration support
+- presets usable from the shared library and authorable filter stacks in UI
+- render queue and diagnostics views using the shared engine boundary
 
 ## Key questions to answer
-- which UI model best exposes cut mining and sequencing
-- which export presets are mandatory first
-- how to keep offline preview responsive without corrupting render determinism
-- what parts of MIDI authoring are useful before live work begins
+- use a stable one-window panel workspace with keyboard-first navigation
+- ship Landscape Master, Portrait Short-Form, Square Social, and Archive Master profiles
+- keep preview responsive through cached low-resolution FFmpeg preview renders
+- treat MIDI authoring as deterministic offline intent capture and keep recorded MIDI behind a feature flag
 
 ## Exit criteria
 - user can import footage and optional music
@@ -46,6 +46,17 @@ Build the desktop authoring product for offline media analysis, sequencing, filt
 - user can export at least one HQ master and one social output format
 - a saved project can be reopened and rendered consistently
 - important UX or render lessons are recorded in PEP notes
+
+## Implementation Notes
+- Shared project data now uses the Phase 2 hybrid authoring shape with migration support from the Phase 1 project format.
+- Studio Desktop owns project orchestration, file dialogs, job management, diagnostics, and typed preload IPC, while FFmpeg planning and analysis parsing remain in shared packages.
+- The renderer uses separate Zustand stores for project session, UI state, jobs, and diagnostics, and virtualizes the media and cut browsers.
+- Preview fidelity is intentionally lower than export fidelity and is labeled explicitly in the UI.
+
+## Deferred Follow-On
+- Remote media ingest from user-supplied URLs is intentionally deferred beyond Phase 002.
+- If added later, it should be implemented as a bounded import adapter that downloads into the normal project ingest area and then reuses the existing analysis pipeline.
+- Any such feature must require explicit rights confirmation, avoid in-app search or browsing, and rely on a pinned external downloader tool rather than ad hoc scraping logic.
 
 ## Learning capture focus
 Prefer notes about:

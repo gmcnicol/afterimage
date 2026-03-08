@@ -25,6 +25,24 @@ const starterPresetDefinitions = [
       { type: 'fluorescent-flicker', amount: 0.2 },
       { type: 'desaturation-lfo', amount: 0.4 }
     ]
+  },
+  {
+    id: 'preset-imagined-futures-afterburn',
+    name: 'Afterburn',
+    family: 'imagined-futures',
+    filters: [
+      { type: 'contrast-pulse', amount: 0.28 },
+      { type: 'bloom-soft', amount: 0.24 }
+    ]
+  },
+  {
+    id: 'preset-glitch-overclock',
+    name: 'Overclock',
+    family: 'glitch',
+    filters: [
+      { type: 'glitch-bands', amount: 0.22 },
+      { type: 'tracking-wobble', amount: 0.18 }
+    ]
   }
 ] as const satisfies readonly Preset[];
 
