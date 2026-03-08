@@ -1,0 +1,337 @@
+# ------------------------------------------------------------------------------
+# Afterimage root .gitignore
+# Monorepo: Electron + React/Vite + pnpm/turbo + Go + FFmpeg sidecars
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# OS junk
+# ------------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ------------------------------------------------------------------------------
+# Editor / IDE
+# ------------------------------------------------------------------------------
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+.idea/
+*.iml
+*.ipr
+*.iws
+
+*.swp
+*.swo
+*~
+Session.vim
+.nvimlog
+
+# JetBrains caches
+out/
+
+# ------------------------------------------------------------------------------
+# Logs / temp / pid files
+# ------------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+*.tmp
+*.temp
+tmp/
+temp/
+.cache/
+.cache-loader/
+.eslintcache
+.stylelintcache
+
+*.pid
+*.pid.lock
+*.seed
+
+# ------------------------------------------------------------------------------
+# Environment / secrets / local overrides
+# ------------------------------------------------------------------------------
+.env
+.env.*
+*.env
+*.local
+*.secret
+*.secrets
+*.key
+*.pem
+
+# Keep sample env files
+!.env.example
+!.env.*.example
+!.example.env
+
+# ------------------------------------------------------------------------------
+# Node / package manager
+# ------------------------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+.yarnrc.yml
+
+# Never ignore lockfiles you intend to commit.
+# pnpm-lock.yaml should be committed.
+
+# ------------------------------------------------------------------------------
+# Turbo / Nx / monorepo build caches
+# ------------------------------------------------------------------------------
+.turbo/
+.nx/
+
+# ------------------------------------------------------------------------------
+# TypeScript / JS build artifacts
+# ------------------------------------------------------------------------------
+*.tsbuildinfo
+dist/
+build/
+lib/
+lib-cov/
+esm/
+cjs/
+coverage/
+.nyc_output/
+
+# Vite / bundler outputs
+vite.svg
+*.vite
+.vite/
+.rollup.cache/
+
+# ------------------------------------------------------------------------------
+# Electron
+# ------------------------------------------------------------------------------
+# Build artifacts
+release/
+releases/
+electron-dist/
+*.blockmap
+
+# Packaged desktop apps
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
+*.snap
+*.msi
+*.exe
+*.app
+*.zip
+*.7z
+*.tar.gz
+
+# electron-builder / forge
+builder-debug.yml
+builder-effective-config.yaml
+.electron-builder/
+out-electron/
+.forge/
+
+# ------------------------------------------------------------------------------
+# Frontend testing
+# ------------------------------------------------------------------------------
+playwright-report/
+test-results/
+blob-report/
+storybook-static/
+
+# Screenshots / videos from e2e runs
+screenshots/
+videos/
+
+# ------------------------------------------------------------------------------
+# Go
+# ------------------------------------------------------------------------------
+# Binaries
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+.coverprofile
+coverage.out
+
+# Go workspace files (local only)
+go.work
+go.work.sum
+
+# Vendor is usually committed only if intentionally chosen.
+vendor/
+
+# ------------------------------------------------------------------------------
+# Python (for helper scripts/tools)
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+
+.venv/
+venv/
+env/
+ENV/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# ------------------------------------------------------------------------------
+# FFmpeg / media processing artifacts
+# ------------------------------------------------------------------------------
+# Downloaded or unpacked third-party binaries
+/tools/ffmpeg/bin/
+/tools/ffmpeg/downloads/
+/tools/ffmpeg/cache/
+/tools/ffmpeg/tmp/
+/tools/ffmpeg/unpack/
+
+# Local manifests generated during binary fetch/verification
+/tools/ffmpeg/manifests/*.local.json
+/tools/ffmpeg/manifests/*.resolved.json
+
+# Local render/analysis scratch
+.artifacts/
+renders/
+exports/
+recordings/
+captures/
+thumbnails/
+waveforms/
+proxies/
+cache/
+scratch/
+
+# Large media not intended for git
+*.mov
+*.mp4
+*.m4v
+*.mkv
+*.avi
+*.webm
+*.flv
+*.wav
+*.aiff
+*.flac
+*.mp3
+*.m4a
+*.aac
+
+# Large image sequences / intermediates
+*.exr
+*.dpx
+*.tif
+*.tiff
+
+# Keep fixture media if intentionally checked in under test-fixtures
+!packages/test-fixtures/**
+!**/*.keep
+
+# ------------------------------------------------------------------------------
+# Generated project/session runtime data
+# ------------------------------------------------------------------------------
+sessions/
+runtime/
+state/
+*.autosave.json
+*.session.lock
+*.pid.json
+
+# ------------------------------------------------------------------------------
+# Appliance / device-specific local files
+# ------------------------------------------------------------------------------
+# Local config overrides for Pi / appliance deployments
+apps/live-appliance/configs/*.local.yaml
+apps/live-appliance/configs/*.local.yml
+apps/live-appliance/configs/*.override.yaml
+apps/live-appliance/configs/*.override.yml
+
+# Systemd/runtime leftovers
+apps/live-appliance/run/
+apps/live-appliance/tmp/
+apps/live-appliance/logs/
+
+# ------------------------------------------------------------------------------
+# Docker / containers / dev environments
+# ------------------------------------------------------------------------------
+.docker/
+docker-data/
+.devcontainer/local.env
+
+# ------------------------------------------------------------------------------
+# Terraform / infra, if added later
+# ------------------------------------------------------------------------------
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ------------------------------------------------------------------------------
+# Archives / backups
+# ------------------------------------------------------------------------------
+*.bak
+*.old
+*.orig
+*.rej
+
+# ------------------------------------------------------------------------------
+# Misc tooling outputs
+# ------------------------------------------------------------------------------
+reports/
+generated/
+.generated/
+site/
+
+# ------------------------------------------------------------------------------
+# Explicitly keep important repo files that should always remain tracked
+# ------------------------------------------------------------------------------
+!.gitignore
+!LICENSE
+!README.md
+!pnpm-workspace.yaml
+!turbo.json
+!tsconfig.base.json
+!package.json
+!go.mod
+!go.sum
+!schemas/**
+!docs/**
+!apps/**/README.md
+!packages/**/README.md

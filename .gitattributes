@@ -1,0 +1,141 @@
+# ------------------------------------------------------------------------------
+# Afterimage root .gitattributes
+# ------------------------------------------------------------------------------
+
+# Default text handling
+* text=auto eol=lf
+
+# ------------------------------------------------------------------------------
+# Source files
+# ------------------------------------------------------------------------------
+*.js      text eol=lf
+*.mjs     text eol=lf
+*.cjs     text eol=lf
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.jsx     text eol=lf
+*.json    text eol=lf
+*.jsonc   text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.toml    text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.sh      text eol=lf
+*.bash    text eol=lf
+*.zsh     text eol=lf
+*.css     text eol=lf
+*.scss    text eol=lf
+*.html    text eol=lf
+*.svg     text eol=lf
+*.xml     text eol=lf
+*.env.example text eol=lf
+
+# Go
+*.go      text eol=lf
+.mod      text eol=lf
+.sum      text eol=lf
+
+# Python
+*.py      text eol=lf
+
+# Windows scripts
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+# ------------------------------------------------------------------------------
+# Lockfiles and config that should stay exact
+# ------------------------------------------------------------------------------
+package-lock.json -text
+pnpm-lock.yaml    -text
+yarn.lock         -text
+go.sum            -text
+
+# ------------------------------------------------------------------------------
+# Binary files
+# ------------------------------------------------------------------------------
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.webp    binary
+*.ico     binary
+*.icns    binary
+*.bmp     binary
+*.tif     binary
+*.tiff    binary
+*.pdf     binary
+*.zip     binary
+*.7z      binary
+*.gz      binary
+*.tar     binary
+*.tgz     binary
+*.bz2     binary
+*.xz      binary
+
+# Audio / video / media
+*.mp4     binary
+*.mov     binary
+*.m4v     binary
+*.mkv     binary
+*.avi     binary
+*.webm    binary
+*.wav     binary
+*.flac    binary
+*.mp3     binary
+*.m4a     binary
+*.aac     binary
+*.aiff    binary
+*.ogg     binary
+
+# Fonts
+*.ttf     binary
+*.otf     binary
+*.woff    binary
+*.woff2   binary
+
+# Platform / compiled binaries
+*.exe     binary
+*.dll     binary
+*.so      binary
+*.dylib   binary
+*.a       binary
+*.o       binary
+*.obj     binary
+*.class   binary
+*.jar     binary
+*.app     binary
+*.dmg     binary
+*.pkg     binary
+*.deb     binary
+*.rpm     binary
+*.AppImage binary
+*.snap    binary
+*.msi     binary
+
+# ------------------------------------------------------------------------------
+# Generated artifacts that should not be diffed if ever committed
+# ------------------------------------------------------------------------------
+dist/**        -diff
+build/**       -diff
+coverage/**    -diff
+reports/**     -diff
+renders/**     -diff
+exports/**     -diff
+recordings/**  -diff
+captures/**    -diff
+proxies/**     -diff
+thumbnails/**  -diff
+
+# ------------------------------------------------------------------------------
+# Linguist hints
+# ------------------------------------------------------------------------------
+docs/** linguist-documentation=true
+schemas/** linguist-generated=false
+packages/test-fixtures/** linguist-vendored=true
+
+# ------------------------------------------------------------------------------
+# Shell scripts should remain executable in git when set
+# ------------------------------------------------------------------------------
+*.sh text eol=lf
