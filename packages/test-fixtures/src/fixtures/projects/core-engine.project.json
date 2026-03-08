@@ -1,0 +1,66 @@
+{
+  "id": "project-core-engine-fixture",
+  "name": "Core Engine Fixture",
+  "mode": "studio",
+  "version": 1,
+  "description": "Tiny deterministic fixture project for Phase 1.",
+  "sources": [
+    {
+      "id": "source-alpha",
+      "path": "fixtures/clips/source-alpha.mp4",
+      "label": "Source Alpha",
+      "hasVideo": true,
+      "hasAudio": true
+    }
+  ],
+  "presets": [
+    {
+      "id": "preset-vhs-rental-tape",
+      "name": "Rental Tape",
+      "family": "vhs",
+      "filters": [
+        { "type": "tracking-wobble", "amount": 0.35, "mix": 1 },
+        { "type": "chroma-bleed", "amount": 0.25, "mix": 1 }
+      ]
+    }
+  ],
+  "sequence": {
+    "id": "sequence-main",
+    "name": "Main Sequence",
+    "items": [
+      {
+        "id": "segment-intro",
+        "sourceId": "source-alpha",
+        "timelineStartMs": 0,
+        "sourceStartMs": 500,
+        "durationMs": 2500,
+        "presetId": "preset-vhs-rental-tape"
+      }
+    ]
+  },
+  "midiMappings": [
+    {
+      "id": "midi-main",
+      "name": "Studio Controls",
+      "bindings": [
+        {
+          "id": "binding-cut-trigger",
+          "source": "cc:1:10",
+          "target": "sequence-main.segment-intro",
+          "mode": "trigger"
+        }
+      ]
+    }
+  ],
+  "analysisRefs": [
+    {
+      "id": "analysis-source-alpha",
+      "sourceId": "source-alpha",
+      "path": "fixtures/analysis/source-alpha.analysis.json",
+      "summary": {
+        "sceneCount": 2,
+        "durationMs": 5000
+      }
+    }
+  ]
+}

@@ -2,26 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afterimage.local/schemas/preset.schema.json",
   "title": "Preset",
-  "type": "object",
-  "required": ["id", "name", "family", "filters"],
-  "properties": {
-    "id": { "type": "string", "minLength": 1 },
-    "name": { "type": "string", "minLength": 1 },
-    "family": { "type": "string", "enum": ["vhs", "liminal", "imagined-futures", "glitch"] },
-    "filters": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["type", "amount"],
-        "properties": {
-          "type": { "type": "string" },
-          "amount": { "type": "number", "minimum": 0, "maximum": 1 },
-          "mix": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
-          "seed": { "type": "integer", "minimum": 0 }
-        },
-        "additionalProperties": false
-      }
+  "allOf": [
+    {
+      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/preset"
     }
-  },
-  "additionalProperties": false
+  ]
 }
