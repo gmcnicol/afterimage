@@ -8,6 +8,11 @@ export type MediaType = 'video' | 'image' | 'audio';
 export type ImportStatus = 'ready' | 'excluded' | 'missing';
 export type AnalysisStatus = 'pending' | 'queued' | 'running' | 'completed' | 'failed';
 export type CutStatus = 'new' | 'kept' | 'rejected' | 'favorite';
+export type AudioChangeKind = 'energy-shift' | 'spectral-change' | 'silence-start' | 'silence-end' | 'onset-cluster';
+export type AudioChangeSource = 'astats' | 'aspectralstats' | 'ebur128' | 'silencedetect' | 'derived';
+export type SyncEventSource = 'audio-change' | 'beat' | 'downbeat' | 'midi' | 'manual';
+export type SyncEventKind = 'change' | 'accent' | 'section' | 'silence-boundary' | 'cue' | 'beat' | 'downbeat';
+export type SyncMode = 'texture' | 'pulse' | 'performance' | 'hybrid';
 export type TransitionStyle = 'cut' | 'crossfade';
 export type AssistedGenerationStrategy =
   | 'manual'
@@ -109,6 +114,71 @@ export interface WaveformSummary {
   peaks: number[];
 }
 
+export interface AudioChangeEvent {
+  id: string;
+  timeMs: number;
+  kind: AudioChangeKind;
+  source: AudioChangeSource;
+  strength: number;
+  confidence?: number;
+  durationMs?: number;
+  label?: string;
+  metadata?: Record<string, JsonPrimitive>;
+}
+
+export interface AudioChangeTrack {
+  id: string;
+  assetId: string;
+  generatedBy: string[];
+  events: AudioChangeEvent[];
+}
+
+export interface SyncEvent {
+  id: string;
+  timeMs: number;
+  source: SyncEventSource;
+  kind: SyncEventKind;
+  strength?: number;
+  confidence?: number;
+  label?: string;
+  audioChangeEventId?: string;
+}
+
+export interface SyncEventTrack {
+  id: string;
+  assetId: string;
+  derivedFromTrackId?: string;
+  events: SyncEvent[];
+}
+
+export interface BeatEvent {
+  id: string;
+  timeMs: number;
+  kind: 'beat' | 'downbeat';
+  confidence?: number;
+  bpm?: number;
+}
+
+export interface BeatTrack {
+  id: string;
+  assetId: string;
+  events: BeatEvent[];
+}
+
+export interface MidiGestureEvent {
+  id: string;
+  timeMs: number;
+  source: string;
+  value?: number;
+  label?: string;
+}
+
+export interface MidiGestureTrack {
+  id: string;
+  assetId: string;
+  events: MidiGestureEvent[];
+}
+
 export interface LumaSummary {
   average: number;
   minimum: number;
@@ -127,6 +197,9 @@ export interface AnalysisSummary {
   waveformGenerated?: boolean;
   lumaAverage?: number;
   motionAverage?: number;
+  changeEventCount?: number;
+  syncEventCount?: number;
+  beatEventCount?: number;
 }
 
 export interface AnalysisFile {
@@ -136,6 +209,10 @@ export interface AnalysisFile {
   sceneCuts: SceneCut[];
   thumbnails?: ThumbnailReference[];
   waveform?: WaveformSummary;
+  audioChangeTrack?: AudioChangeTrack;
+  syncEventTrack?: SyncEventTrack;
+  beatTrack?: BeatTrack;
+  midiGestureTrack?: MidiGestureTrack;
   luma?: LumaSummary;
   motion?: MotionSummary;
   summary?: AnalysisSummary;
@@ -234,6 +311,8 @@ export interface AssistedGenerationMetadata {
 
 export interface MusicAlignment {
   primaryAssetId?: string;
+  analysisRefId?: string;
+  syncMode?: SyncMode;
   beatMarkers?: Marker[];
   chapterPoints?: number[];
   snapToBeatGrid?: boolean;
@@ -396,6 +475,14 @@ function normalizeStringArray(value: string[] | undefined): string[] {
   return [...new Set(value ?? [])].sort(compareStrings);
 }
 
+function clampUnit(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return Math.max(0, Math.min(1, value));
+}
+
 function normalizeJsonRecord(record: Record<string, JsonPrimitive> | undefined): Record<string, JsonPrimitive> {
   return Object.fromEntries(Object.entries(record ?? {}).sort(([left], [right]) => compareStrings(left, right)));
 }
@@ -453,6 +540,58 @@ export function normalizeProbeMetadata(probe: ProbeMetadata): ProbeMetadata {
   };
 }
 
+export function normalizeAudioChangeEvent(event: AudioChangeEvent): AudioChangeEvent {
+  return {
+    ...event,
+    strength: clampUnit(event.strength) ?? 0,
+    confidence: clampUnit(event.confidence),
+    metadata: normalizeJsonRecord(event.metadata)
+  };
+}
+
+export function normalizeAudioChangeTrack(track: AudioChangeTrack): AudioChangeTrack {
+  return {
+    ...track,
+    generatedBy: normalizeStringArray(track.generatedBy),
+    events: sortById(track.events.map(normalizeAudioChangeEvent))
+      .sort((left, right) => compareNumbers(left.timeMs, right.timeMs) || compareStrings(left.id, right.id))
+  };
+}
+
+export function normalizeSyncEvent(event: SyncEvent): SyncEvent {
+  return {
+    ...event,
+    strength: clampUnit(event.strength),
+    confidence: clampUnit(event.confidence)
+  };
+}
+
+export function normalizeSyncEventTrack(track: SyncEventTrack): SyncEventTrack {
+  return {
+    ...track,
+    events: sortById(track.events.map(normalizeSyncEvent))
+      .sort((left, right) => compareNumbers(left.timeMs, right.timeMs) || compareStrings(left.id, right.id))
+  };
+}
+
+export function normalizeBeatTrack(track: BeatTrack): BeatTrack {
+  return {
+    ...track,
+    events: sortById(track.events.map((event) => ({
+      ...event,
+      confidence: clampUnit(event.confidence)
+    }))).sort((left, right) => compareNumbers(left.timeMs, right.timeMs) || compareStrings(left.id, right.id))
+  };
+}
+
+export function normalizeMidiGestureTrack(track: MidiGestureTrack): MidiGestureTrack {
+  return {
+    ...track,
+    events: sortById(track.events.map((event) => ({ ...event })))
+      .sort((left, right) => compareNumbers(left.timeMs, right.timeMs) || compareStrings(left.id, right.id))
+  };
+}
+
 export function normalizeAnalysisFile(file: AnalysisFile): AnalysisFile {
   const sceneCuts = [...file.sceneCuts].sort((left, right) => compareNumbers(left.timeMs, right.timeMs) || compareNumbers(left.score, right.score));
   const thumbnails = sortById((file.thumbnails ?? []).map((thumbnail) => ({ ...thumbnail })));
@@ -460,6 +599,10 @@ export function normalizeAnalysisFile(file: AnalysisFile): AnalysisFile {
     durationMs: file.waveform.durationMs,
     peaks: [...file.waveform.peaks]
   } : undefined;
+  const audioChangeTrack = file.audioChangeTrack ? normalizeAudioChangeTrack(file.audioChangeTrack) : undefined;
+  const syncEventTrack = file.syncEventTrack ? normalizeSyncEventTrack(file.syncEventTrack) : undefined;
+  const beatTrack = file.beatTrack ? normalizeBeatTrack(file.beatTrack) : undefined;
+  const midiGestureTrack = file.midiGestureTrack ? normalizeMidiGestureTrack(file.midiGestureTrack) : undefined;
   const luma = file.luma ? { ...file.luma } : undefined;
   const motion = file.motion ? { ...file.motion } : undefined;
 
@@ -469,6 +612,10 @@ export function normalizeAnalysisFile(file: AnalysisFile): AnalysisFile {
     sceneCuts,
     thumbnails,
     waveform,
+    audioChangeTrack,
+    syncEventTrack,
+    beatTrack,
+    midiGestureTrack,
     luma,
     motion,
     summary: file.summary ?? {
@@ -477,7 +624,10 @@ export function normalizeAnalysisFile(file: AnalysisFile): AnalysisFile {
       thumbnailCount: thumbnails.length,
       waveformGenerated: waveform !== undefined,
       lumaAverage: luma?.average,
-      motionAverage: motion?.average
+      motionAverage: motion?.average,
+      changeEventCount: audioChangeTrack?.events.length,
+      syncEventCount: syncEventTrack?.events.length,
+      beatEventCount: beatTrack?.events.length
     }
   };
 }
@@ -565,6 +715,8 @@ export function normalizeVariant(variant: Variant): Variant {
     },
     musicAlignment: variant.musicAlignment ? {
       primaryAssetId: variant.musicAlignment.primaryAssetId,
+      analysisRefId: variant.musicAlignment.analysisRefId,
+      syncMode: variant.musicAlignment.syncMode ?? 'texture',
       beatMarkers: sortById((variant.musicAlignment.beatMarkers ?? []).map(normalizeMarker)).sort((left, right) => compareNumbers(left.timeMs, right.timeMs) || compareStrings(left.id, right.id)),
       chapterPoints: [...(variant.musicAlignment.chapterPoints ?? [])].sort(compareNumbers),
       snapToBeatGrid: normalizeBoolean(variant.musicAlignment.snapToBeatGrid, true)
@@ -740,6 +892,9 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
     }
     if (variant.musicAlignment?.primaryAssetId && !assetIds.has(variant.musicAlignment.primaryAssetId)) {
       pushMissingReference(issues, `variants.${variant.id}.musicAlignment.primaryAssetId`, `Variant "${variant.id}" references missing music asset "${variant.musicAlignment.primaryAssetId}".`);
+    }
+    if (variant.musicAlignment?.analysisRefId && !analysisRefIds.has(variant.musicAlignment.analysisRefId)) {
+      pushMissingReference(issues, `variants.${variant.id}.musicAlignment.analysisRefId`, `Variant "${variant.id}" references missing analysis ref "${variant.musicAlignment.analysisRefId}".`);
     }
     issues.push(...collectDuplicateIdIssues(`variants.${variant.id}.clips`, variant.clips.map((clip) => clip.id)));
     issues.push(...collectDuplicateIdIssues(`variants.${variant.id}.markers`, (variant.markers ?? []).map((marker) => marker.id)));

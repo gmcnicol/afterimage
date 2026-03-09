@@ -4,6 +4,7 @@ import { createEmptyProject } from '@afterimage/project-model';
 import {
   addCutToSequence,
   addMarker,
+  applySyncMarkers,
   addSection,
   duplicateVariant,
   moveClip,
@@ -11,8 +12,9 @@ import {
 } from '../operations/sequence-ops';
 import { addLaneKeyframe, addAutomationLane, resetLane } from '../operations/automation-ops';
 import { addCutToBin, toggleCutFavorite, trimCut, updateCutStatus } from '../operations/cut-ops';
-import { mergeImportedAssets, replaceAssetPath, toggleExportProfile } from '../operations/project-ops';
+import { mergeImportedAssets, replaceAssetPath, setVariantMusicAsset, setVariantMusicSyncMode, toggleExportProfile } from '../operations/project-ops';
 import { addFilterToStack, safeRandomizeFilter, safeRandomizeStack, toggleFilterEnabled } from '../operations/style-ops';
+import type { Marker, SyncMode } from '@afterimage/project-model';
 
 interface ProjectSessionState {
   project: NormalizedProjectFile;
@@ -42,6 +44,9 @@ interface ProjectSessionState {
   addLaneKeyframe: (laneId: string, timeMs: number, value: number) => void;
   resetLane: (laneId: string) => void;
   toggleExportProfile: (profileId: string) => void;
+  setVariantMusicAsset: (variantId: string, assetId: string) => void;
+  setVariantMusicSyncMode: (variantId: string, syncMode: SyncMode) => void;
+  applySyncMarkers: (variantId: string, markers: Marker[]) => void;
   markSaved: (input: { projectFilePath?: string; projectRoot?: string; recentProjects?: string[] }) => void;
 }
 
@@ -69,15 +74,7 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
   },
   mergeImportedAssets: (assets) => {
     set((state) => ({
-      project: (() => {
-        const nextProject = mergeImportedAssets(state.project, assets);
-        console.info('[studio-desktop] mergeImportedAssets', {
-          imported: assets.length,
-          before: state.project.assets.length,
-          after: nextProject.assets.length
-        });
-        return nextProject;
-      })(),
+      project: mergeImportedAssets(state.project, assets),
       dirty: true
     }));
   },
@@ -237,6 +234,24 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
   toggleExportProfile: (profileId) => {
     set((state) => ({
       project: toggleExportProfile(state.project, profileId),
+      dirty: true
+    }));
+  },
+  setVariantMusicAsset: (variantId, assetId) => {
+    set((state) => ({
+      project: setVariantMusicAsset(state.project, variantId, assetId),
+      dirty: true
+    }));
+  },
+  setVariantMusicSyncMode: (variantId, syncMode) => {
+    set((state) => ({
+      project: setVariantMusicSyncMode(state.project, variantId, syncMode),
+      dirty: true
+    }));
+  },
+  applySyncMarkers: (variantId, markers) => {
+    set((state) => ({
+      project: applySyncMarkers(state.project, variantId, markers),
       dirty: true
     }));
   },

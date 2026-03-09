@@ -19,6 +19,10 @@
       "default": []
     },
     "waveform": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/waveformSummary" },
+    "audioChangeTrack": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/audioChangeTrack" },
+    "syncEventTrack": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/syncEventTrack" },
+    "beatTrack": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/beatTrack" },
+    "midiGestureTrack": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/midiGestureTrack" },
     "luma": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/lumaSummary" },
     "motion": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/motionSummary" },
     "summary": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/analysisSummary" }

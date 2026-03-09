@@ -146,3 +146,20 @@ export function addSection(project: NormalizedProjectFile, variantId: string, se
     } : variant)
   });
 }
+
+export function applySyncMarkers(
+  project: NormalizedProjectFile,
+  variantId: string,
+  markers: Marker[]
+): NormalizedProjectFile {
+  return normalizeProject({
+    ...project,
+    variants: project.variants.map((variant) => variant.id === variantId ? {
+      ...variant,
+      markers: [
+        ...(variant.markers ?? []).filter((marker) => !marker.id.startsWith('sync-marker-')),
+        ...markers
+      ]
+    } : variant)
+  });
+}

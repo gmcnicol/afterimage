@@ -38,6 +38,26 @@
       "type": "string",
       "enum": ["new", "kept", "rejected", "favorite"]
     },
+    "audioChangeKind": {
+      "type": "string",
+      "enum": ["energy-shift", "spectral-change", "silence-start", "silence-end", "onset-cluster"]
+    },
+    "audioChangeSource": {
+      "type": "string",
+      "enum": ["astats", "aspectralstats", "ebur128", "silencedetect", "derived"]
+    },
+    "syncEventSource": {
+      "type": "string",
+      "enum": ["audio-change", "beat", "downbeat", "midi", "manual"]
+    },
+    "syncEventKind": {
+      "type": "string",
+      "enum": ["change", "accent", "section", "silence-boundary", "cue", "beat", "downbeat"]
+    },
+    "syncMode": {
+      "type": "string",
+      "enum": ["texture", "pulse", "performance", "hybrid"]
+    },
     "transitionStyle": {
       "type": "string",
       "enum": ["cut", "crossfade"]
@@ -196,6 +216,127 @@
       },
       "additionalProperties": false
     },
+    "audioChangeEvent": {
+      "type": "object",
+      "required": ["id", "timeMs", "kind", "source", "strength"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "kind": { "$ref": "#/$defs/audioChangeKind" },
+        "source": { "$ref": "#/$defs/audioChangeSource" },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "label": { "type": "string", "minLength": 1 },
+        "metadata": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/jsonPrimitive" },
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "audioChangeTrack": {
+      "type": "object",
+      "required": ["id", "assetId", "generatedBy", "events"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "assetId": { "$ref": "#/$defs/idString" },
+        "generatedBy": { "$ref": "#/$defs/stringArray" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/audioChangeEvent" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "syncEvent": {
+      "type": "object",
+      "required": ["id", "timeMs", "source", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "source": { "$ref": "#/$defs/syncEventSource" },
+        "kind": { "$ref": "#/$defs/syncEventKind" },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "audioChangeEventId": { "$ref": "#/$defs/idString" }
+      },
+      "additionalProperties": false
+    },
+    "syncEventTrack": {
+      "type": "object",
+      "required": ["id", "assetId", "events"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "assetId": { "$ref": "#/$defs/idString" },
+        "derivedFromTrackId": { "$ref": "#/$defs/idString" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/syncEvent" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "beatEvent": {
+      "type": "object",
+      "required": ["id", "timeMs", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "kind": {
+          "type": "string",
+          "enum": ["beat", "downbeat"]
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bpm": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "beatTrack": {
+      "type": "object",
+      "required": ["id", "assetId", "events"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "assetId": { "$ref": "#/$defs/idString" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/beatEvent" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "midiGestureEvent": {
+      "type": "object",
+      "required": ["id", "timeMs", "source"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "timeMs": { "type": "integer", "minimum": 0 },
+        "source": { "type": "string", "minLength": 1 },
+        "value": { "type": "number" },
+        "label": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "midiGestureTrack": {
+      "type": "object",
+      "required": ["id", "assetId", "events"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "assetId": { "$ref": "#/$defs/idString" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/midiGestureEvent" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
     "lumaSummary": {
       "type": "object",
       "required": ["average", "minimum", "maximum"],
@@ -224,7 +365,10 @@
         "thumbnailCount": { "type": "integer", "minimum": 0 },
         "waveformGenerated": { "type": "boolean" },
         "lumaAverage": { "type": "number", "minimum": 0, "maximum": 1 },
-        "motionAverage": { "type": "number", "minimum": 0, "maximum": 1 }
+        "motionAverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "changeEventCount": { "type": "integer", "minimum": 0 },
+        "syncEventCount": { "type": "integer", "minimum": 0 },
+        "beatEventCount": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },
@@ -377,6 +521,8 @@
       "type": "object",
       "properties": {
         "primaryAssetId": { "$ref": "#/$defs/idString" },
+        "analysisRefId": { "$ref": "#/$defs/idString" },
+        "syncMode": { "$ref": "#/$defs/syncMode", "default": "texture" },
         "beatMarkers": {
           "type": "array",
           "items": { "$ref": "#/$defs/marker" },

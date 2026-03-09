@@ -19,11 +19,13 @@ export interface ExportProfileDefinition {
   aspectRatio: string;
   frameRate: number;
   container: 'mp4' | 'mov';
-  videoCodec: 'libx264';
-  audioCodec: 'aac';
-  crf: number;
-  videoPreset: 'medium' | 'fast' | 'slow';
-  audioBitrateKbps: number;
+  videoCodec: 'libx264' | 'prores_ks';
+  audioCodec: 'aac' | 'pcm_s24le';
+  pixelFormat: 'yuv420p' | 'yuv422p10le';
+  videoProfile?: '3';
+  crf?: number;
+  videoPreset?: 'medium' | 'fast' | 'slow';
+  audioBitrateKbps?: number;
   namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}';
 }
 
@@ -36,11 +38,10 @@ export const exportProfiles = [
     aspectRatio: '16:9',
     frameRate: 30,
     container: 'mov',
-    videoCodec: 'libx264',
-    audioCodec: 'aac',
-    crf: 16,
-    videoPreset: 'slow',
-    audioBitrateKbps: 320,
+    videoCodec: 'prores_ks',
+    audioCodec: 'pcm_s24le',
+    pixelFormat: 'yuv422p10le',
+    videoProfile: '3',
     namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}'
   },
   {
@@ -53,6 +54,7 @@ export const exportProfiles = [
     container: 'mp4',
     videoCodec: 'libx264',
     audioCodec: 'aac',
+    pixelFormat: 'yuv420p',
     crf: 18,
     videoPreset: 'medium',
     audioBitrateKbps: 256,
@@ -68,6 +70,7 @@ export const exportProfiles = [
     container: 'mp4',
     videoCodec: 'libx264',
     audioCodec: 'aac',
+    pixelFormat: 'yuv420p',
     crf: 20,
     videoPreset: 'medium',
     audioBitrateKbps: 192,
@@ -81,11 +84,10 @@ export const exportProfiles = [
     aspectRatio: '16:9',
     frameRate: 30,
     container: 'mov',
-    videoCodec: 'libx264',
-    audioCodec: 'aac',
-    crf: 14,
-    videoPreset: 'slow',
-    audioBitrateKbps: 320,
+    videoCodec: 'prores_ks',
+    audioCodec: 'pcm_s24le',
+    pixelFormat: 'yuv422p10le',
+    videoProfile: '3',
     namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}'
   }
 ] as const satisfies readonly ExportProfileDefinition[];
@@ -109,5 +111,5 @@ export function buildExportFilename(
   const extension = profile.container;
   const baseName = `${projectSlug}-${sequenceSlug}-${variantSlug}-${profile.id}`;
 
-  return attempt > 0 ? `${baseName}-${attempt}.${extension}` : `${baseName}.${extension}`;
+  return attempt > 0 ? `${baseName}-${String(attempt).padStart(3, '0')}.${extension}` : `${baseName}.${extension}`;
 }

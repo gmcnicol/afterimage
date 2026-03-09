@@ -7,6 +7,7 @@ import { fixtureProject } from '../../test-fixtures/src';
 import { parseProject } from '../../schema-validators/src';
 import {
   buildAnalysisPlan,
+  buildAudioChangeAnalysisPlan,
   buildExportPlan,
   buildPreviewPlan,
   buildThumbnailPlan,
@@ -87,6 +88,111 @@ describe('@afterimage/ffmpeg-compiler', () => {
       outputPath: '.afterimage/waveforms/asset-music.png'
     }).command.args).toContain('.afterimage/waveforms/asset-music.png');
 
+    expect(buildAudioChangeAnalysisPlan(project, {
+      assetId: 'asset-music',
+      astatsOutputPath: '.afterimage/analysis/asset-music.astats.log',
+      aspectralstatsOutputPath: '.afterimage/analysis/asset-music.aspectralstats.log',
+      ebur128OutputPath: '.afterimage/analysis/asset-music.ebur128.log',
+      silencedetectOutputPath: '.afterimage/analysis/asset-music.silencedetect.log'
+    })).toMatchInlineSnapshot(`
+      {
+        "artifacts": {
+          "aspectralstatsOutputPath": ".afterimage/analysis/asset-music.aspectralstats.log",
+          "astatsOutputPath": ".afterimage/analysis/asset-music.astats.log",
+          "ebur128OutputPath": ".afterimage/analysis/asset-music.ebur128.log",
+          "silencedetectOutputPath": ".afterimage/analysis/asset-music.silencedetect.log",
+        },
+        "assetId": "asset-music",
+        "commands": [
+          {
+            "args": [
+              "-hide_banner",
+              "-loglevel",
+              "info",
+              "-y",
+              "-i",
+              "fixtures/audio/score-alpha.wav",
+              "-vn",
+              "-af",
+              "astats=metadata=1:reset=1,ametadata=print:file=-",
+              "-f",
+              "null",
+              "-",
+            ],
+            "binary": "ffmpeg",
+            "expectedOutputs": [
+              ".afterimage/analysis/asset-music.astats.log",
+            ],
+            "label": "audio-change:astats:asset-music",
+          },
+          {
+            "args": [
+              "-hide_banner",
+              "-loglevel",
+              "info",
+              "-y",
+              "-i",
+              "fixtures/audio/score-alpha.wav",
+              "-vn",
+              "-af",
+              "aspectralstats=win_size=2048:overlap=0.5,ametadata=print:file=-",
+              "-f",
+              "null",
+              "-",
+            ],
+            "binary": "ffmpeg",
+            "expectedOutputs": [
+              ".afterimage/analysis/asset-music.aspectralstats.log",
+            ],
+            "label": "audio-change:aspectralstats:asset-music",
+          },
+          {
+            "args": [
+              "-hide_banner",
+              "-loglevel",
+              "info",
+              "-y",
+              "-i",
+              "fixtures/audio/score-alpha.wav",
+              "-vn",
+              "-af",
+              "ebur128=metadata=1,ametadata=print:file=-",
+              "-f",
+              "null",
+              "-",
+            ],
+            "binary": "ffmpeg",
+            "expectedOutputs": [
+              ".afterimage/analysis/asset-music.ebur128.log",
+            ],
+            "label": "audio-change:ebur128:asset-music",
+          },
+          {
+            "args": [
+              "-hide_banner",
+              "-loglevel",
+              "info",
+              "-y",
+              "-i",
+              "fixtures/audio/score-alpha.wav",
+              "-vn",
+              "-af",
+              "silencedetect=noise=-40dB:d=0.4",
+              "-f",
+              "null",
+              "-",
+            ],
+            "binary": "ffmpeg",
+            "expectedOutputs": [
+              ".afterimage/analysis/asset-music.silencedetect.log",
+            ],
+            "label": "audio-change:silencedetect:asset-music",
+          },
+        ],
+        "projectId": "project-core-engine-fixture",
+      }
+    `);
+
     expect(buildPreviewPlan(project, {
       outputPath: '.afterimage/preview/variant-main.mp4'
     }).command.args).toContain('.afterimage/preview/variant-main.mp4');
@@ -104,21 +210,17 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "-i",
             "fixtures/audio/score-alpha.wav",
             "-filter_complex",
-            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=0.900,eq=saturation=0.938[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]fps=30.000,scale=1920:1080,format=yuv420p[vout];[1:a]atrim=start=0:duration=2.000,asetpts=PTS-STARTPTS[amusic]",
+            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=0.900,eq=saturation=0.938,fps=30.000,scale=1920:1080,setsar=1,format=yuv422p10le[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]format=yuv422p10le[vout];[1:a]atrim=start=0:duration=2.000,asetpts=PTS-STARTPTS[amusic]",
             "-map",
             "[vout]",
             "-c:v",
-            "libx264",
-            "-preset",
-            "slow",
-            "-crf",
-            "16",
+            "prores_ks",
+            "-profile:v",
+            "3",
             "-map",
             "[amusic]",
             "-c:a",
-            "aac",
-            "-b:a",
-            "320k",
+            "pcm_s24le",
             "-f",
             "mov",
             "exports/studio-fixture.mov",

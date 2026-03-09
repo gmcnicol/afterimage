@@ -101,4 +101,43 @@ describe('@afterimage/schema-validators', () => {
     expect(parseAnalysis(fixtureAnalysis).summary?.thumbnailCount).toBe(2);
     expect(parseMidiMapping(fixtureMidiMapping).bindings[0].id).toBe('binding-cut-trigger');
   });
+
+  it('accepts analysis sidecars with audio change and sync tracks', () => {
+    const parsed = parseAnalysis({
+      ...fixtureAnalysis,
+      summary: undefined,
+      audioChangeTrack: {
+        id: 'asset-music-audio-change',
+        assetId: 'asset-alpha',
+        generatedBy: ['astats', 'ebur128'],
+        events: [
+          {
+            id: 'change-1',
+            timeMs: 1000,
+            kind: 'energy-shift',
+            source: 'astats',
+            strength: 0.62
+          }
+        ]
+      },
+      syncEventTrack: {
+        id: 'asset-music-sync',
+        assetId: 'asset-alpha',
+        derivedFromTrackId: 'asset-music-audio-change',
+        events: [
+          {
+            id: 'sync-1',
+            timeMs: 1000,
+            source: 'audio-change',
+            kind: 'change',
+            strength: 0.62,
+            audioChangeEventId: 'change-1'
+          }
+        ]
+      }
+    });
+
+    expect(parsed.summary?.changeEventCount).toBe(1);
+    expect(parsed.summary?.syncEventCount).toBe(1);
+  });
 });

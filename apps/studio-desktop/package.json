@@ -24,6 +24,7 @@
     "@afterimage/project-model": "workspace:*",
     "@afterimage/schema-validators": "workspace:*",
     "@afterimage/ui": "workspace:*",
+    "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.21",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

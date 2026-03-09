@@ -1,5 +1,6 @@
 import type { ExportProfileId } from '@afterimage/export-profiles';
 import type {
+  AnalysisFile,
   ExportSelection,
   MediaAsset,
   NormalizedProjectFile,
@@ -92,6 +93,7 @@ export interface DesktopApi {
     saveProjectAs: (input: SaveProjectRequest) => Promise<ProjectSessionSnapshot | null>;
     duplicateProject: (input: SaveProjectRequest) => Promise<ProjectSessionSnapshot | null>;
     revealProjectFolder: (projectFilePath: string) => Promise<void>;
+    loadAnalysis: (analysisPath: string) => Promise<AnalysisFile | null>;
     importMedia: (projectRoot?: string) => Promise<MediaAsset[]>;
     importMusic: (projectRoot?: string) => Promise<MediaAsset[]>;
     relinkAsset: (input: { projectRoot: string; assetId: string; currentPath?: string }) => Promise<RelinkAssetResult | null>;

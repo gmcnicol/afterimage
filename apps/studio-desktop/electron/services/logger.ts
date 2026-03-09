@@ -40,8 +40,6 @@ export function createLogger(): Logger {
         console.error(consoleLine);
       } else if (level === 'warn') {
         console.warn(consoleLine);
-      } else {
-        console.info(consoleLine);
       }
       try {
         await writeToDisk(entry);
