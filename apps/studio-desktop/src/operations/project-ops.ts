@@ -4,7 +4,8 @@ import {
   type ExportSelection,
   type MediaAsset,
   type NormalizedProjectFile,
-  type ProjectPathRef
+  type ProjectPathRef,
+  type SyncMode
 } from '@afterimage/project-model';
 
 export function mergeImportedAssets(project: NormalizedProjectFile, assets: MediaAsset[]): NormalizedProjectFile {
@@ -50,6 +51,40 @@ export function toggleExportProfile(project: NormalizedProjectFile, profileId: s
   return normalizeProject({
     ...project,
     exportSelections: nextSelections
+  });
+}
+
+export function setVariantMusicAsset(project: NormalizedProjectFile, variantId: string, assetId: string): NormalizedProjectFile {
+  return normalizeProject({
+    ...project,
+    variants: project.variants.map((variant) => variant.id === variantId ? {
+      ...variant,
+      musicAlignment: {
+        primaryAssetId: assetId,
+        analysisRefId: variant.musicAlignment?.analysisRefId,
+        syncMode: variant.musicAlignment?.syncMode ?? 'texture',
+        beatMarkers: variant.musicAlignment?.beatMarkers ?? [],
+        chapterPoints: variant.musicAlignment?.chapterPoints ?? [],
+        snapToBeatGrid: variant.musicAlignment?.snapToBeatGrid ?? true
+      }
+    } : variant)
+  });
+}
+
+export function setVariantMusicSyncMode(project: NormalizedProjectFile, variantId: string, syncMode: SyncMode): NormalizedProjectFile {
+  return normalizeProject({
+    ...project,
+    variants: project.variants.map((variant) => variant.id === variantId ? {
+      ...variant,
+      musicAlignment: {
+        primaryAssetId: variant.musicAlignment?.primaryAssetId,
+        analysisRefId: variant.musicAlignment?.analysisRefId,
+        syncMode,
+        beatMarkers: variant.musicAlignment?.beatMarkers ?? [],
+        chapterPoints: variant.musicAlignment?.chapterPoints ?? [],
+        snapToBeatGrid: variant.musicAlignment?.snapToBeatGrid ?? true
+      }
+    } : variant)
   });
 }
 

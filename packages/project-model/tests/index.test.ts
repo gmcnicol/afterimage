@@ -22,6 +22,7 @@ describe('@afterimage/project-model', () => {
     expect(normalized.cutCandidates.map((cut) => cut.id)).toEqual(['cut-intro', 'cut-push']);
     expect(getAssetById(normalized, 'asset-alpha')?.filename).toBe('source-alpha.mp4');
     expect(getDefaultVariant(normalized)?.id).toBe('variant-main');
+    expect(getDefaultVariant(normalized)?.musicAlignment?.syncMode).toBe('texture');
   });
 
   it('reports duplicate ids and missing references', () => {
@@ -31,6 +32,10 @@ describe('@afterimage/project-model', () => {
       variants: [
         {
           ...fixtureProject.variants[0],
+          musicAlignment: {
+            ...fixtureProject.variants[0].musicAlignment,
+            analysisRefId: 'analysis-missing'
+          },
           clips: [
             ...fixtureProject.variants[0].clips,
             {
@@ -73,6 +78,11 @@ describe('@afterimage/project-model', () => {
         code: 'missing-reference',
         message: 'Sequence clip "clip-broken" references missing filter stack "missing-stack".',
         path: 'variants.variant-main.clips.clip-broken.stackOverrideId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Variant "variant-main" references missing analysis ref "analysis-missing".',
+        path: 'variants.variant-main.musicAlignment.analysisRefId'
       }
     ]);
   });

@@ -42,6 +42,15 @@ export interface AnalysisRequest {
   sceneThreshold?: number;
 }
 
+export interface AudioChangeAnalysisRequest {
+  assetId: string;
+  astatsOutputPath: string;
+  aspectralstatsOutputPath: string;
+  ebur128OutputPath: string;
+  silencedetectOutputPath: string;
+  overwrite?: boolean;
+}
+
 export interface ThumbnailRequest {
   assetId: string;
   outputPattern: string;
@@ -87,6 +96,18 @@ export interface AnalysisPlan {
   commands: [CommandSpec, CommandSpec];
 }
 
+export interface AudioChangeAnalysisPlan {
+  projectId: string;
+  assetId: string;
+  artifacts: {
+    astatsOutputPath: string;
+    aspectralstatsOutputPath: string;
+    ebur128OutputPath: string;
+    silencedetectOutputPath: string;
+  };
+  commands: [CommandSpec, CommandSpec, CommandSpec, CommandSpec];
+}
+
 export interface ThumbnailPlan {
   projectId: string;
   assetId: string;
@@ -105,8 +126,10 @@ export interface RenderProfile {
   height: number;
   frameRate: number;
   container: 'mp4' | 'mov';
-  videoCodec: 'libx264';
-  audioCodec: 'aac';
+  videoCodec: 'libx264' | 'prores_ks';
+  audioCodec: 'aac' | 'pcm_s24le';
+  pixelFormat: 'yuv420p' | 'yuv422p10le';
+  videoProfile?: '3';
   crf?: number;
   videoPreset?: 'medium' | 'fast' | 'slow';
   audioBitrateKbps?: number;
@@ -552,6 +575,90 @@ export function buildThumbnailPlan(
   };
 }
 
+export function buildAudioChangeAnalysisPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: AudioChangeAnalysisRequest,
+  tools?: ResolvedFfmpegTools
+): AudioChangeAnalysisPlan {
+  const normalizedProject = normalizeForPlanning(project);
+  const asset = ensureAsset(normalizedProject, request.assetId);
+  const resolvedTools = makePlanningTools(tools);
+  const overwriteFlag = request.overwrite === false ? '-n' : '-y';
+
+  return {
+    projectId: normalizedProject.id,
+    assetId: request.assetId,
+    artifacts: {
+      astatsOutputPath: request.astatsOutputPath,
+      aspectralstatsOutputPath: request.aspectralstatsOutputPath,
+      ebur128OutputPath: request.ebur128OutputPath,
+      silencedetectOutputPath: request.silencedetectOutputPath
+    },
+    commands: [
+      {
+        label: `audio-change:astats:${request.assetId}`,
+        binary: resolvedTools.ffmpeg.path,
+        args: [
+          '-hide_banner',
+          '-loglevel', 'info',
+          overwriteFlag,
+          '-i', asset.path.absolutePath,
+          '-vn',
+          '-af', 'astats=metadata=1:reset=1,ametadata=print:file=-',
+          '-f', 'null',
+          '-'
+        ],
+        expectedOutputs: [request.astatsOutputPath]
+      },
+      {
+        label: `audio-change:aspectralstats:${request.assetId}`,
+        binary: resolvedTools.ffmpeg.path,
+        args: [
+          '-hide_banner',
+          '-loglevel', 'info',
+          overwriteFlag,
+          '-i', asset.path.absolutePath,
+          '-vn',
+          '-af', 'aspectralstats=win_size=2048:overlap=0.5,ametadata=print:file=-',
+          '-f', 'null',
+          '-'
+        ],
+        expectedOutputs: [request.aspectralstatsOutputPath]
+      },
+      {
+        label: `audio-change:ebur128:${request.assetId}`,
+        binary: resolvedTools.ffmpeg.path,
+        args: [
+          '-hide_banner',
+          '-loglevel', 'info',
+          overwriteFlag,
+          '-i', asset.path.absolutePath,
+          '-vn',
+          '-af', 'ebur128=metadata=1,ametadata=print:file=-',
+          '-f', 'null',
+          '-'
+        ],
+        expectedOutputs: [request.ebur128OutputPath]
+      },
+      {
+        label: `audio-change:silencedetect:${request.assetId}`,
+        binary: resolvedTools.ffmpeg.path,
+        args: [
+          '-hide_banner',
+          '-loglevel', 'info',
+          overwriteFlag,
+          '-i', asset.path.absolutePath,
+          '-vn',
+          '-af', 'silencedetect=noise=-40dB:d=0.4',
+          '-f', 'null',
+          '-'
+        ],
+        expectedOutputs: [request.silencedetectOutputPath]
+      }
+    ]
+  };
+}
+
 export function buildWaveformPlan(
   project: ProjectFile | NormalizedProjectFile,
   request: WaveformRequest,
@@ -631,7 +738,11 @@ function buildRenderCommand(
     const videoFilters = [
       `trim=start=${formatSeconds(clip.sourceStartMs)}:duration=${formatSeconds(clip.durationMs)}`,
       'setpts=PTS-STARTPTS',
-      ...collectClipFilters(project, variant, clip)
+      ...collectClipFilters(project, variant, clip),
+      `fps=${formatDecimal(profile.frameRate)}`,
+      `scale=${profile.width}:${profile.height}`,
+      'setsar=1',
+      `format=${profile.pixelFormat}`
     ];
 
     filterSegments.push(`[${inputIndex}:v]${videoFilters.join(',')}[v${index}]`);
@@ -649,7 +760,7 @@ function buildRenderCommand(
     filterSegments.push(`${videoConcatInputs.join('')}concat=n=${variant.clips.length}:v=1:a=0[vconcat]`);
   }
 
-  filterSegments.push(`[vconcat]fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},format=yuv420p[vout]`);
+  filterSegments.push(`[vconcat]format=${profile.pixelFormat}[vout]`);
 
   if (musicInputIndex !== undefined) {
     filterSegments.push(`[${musicInputIndex}:a]atrim=start=0:duration=${formatSeconds(getVariantDuration(variant))},asetpts=PTS-STARTPTS[amusic]`);
@@ -660,10 +771,17 @@ function buildRenderCommand(
     ...inputs.flatMap((input) => ['-i', input.path]),
     '-filter_complex', filterSegments.join(';'),
     '-map', '[vout]',
-    '-c:v', profile.videoCodec,
-    '-preset', profile.videoPreset ?? 'medium',
-    '-crf', String(profile.crf ?? 18)
+    '-c:v', profile.videoCodec
   ];
+
+  if (profile.videoCodec === 'libx264') {
+    args.push(
+      '-preset', profile.videoPreset ?? 'medium',
+      '-crf', String(profile.crf ?? 18)
+    );
+  } else if (profile.videoCodec === 'prores_ks') {
+    args.push('-profile:v', profile.videoProfile ?? '3');
+  }
 
   if (musicInputIndex !== undefined) {
     args.push('-map', '[amusic]');
@@ -672,10 +790,10 @@ function buildRenderCommand(
   }
 
   if (musicInputIndex !== undefined || includeClipAudio) {
-    args.push(
-      '-c:a', profile.audioCodec,
-      '-b:a', `${profile.audioBitrateKbps ?? 192}k`
-    );
+    args.push('-c:a', profile.audioCodec);
+    if (profile.audioCodec === 'aac') {
+      args.push('-b:a', `${profile.audioBitrateKbps ?? 192}k`);
+    }
   }
 
   args.push('-f', profile.container, request.outputPath);
@@ -711,6 +829,7 @@ export function buildPreviewPlan(
     container: 'mp4',
     videoCodec: 'libx264',
     audioCodec: 'aac',
+    pixelFormat: 'yuv420p',
     crf: 26,
     videoPreset: 'fast',
     audioBitrateKbps: 128
@@ -732,6 +851,8 @@ export function buildExportPlan(
     container: request.profile.container,
     videoCodec: request.profile.videoCodec,
     audioCodec: request.profile.audioCodec,
+    pixelFormat: request.profile.pixelFormat,
+    videoProfile: request.profile.videoProfile,
     crf: request.profile.crf,
     videoPreset: request.profile.videoPreset,
     audioBitrateKbps: request.profile.audioBitrateKbps

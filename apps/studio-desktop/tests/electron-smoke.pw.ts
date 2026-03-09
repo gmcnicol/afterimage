@@ -68,8 +68,9 @@ test('loads a project and can open Analysis and Export without renderer crashes'
     await expect(window.getByText(/2 assets/)).toBeVisible();
 
     await window.getByRole('button', { name: 'Analysis' }).click();
-    await expect(window.locator('text=Background Jobs')).toBeVisible();
-    await expect(window.locator('text=Analysis sidecars: 1')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Analysis Jobs' })).toBeVisible();
+    await expect(window.getByRole('columnheader', { name: 'Changes' })).toBeVisible();
+    await expect(window.getByText('Source Alpha', { exact: false })).toBeVisible();
 
     await window.getByRole('button', { name: 'Export' }).click();
     await expect(window.locator('text=Export Profiles')).toBeVisible();

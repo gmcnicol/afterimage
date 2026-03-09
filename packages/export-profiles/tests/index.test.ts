@@ -18,6 +18,6 @@ describe('@afterimage/export-profiles', () => {
       { name: 'Assembly A' },
       profile,
       2
-    )).toBe('afterimage-fixture-main-sequence-assembly-a-portrait-short-form-2.mp4');
+    )).toBe('afterimage-fixture-main-sequence-assembly-a-portrait-short-form-002.mp4');
   });
 });

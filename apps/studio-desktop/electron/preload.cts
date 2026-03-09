@@ -11,6 +11,7 @@ const api: DesktopApi = {
     saveProjectAs: (input) => ipcRenderer.invoke('project:saveAs', input),
     duplicateProject: (input) => ipcRenderer.invoke('project:duplicate', input),
     revealProjectFolder: (projectFilePath) => ipcRenderer.invoke('project:revealFolder', projectFilePath),
+    loadAnalysis: (analysisPath) => ipcRenderer.invoke('project:loadAnalysis', analysisPath),
     importMedia: (projectRoot) => ipcRenderer.invoke('project:importMedia', projectRoot),
     importMusic: (projectRoot) => ipcRenderer.invoke('project:importMusic', projectRoot),
     relinkAsset: (input) => ipcRenderer.invoke('project:relinkAsset', input)

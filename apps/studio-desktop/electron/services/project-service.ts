@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, relative } from 'node:path';
 import type { Dialog, Shell } from 'electron';
+import { executeCommandSpec, resolveFfmpegTools } from '@afterimage/ffmpeg-compiler';
+import { parseFfprobeOutput } from '@afterimage/media-analysis';
 import {
   createEmptyProject,
   normalizeProjectPathRef,
@@ -8,7 +10,7 @@ import {
   type MediaAsset,
   type ProjectPathRef
 } from '@afterimage/project-model';
-import { parseProject } from '@afterimage/schema-validators';
+import { parseAnalysis, parseProject } from '@afterimage/schema-validators';
 import type {
   ProjectSessionSnapshot,
   RelinkAssetResult,
@@ -51,6 +53,10 @@ function buildPathRef(projectRoot: string, absolutePath: string): ProjectPathRef
   });
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function ensureProjectStructure(projectRoot: string): Promise<void> {
   await Promise.all([
     mkdir(projectRoot, { recursive: true }),
@@ -79,11 +85,32 @@ async function writeRecentProjects(recentProjectsPath: string, recentProjects: s
 }
 
 export function createProjectService({ dialog, shell, logger, recentProjectsPath }: ProjectServiceOptions) {
+  let cachedSession: ProjectSessionSnapshot | undefined;
+
   async function rememberRecentProject(projectFilePath: string): Promise<string[]> {
     const recentProjects = await readRecentProjects(recentProjectsPath);
     const nextRecentProjects = [projectFilePath, ...recentProjects.filter((item) => item !== projectFilePath)].slice(0, 12);
     await writeRecentProjects(recentProjectsPath, nextRecentProjects);
     return nextRecentProjects;
+  }
+
+  function cacheSession(session: ProjectSessionSnapshot): ProjectSessionSnapshot {
+    cachedSession = session;
+    return session;
+  }
+
+  async function readProjectSession(projectFilePath: string, recentProjects: string[]): Promise<ProjectSessionSnapshot> {
+    const projectRoot = dirname(projectFilePath);
+    const raw = await readFile(projectFilePath, 'utf8');
+    const project = parseProject(JSON.parse(raw) as unknown);
+    logger.setProjectRoot(projectRoot);
+
+    return {
+      project,
+      projectFilePath,
+      projectRoot,
+      recentProjects
+    };
   }
 
   async function writeProjectFile(projectRoot: string, project: SaveProjectRequest['project']) {
@@ -109,31 +136,79 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     };
   }
 
-  function mapImportedAsset(filePath: string, kind: 'media' | 'music', projectRoot?: string): MediaAsset {
+  async function probeImportedAsset(filePath: string): Promise<Pick<MediaAsset, 'durationMs' | 'hasAudio'>> {
+    const tools = resolveFfmpegTools();
+    const probeResult = await executeCommandSpec({
+      label: `probe:import:${basename(filePath)}`,
+      binary: tools.ffprobe.path,
+      args: [
+        '-v', 'error',
+        '-print_format', 'json',
+        '-show_format',
+        '-show_streams',
+        filePath
+      ]
+    });
+    const probe = parseFfprobeOutput(probeResult.stdout);
+
+    return {
+      durationMs: probe.durationMs,
+      hasAudio: probe.streams.some((stream) => stream.codecType === 'audio')
+    };
+  }
+
+  async function mapImportedAsset(filePath: string, kind: 'media' | 'music', projectRoot?: string): Promise<MediaAsset> {
     const stem = basename(filePath, extname(filePath));
+    const mediaType = kind === 'music' ? 'audio' : inferMediaType(filePath, kind);
+    const fallbackHasAudio = kind === 'music' || mediaType === 'audio' || !/\.(png|jpg|jpeg|webp|gif)$/i.test(filePath);
+    let probeMetadata: Pick<MediaAsset, 'durationMs' | 'hasAudio'> | undefined;
+
+    if (mediaType !== 'image') {
+      try {
+        probeMetadata = await probeImportedAsset(filePath);
+      } catch (error) {
+        await logger.log('warn', 'Failed to probe imported media.', `${filePath} :: ${getErrorMessage(error)}`);
+      }
+    }
+
     return {
       id: `asset-${slugify(stem)}-${stableHash(filePath).slice(0, 6)}`,
       filename: basename(filePath),
-      mediaType: kind === 'music' ? 'audio' : inferMediaType(filePath, kind),
+      mediaType,
       path: projectRoot ? buildPathRef(projectRoot, filePath) : { absolutePath: filePath },
       label: stem,
-      hasAudio: kind === 'music' || !/\.(png|jpg|jpeg|webp|gif)$/i.test(filePath),
+      durationMs: probeMetadata?.durationMs,
+      hasAudio: probeMetadata?.hasAudio ?? fallbackHasAudio,
       importStatus: 'ready',
-      analysisStatus: kind === 'music' || /\.(wav|mp3|aif|aiff|flac|m4a)$/i.test(filePath) ? 'completed' : 'pending',
+      analysisStatus: mediaType === 'image' ? 'completed' : 'pending',
       tags: kind === 'music' ? ['music'] : []
     };
   }
 
   return {
     async getInitialState(): Promise<ProjectSessionSnapshot> {
+      if (cachedSession) {
+        return cachedSession;
+      }
+
       const recentProjects = await readRecentProjects(recentProjectsPath);
-      return {
+      const mostRecentProject = recentProjects[0];
+
+      if (mostRecentProject) {
+        try {
+          return cacheSession(await readProjectSession(mostRecentProject, recentProjects));
+        } catch (error) {
+          await logger.log('warn', 'Failed to restore recent project file.', `${mostRecentProject} :: ${getErrorMessage(error)}`);
+        }
+      }
+
+      return cacheSession({
         project: createEmptyProject({
           id: 'project-studio-desktop',
           name: 'Studio Desktop'
         }),
         recentProjects
-      };
+      });
     },
     async createProject(options: { name?: string } = {}): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
@@ -154,10 +229,10 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       const session = await writeProjectFile(projectRoot, project);
       const recentProjects = await rememberRecentProject(session.projectFilePath);
 
-      return {
+      return cacheSession({
         ...session,
         recentProjects
-      };
+      });
     },
     async openProject(): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
@@ -173,19 +248,8 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       return this.openProjectAt(result.filePaths[0]);
     },
     async openProjectAt(projectFilePath: string): Promise<ProjectSessionSnapshot> {
-      const projectRoot = dirname(projectFilePath);
-      const raw = await readFile(projectFilePath, 'utf8');
-      const project = parseProject(JSON.parse(raw) as unknown);
-      logger.setProjectRoot(projectRoot);
-      await logger.log('info', 'Opened project file.', projectFilePath);
       const recentProjects = await rememberRecentProject(projectFilePath);
-
-      return {
-        project,
-        projectFilePath,
-        projectRoot,
-        recentProjects
-      };
+      return cacheSession(await readProjectSession(projectFilePath, recentProjects));
     },
     async saveProject(input: SaveProjectRequest): Promise<ProjectSessionSnapshot> {
       const projectRoot = input.projectFilePath ? dirname(input.projectFilePath) : undefined;
@@ -200,10 +264,10 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
 
       const session = await writeProjectFile(projectRoot, input.project);
       const recentProjects = await rememberRecentProject(session.projectFilePath);
-      return {
+      return cacheSession({
         ...session,
         recentProjects
-      };
+      });
     },
     async saveProjectAs(input: SaveProjectRequest): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
@@ -217,10 +281,10 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
 
       const session = await writeProjectFile(result.filePaths[0], input.project);
       const recentProjects = await rememberRecentProject(session.projectFilePath);
-      return {
+      return cacheSession({
         ...session,
         recentProjects
-      };
+      });
     },
     async duplicateProject(input: SaveProjectRequest): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
@@ -239,13 +303,22 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       });
       const session = await writeProjectFile(result.filePaths[0], duplicateProject);
       const recentProjects = await rememberRecentProject(session.projectFilePath);
-      return {
+      return cacheSession({
         ...session,
         recentProjects
-      };
+      });
     },
     async revealProjectFolder(projectFilePath: string): Promise<void> {
       shell.showItemInFolder(projectFilePath);
+    },
+    async loadAnalysis(analysisPath: string) {
+      try {
+        const raw = await readFile(analysisPath, 'utf8');
+        return parseAnalysis(JSON.parse(raw) as unknown);
+      } catch (error) {
+        await logger.log('warn', 'Failed to load analysis sidecar.', `${analysisPath} :: ${getErrorMessage(error)}`);
+        return null;
+      }
     },
     async importMedia(projectRoot?: string): Promise<MediaAsset[]> {
       const result = await dialog.showOpenDialog({
@@ -258,7 +331,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return [];
       }
 
-      const assets = result.filePaths.map((filePath) => mapImportedAsset(filePath, 'media', projectRoot));
+      const assets = await Promise.all(result.filePaths.map((filePath) => mapImportedAsset(filePath, 'media', projectRoot)));
       await logger.log('info', 'Imported media files.', `${assets.length} file(s)${projectRoot ? '' : ' into unsaved project state'}`);
       return assets;
     },
@@ -273,7 +346,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return [];
       }
 
-      const assets = result.filePaths.map((filePath) => mapImportedAsset(filePath, 'music', projectRoot));
+      const assets = await Promise.all(result.filePaths.map((filePath) => mapImportedAsset(filePath, 'music', projectRoot)));
       await logger.log('info', 'Imported music files.', `${assets.length} file(s)${projectRoot ? '' : ' into unsaved project state'}`);
       return assets;
     },
