@@ -115,6 +115,193 @@ function buildLegacyCutIds(sequence: { items?: Array<{ id: string }> } | undefin
   return new Set((sequence?.items ?? []).map((item) => `cut-${item.id}`));
 }
 
+function looksLikeCurrentProjectShape(input: Record<string, unknown>): boolean {
+  return Array.isArray(input.assets)
+    && Array.isArray(input.sequences)
+    && Array.isArray(input.variants);
+}
+
+const legacyFilterTypeMap: Record<string, string> = {
+  'tracking-wobble': 'blur',
+  'fluorescent-flicker': 'brightness',
+  'desaturation-lfo': 'brightness',
+  'contrast-pulse': 'contrast'
+};
+
+function upgradeFilterType(type: unknown): string {
+  if (typeof type !== 'string') {
+    return 'contrast';
+  }
+
+  return legacyFilterTypeMap[type] ?? type;
+}
+
+function getPrimaryPropertyForFilterType(type: string): string {
+  switch (type) {
+    case 'contrast':
+      return 'contrast';
+    case 'brightness':
+      return 'brightness';
+    case 'blur':
+      return 'radius';
+    case 'bloom-soft':
+    case 'glitch-bands':
+    case 'chroma-bleed':
+      return 'strength';
+    default:
+      return 'strength';
+  }
+}
+
+function upgradeFilterParameters(type: string, parameters: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(parameters)) {
+    return undefined;
+  }
+
+  const next = { ...parameters };
+  const primaryProperty = getPrimaryPropertyForFilterType(type);
+
+  if (typeof next.amount === 'number' && next[primaryProperty] === undefined) {
+    next[primaryProperty] = next.amount;
+  }
+
+  if (typeof next.blur === 'number' && next.radius === undefined) {
+    next.radius = next.blur;
+  }
+
+  if ((typeof next.bloom === 'number' || typeof next.chromaOffset === 'number' || typeof next.glitch === 'number') && next.strength === undefined) {
+    next.strength = next.bloom ?? next.chromaOffset ?? next.glitch;
+  }
+
+  delete next.amount;
+  delete next.blur;
+  delete next.bloom;
+  delete next.chromaOffset;
+  delete next.glitch;
+
+  return next;
+}
+
+function upgradeAutomationProperty(filterType: string, property: unknown): string {
+  if (property === 'mix') {
+    return 'mix';
+  }
+
+  if (property === 'contrast' || property === 'brightness' || property === 'radius' || property === 'strength') {
+    return property;
+  }
+
+  switch (property) {
+    case 'amount':
+      return getPrimaryPropertyForFilterType(filterType);
+    case 'blur':
+      return 'radius';
+    case 'bloom':
+    case 'chromaOffset':
+    case 'glitch':
+      return 'strength';
+    default:
+      return getPrimaryPropertyForFilterType(filterType);
+  }
+}
+
+function upgradeCurrentProjectShape(input: Record<string, unknown>): { candidate: Record<string, unknown>; migrated: boolean; notes: string[] } {
+  const candidate = cloneInput(input);
+  const notes: string[] = [];
+  let migrated = false;
+
+  if (Array.isArray(candidate.presets)) {
+    candidate.presets = candidate.presets.map((preset) => {
+      if (!isRecord(preset) || !Array.isArray(preset.filters)) {
+        return preset;
+      }
+
+      return {
+        ...preset,
+        filters: preset.filters.map((filter) => {
+          if (!isRecord(filter)) {
+            return filter;
+          }
+          const upgradedType = upgradeFilterType(filter.type);
+          if (upgradedType !== filter.type) {
+            migrated = true;
+          }
+          return {
+            ...filter,
+            type: upgradedType
+          };
+        })
+      };
+    });
+  }
+
+  const filterTypeById = new Map<string, string>();
+  if (Array.isArray(candidate.filterStacks)) {
+    candidate.filterStacks = candidate.filterStacks.map((stack) => {
+      if (!isRecord(stack) || !Array.isArray(stack.filters)) {
+        return stack;
+      }
+
+      return {
+        ...stack,
+        filters: stack.filters.map((filter) => {
+          if (!isRecord(filter)) {
+            return filter;
+          }
+
+          const upgradedType = upgradeFilterType(filter.type);
+          const upgradedParameters = upgradeFilterParameters(upgradedType, filter.parameters);
+          if (upgradedType !== filter.type || upgradedParameters !== filter.parameters) {
+            migrated = true;
+          }
+          if (typeof filter.id === 'string') {
+            filterTypeById.set(filter.id, upgradedType);
+          }
+
+          return {
+            ...filter,
+            type: upgradedType,
+            parameters: upgradedParameters
+          };
+        })
+      };
+    });
+  }
+
+  if (Array.isArray(candidate.automationLanes)) {
+    candidate.automationLanes = candidate.automationLanes.map((lane) => {
+      if (!isRecord(lane) || !isRecord(lane.target)) {
+        return lane;
+      }
+
+      const filterId = typeof lane.target.filterId === 'string' ? lane.target.filterId : '';
+      const filterType = filterTypeById.get(filterId) ?? 'contrast';
+      const upgradedProperty = upgradeAutomationProperty(filterType, lane.target.property);
+      if (upgradedProperty !== lane.target.property) {
+        migrated = true;
+      }
+
+      return {
+        ...lane,
+        target: {
+          ...lane.target,
+          property: upgradedProperty
+        }
+      };
+    });
+  }
+
+  if (migrated) {
+    notes.push('Upgraded legacy style and automation contracts to the current supported filter model.');
+  }
+
+  return {
+    candidate,
+    migrated,
+    notes
+  };
+}
+
 function migrateLegacyProject(input: Record<string, unknown>): ProjectMigrationResult {
   const id = String(input.id ?? 'project-migrated');
   const name = String(input.name ?? 'Migrated Project');
@@ -222,7 +409,7 @@ function migrateLegacyProject(input: Record<string, unknown>): ProjectMigrationR
       family: preset.family === 'liminal' || preset.family === 'imagined-futures' || preset.family === 'glitch' ? preset.family : 'vhs',
       filters: Array.isArray(preset.filters)
         ? preset.filters.filter(isRecord).map((filter) => ({
-          type: String(filter.type ?? 'tracking-wobble'),
+          type: String(filter.type ?? 'blur'),
           amount: Number(filter.amount ?? 0),
           mix: typeof filter.mix === 'number' ? filter.mix : undefined,
           seed: typeof filter.seed === 'number' ? filter.seed : undefined
@@ -286,14 +473,32 @@ function coerceProjectInput(input: unknown): { candidate: unknown; migrated: boo
 
   const version = typeof input.version === 'number' ? input.version : 0;
   const looksLegacy = 'sources' in input || 'sequence' in input;
+  const looksCurrentShape = looksLikeCurrentProjectShape(input);
 
-  if (version < CURRENT_PROJECT_VERSION || looksLegacy) {
+  if (looksLegacy) {
     const migration = migrateLegacyProject(input);
     return {
       candidate: migration.project,
       migrated: migration.migrated,
       fromVersion: migration.fromVersion,
       notes: migration.notes
+    };
+  }
+
+  if (looksCurrentShape) {
+    const upgraded = upgradeCurrentProjectShape(input);
+    const shouldBumpVersion = version < CURRENT_PROJECT_VERSION;
+    return {
+      candidate: {
+        ...upgraded.candidate,
+        version: shouldBumpVersion ? CURRENT_PROJECT_VERSION : version
+      },
+      migrated: upgraded.migrated || shouldBumpVersion,
+      fromVersion: version,
+      notes: [
+        ...(shouldBumpVersion ? ['Updated project version to the current canonical schema.'] : []),
+        ...upgraded.notes
+      ]
     };
   }
 

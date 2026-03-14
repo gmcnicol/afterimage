@@ -5,6 +5,7 @@ import { useJobsStore } from '../stores/jobs-store';
 import { useProjectSessionStore } from '../stores/project-session-store';
 import { useUiStore } from '../stores/ui-store';
 import { ToolbarButton } from './components/ToolbarButton';
+import { JobRow } from './components/JobRow';
 import { useDesktopBootstrap } from './hooks/useDesktopBootstrap';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useProjectAutosave } from './hooks/useProjectAutosave';
@@ -122,7 +123,9 @@ function Header() {
       <div>
         <div style={{ color: accent, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 12, fontWeight: 800 }}>Afterimage Studio Desktop</div>
         <h1 style={{ margin: '8px 0 4px', fontSize: 34 }}>Offline authoring workstation</h1>
-        <div style={{ color: muted }}>{project.name} • {project.assets.length} assets • {project.cutCandidates.length} cuts • {jobs.filter((job) => job.status === 'running').length} active jobs</div>
+        <div style={{ color: muted }}>
+          {project.name} • {project.assets.length} assets • {project.cutCandidates.length} cuts • {jobs.filter((job) => job.status === 'queued' || job.status === 'running').length} active jobs
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <ToolbarButton primary onClick={() => void saveProject()} disabled={savingProject}>
@@ -132,6 +135,40 @@ function Header() {
         <span style={pillStyle()}>{currentTab}</span>
       </div>
     </header>
+  );
+}
+
+function ActiveJobsPanel() {
+  const jobs = useJobsStore((state) => state.jobs);
+  const activeJobs = jobs.filter((job) => job.status === 'queued' || job.status === 'running');
+
+  if (activeJobs.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      style={{
+        marginBottom: 18,
+        borderRadius: 20,
+        border: '1px solid rgba(255, 159, 127, 0.2)',
+        background: 'linear-gradient(180deg, rgba(24, 29, 38, 0.96), rgba(14, 17, 24, 0.96))',
+        padding: 16
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+        <div>
+          <div style={{ color: accent, textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 12, fontWeight: 800 }}>Running Jobs</div>
+          <div style={{ color: muted, marginTop: 4 }}>{activeJobs.length} queued or running</div>
+        </div>
+        <span style={pillStyle()}>{activeJobs.map((job) => job.type).join(' • ')}</span>
+      </div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {activeJobs.map((job) => (
+          <JobRow key={job.id} job={job} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -151,6 +188,7 @@ export function App() {
       }}>
         <Header />
         <NotificationCenter />
+        <ActiveJobsPanel />
         <div style={{ display: 'grid', gridTemplateColumns: '240px minmax(0, 1fr)', gap: 18 }}>
           <Sidebar />
           <main style={{ display: 'grid', gap: 16 }}>

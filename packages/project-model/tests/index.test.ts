@@ -100,4 +100,53 @@ describe('@afterimage/project-model', () => {
       relativePath: 'clips/source-alpha.mp4'
     })).toEqual(['/tmp/project/clips/source-alpha.mp4', '/media/source-alpha.mp4']);
   });
+
+  it('rejects unsupported authored filters and invalid automation targets', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      filterStacks: [
+        {
+          ...fixtureProject.filterStacks[0],
+          filters: [
+            {
+              id: 'filter-unsupported',
+              type: 'tracking-wobble',
+              enabled: true,
+              orderIndex: 0,
+              parameters: {
+                amount: 0.2
+              },
+              mix: 0.8
+            },
+            {
+              ...fixtureProject.filterStacks[0].filters[0],
+              orderIndex: 1
+            }
+          ]
+        }
+      ],
+      automationLanes: [
+        {
+          ...fixtureProject.automationLanes[0],
+          target: {
+            filterId: fixtureProject.filterStacks[0].filters[0].id,
+            property: 'brightness'
+          }
+        }
+      ]
+    });
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'unsupported-value',
+        message: 'Filter "filter-unsupported" uses unsupported type "tracking-wobble".',
+        path: 'filterStacks.stack-sequence-main.filters.filter-unsupported.type'
+      },
+      {
+        code: 'unsupported-value',
+        message: 'Automation lane "lane-bloom-mix" targets unsupported property "brightness" for filter "filter-main-bloom".',
+        path: 'automationLanes.lane-bloom-mix.target.property'
+      }
+    ]));
+  });
 });

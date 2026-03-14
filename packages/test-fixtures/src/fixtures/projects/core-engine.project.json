@@ -51,7 +51,7 @@
       "name": "Rental Tape",
       "family": "vhs",
       "filters": [
-        { "type": "tracking-wobble", "amount": 0.35, "mix": 1 },
+        { "type": "blur", "amount": 0.35, "mix": 1 },
         { "type": "chroma-bleed", "amount": 0.25, "mix": 1 }
       ]
     }
@@ -185,7 +185,7 @@
           "enabled": true,
           "orderIndex": 0,
           "parameters": {
-            "amount": 0.24
+            "strength": 0.24
           },
           "mix": 0.9,
           "automationLaneIds": ["lane-bloom-mix"]

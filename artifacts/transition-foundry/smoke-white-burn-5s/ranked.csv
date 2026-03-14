@@ -1,0 +1,2 @@
+rank,id,recipe,final_score,ramp_fit,occupancy,structure,temporal_motion,novelty,start_luma,end_luma,mask,mask_preview,demo
+1,white-burn-0001,white-burn,0.6253,0.7065,0.9037,0.0000,0.6481,1.0000,0.4549,0.9216,masks/white-burn-0001__seed-897733046.mp4,mask-previews/white-burn-0001__seed-897733046.mp4,demos/white-burn-0001__seed-897733046.mp4

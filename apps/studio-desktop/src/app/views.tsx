@@ -5,9 +5,16 @@ import { loadPresetLibrary } from '@afterimage/preset-library';
 import {
   getAssetById,
   getDefaultVariant,
+  getFilterDefinition,
+  getPrimaryAutomationProperty,
+  getSupportedAutomationProperties,
+  supportedFilterDefinitions,
   type AnalysisFile,
+  type AutomationTargetProperty,
+  type FilterInstance,
   type Marker,
   type NormalizedProjectFile,
+  type SupportedFilterType,
   type SyncMode
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
@@ -102,6 +109,18 @@ function renderTimeline(durationMs: number, events: Array<{ id: string; timeMs: 
       </div>
     </div>
   );
+}
+
+function formatParameterLabel(value: string): string {
+  return value
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/-/g, ' ')
+    .replace(/^./, (character) => character.toUpperCase());
+}
+
+function getStackForCurrentVariant(project: NormalizedProjectFile, variantId?: string) {
+  const variant = getCurrentVariant(project, variantId);
+  return variant?.stackId ? project.filterStacks.find((stack) => stack.id === variant.stackId) : undefined;
 }
 
 export function ProjectView() {
@@ -736,6 +755,7 @@ export function SequenceView() {
   const api = getDesktopApi();
   const project = useProjectSessionStore((state) => state.project);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot) ?? '.';
+  const allJobs = useJobsStore((state) => state.jobs);
   const previewPath = useUiStore((state) => state.previewPath);
   const setPreviewPath = useUiStore((state) => state.setPreviewPath);
   const selectedVariantId = useUiStore((state) => state.selectedVariantId);
@@ -746,6 +766,22 @@ export function SequenceView() {
   const addMarkerAction = useProjectSessionStore((state) => state.addMarker);
   const addSectionAction = useProjectSessionStore((state) => state.addSection);
   const variant = useMemo(() => getCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
+  const previewOutputPath = variant ? `${projectRoot}/.afterimage/preview/${variant.id}.mp4` : undefined;
+  const previewJob = useMemo(
+    () =>
+      previewOutputPath
+        ? allJobs
+            .filter((job) => job.type === 'preview' && job.target === previewOutputPath)
+            .sort((left, right) => (right.startedAt ?? '').localeCompare(left.startedAt ?? ''))[0]
+        : undefined,
+    [allJobs, previewOutputPath]
+  );
+  const previewBusy = previewJob?.status === 'queued' || previewJob?.status === 'running';
+  const previewButtonLabel = previewJob?.status === 'queued'
+    ? 'Queued…'
+    : previewJob?.status === 'running'
+      ? 'Rendering…'
+      : 'Build Preview';
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: 16 }}>
@@ -771,13 +807,31 @@ export function SequenceView() {
           <ToolbarButton onClick={() => variant && duplicateVariantAction(variant.id)}>Duplicate Variant</ToolbarButton>
           <ToolbarButton onClick={() => variant && addMarkerAction(variant.id, `Marker ${Date.now() % 1000}`, 500)}>Add Marker</ToolbarButton>
           <ToolbarButton onClick={() => variant && addSectionAction(variant.id, `Section ${Date.now() % 1000}`, 0, 1500)}>Add Section</ToolbarButton>
-          <ToolbarButton primary onClick={() => variant && void api.jobs.runPreview({
-            project,
-            projectRoot,
-            variantId: variant.id,
-            outputPath: `${projectRoot}/.afterimage/preview/${variant.id}.mp4`
-          }).then((job) => setPreviewPath(job?.result?.outputPath ?? `${projectRoot}/.afterimage/preview/${variant.id}.mp4`))}>Build Preview</ToolbarButton>
+          <ToolbarButton
+            primary
+            disabled={!variant || previewBusy}
+            onClick={() => {
+              if (!variant) {
+                return;
+              }
+
+              setPreviewPath(undefined);
+              void api.jobs.runPreview({
+                project,
+                projectRoot,
+                variantId: variant.id,
+                outputPath: `${projectRoot}/.afterimage/preview/${variant.id}.mp4`
+              });
+            }}
+          >
+            {previewButtonLabel}
+          </ToolbarButton>
         </div>
+        {previewJob && previewJob.status !== 'completed' ? (
+          <div style={{ marginBottom: 16 }}>
+            <JobRow job={previewJob} />
+          </div>
+        ) : null}
         <div style={{ display: 'grid', gap: 10 }}>
           {(variant?.clips ?? []).map((clip) => (
             <div key={clip.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14, background: 'rgba(255,255,255,0.03)' }}>
@@ -936,89 +990,267 @@ export function MusicView() {
 
 export function StyleView() {
   const project = useProjectSessionStore((state) => state.project);
+  const selectedVariantId = useUiStore((state) => state.selectedVariantId);
+  const selectedFilterId = useUiStore((state) => state.selectedFilterId);
+  const selectFilter = useUiStore((state) => state.selectFilter);
   const addFilter = useProjectSessionStore((state) => state.addFilterToSequenceStack);
+  const removeFilter = useProjectSessionStore((state) => state.removeFilterFromSequenceStack);
+  const moveFilter = useProjectSessionStore((state) => state.moveFilterInSequenceStack);
   const toggleFilter = useProjectSessionStore((state) => state.toggleFilterEnabled);
+  const setFilterMix = useProjectSessionStore((state) => state.updateFilterMix);
+  const setFilterParameter = useProjectSessionStore((state) => state.updateFilterParameter);
+  const applyPreset = useProjectSessionStore((state) => state.applyPresetToSequenceStack);
   const randomizeFilter = useProjectSessionStore((state) => state.safeRandomizeFilter);
   const randomizeStack = useProjectSessionStore((state) => state.safeRandomizeStack);
-  const selectFilter = useUiStore((state) => state.selectFilter);
-  const stack = project.filterStacks[0];
+  const stack = useMemo(() => getStackForCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
   const presets = useMemo(() => loadPresetLibrary().presets, []);
+  const selectedFilter = useMemo(
+    () => stack?.filters.find((filter) => filter.id === selectedFilterId) ?? stack?.filters[0],
+    [selectedFilterId, stack]
+  );
+  const selectedFilterDefinition = getFilterDefinition(selectedFilter?.type ?? '');
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16 }}>
       <Panel title="Style Stack">
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-          <ToolbarButton primary onClick={() => addFilter('contrast-pulse')}>Add Contrast</ToolbarButton>
-          <ToolbarButton onClick={() => addFilter('glitch-bands')}>Add Glitch</ToolbarButton>
+          {supportedFilterDefinitions.map((definition) => (
+            <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => addFilter(definition.type)}>
+              Add {definition.label}
+            </ToolbarButton>
+          ))}
           <ToolbarButton onClick={() => stack && randomizeStack(stack.id)}>Randomize Stack</ToolbarButton>
         </div>
         <div style={{ display: 'grid', gap: 10 }}>
-          {stack?.filters.map((filter) => (
+          {stack?.filters.map((filter, index) => (
             <div key={filter.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <button type="button" onClick={() => selectFilter(filter.id)} style={{ border: 'none', background: 'transparent', color: '#f6f7f9', padding: 0, textAlign: 'left' }}>
-                  <strong>{filter.type}</strong>
-                  <div style={{ color: muted, fontSize: 13 }}>mix {Number(filter.mix ?? 1).toFixed(2)}</div>
+                <button
+                  type="button"
+                  onClick={() => selectFilter(filter.id)}
+                  style={{
+                    border: selectedFilter?.id === filter.id ? '1px solid rgba(244, 135, 98, 0.4)' : 'none',
+                    background: selectedFilter?.id === filter.id ? 'rgba(244, 135, 98, 0.08)' : 'transparent',
+                    color: '#f6f7f9',
+                    padding: 10,
+                    borderRadius: 12,
+                    textAlign: 'left',
+                    flex: 1
+                  }}
+                >
+                  <strong>{getFilterDefinition(filter.type)?.label ?? filter.type}</strong>
+                  <div style={{ color: muted, fontSize: 13 }}>mix {Number(filter.mix ?? 1).toFixed(2)} • {filter.enabled === false ? 'bypassed' : 'enabled'}</div>
                 </button>
                 <div style={{ display: 'flex', gap: 8 }}>
+                  <ToolbarButton onClick={() => stack && moveFilter(stack.id, filter.id, -1)} disabled={index === 0}>Up</ToolbarButton>
+                  <ToolbarButton onClick={() => stack && moveFilter(stack.id, filter.id, 1)} disabled={index === (stack.filters.length - 1)}>Down</ToolbarButton>
                   <ToolbarButton onClick={() => stack && toggleFilter(stack.id, filter.id)}>{filter.enabled === false ? 'Enable' : 'Bypass'}</ToolbarButton>
                   <ToolbarButton onClick={() => stack && randomizeFilter(stack.id, filter.id)}>Randomize</ToolbarButton>
+                  <ToolbarButton onClick={() => stack && removeFilter(stack.id, filter.id)}>Remove</ToolbarButton>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </Panel>
-      <Panel title="Preset Families">
-        <div style={{ display: 'grid', gap: 10 }}>
-          {presets.map((preset) => (
-            <div key={preset.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <strong>{preset.name}</strong>
-                <span style={pillStyle()}>{preset.family}</span>
+
+      <div style={{ display: 'grid', gap: 16 }}>
+        <Panel title="Filter Editor">
+          {stack && selectedFilter && selectedFilterDefinition ? (
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 18 }}>{selectedFilterDefinition.label}</div>
+                <div style={{ color: muted, fontSize: 13 }}>{selectedFilter.id}</div>
               </div>
+              <label style={{ display: 'grid', gap: 8 }}>
+                <span style={{ color: muted, fontSize: 13 }}>Mix</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={Number(selectedFilter.mix ?? 1)}
+                  onChange={(event) => setFilterMix(stack.id, selectedFilter.id, Number(event.target.value))}
+                />
+                <span style={{ color: muted, fontSize: 12 }}>{Number(selectedFilter.mix ?? 1).toFixed(2)}</span>
+              </label>
+              {selectedFilterDefinition.parameters.map((parameter) => (
+                <label key={parameter.key} style={{ display: 'grid', gap: 8 }}>
+                  <span style={{ color: muted, fontSize: 13 }}>{parameter.label}</span>
+                  <input
+                    type="range"
+                    min={parameter.min}
+                    max={parameter.max}
+                    step={parameter.step}
+                    value={Number(selectedFilter.parameters?.[parameter.key] ?? parameter.defaultValue)}
+                    onChange={(event) => setFilterParameter(stack.id, selectedFilter.id, parameter.key, Number(event.target.value))}
+                  />
+                  <span style={{ color: muted, fontSize: 12 }}>
+                    {Number(selectedFilter.parameters?.[parameter.key] ?? parameter.defaultValue).toFixed(2)}
+                  </span>
+                </label>
+              ))}
             </div>
-          ))}
-        </div>
-      </Panel>
+          ) : (
+            <div style={{ color: muted }}>Select a supported filter to edit its authored parameters.</div>
+          )}
+        </Panel>
+        <Panel title="Preset Families">
+          <div style={{ display: 'grid', gap: 10 }}>
+            {presets.map((preset) => (
+              <div key={preset.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div>
+                    <strong>{preset.name}</strong>
+                    <div style={{ color: muted, fontSize: 13 }}>
+                      {preset.filters.map((filter) => getFilterDefinition(filter.type)?.label ?? filter.type).join(' • ')}
+                    </div>
+                  </div>
+                  <span style={pillStyle()}>{preset.family}</span>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <ToolbarButton onClick={() => applyPreset(preset.id)}>Apply To Sequence Stack</ToolbarButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }
 
 export function AutomationView() {
   const project = useProjectSessionStore((state) => state.project);
+  const selectedVariantId = useUiStore((state) => state.selectedVariantId);
+  const selectedFilterId = useUiStore((state) => state.selectedFilterId);
   const addLane = useProjectSessionStore((state) => state.addAutomationLane);
+  const removeLane = useProjectSessionStore((state) => state.removeAutomationLane);
+  const changeLaneTarget = useProjectSessionStore((state) => state.updateAutomationLaneTarget);
+  const setLaneEnabled = useProjectSessionStore((state) => state.setAutomationLaneEnabled);
   const addKeyframe = useProjectSessionStore((state) => state.addLaneKeyframe);
+  const updateKeyframe = useProjectSessionStore((state) => state.updateLaneKeyframe);
+  const removeKeyframe = useProjectSessionStore((state) => state.removeLaneKeyframe);
   const resetLane = useProjectSessionStore((state) => state.resetLane);
-  const targetFilterId = project.filterStacks[0]?.filters[0]?.id;
+  const stack = useMemo(() => getStackForCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
+  const stackFilters = stack?.filters ?? [];
+  const targetFilter = stackFilters.find((filter) => filter.id === selectedFilterId) ?? stackFilters[0];
+  const targetProperties = getSupportedAutomationProperties(targetFilter?.type ?? '');
+  const variant = useMemo(() => getCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
+  const durationMs = useMemo(
+    () => Math.max(...(variant?.clips.map((clip) => clip.timelineStartMs + clip.durationMs) ?? [0]), 1),
+    [variant]
+  );
 
   return (
-    <Panel title="Automation">
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <ToolbarButton primary onClick={() => targetFilterId && addLane(targetFilterId, `Lane ${project.automationLanes.length + 1}`)}>Add Lane</ToolbarButton>
-      </div>
-      <div style={{ display: 'grid', gap: 12 }}>
-        {project.automationLanes.map((lane) => (
-          <div key={lane.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <strong>{lane.name}</strong>
-                <div style={{ color: muted, fontSize: 13 }}>Target {lane.target.filterId} {'->'} {lane.target.property}</div>
+    <div style={{ display: 'grid', gap: 16 }}>
+      <Panel title="Automation">
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+          <ToolbarButton
+            primary
+            onClick={() => targetFilter && addLane(targetFilter.id, targetProperties[0] ?? 'mix', `Lane ${project.automationLanes.length + 1}`)}
+            disabled={!targetFilter}
+          >
+            Add Lane
+          </ToolbarButton>
+        </div>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {project.automationLanes.map((lane) => {
+            const laneFilter = stackFilters.find((filter) => filter.id === lane.target.filterId) ?? stackFilters[0];
+            const laneProperties = getSupportedAutomationProperties(laneFilter?.type ?? '');
+            return (
+              <div key={lane.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                  <div>
+                    <strong>{lane.name}</strong>
+                    <div style={{ color: muted, fontSize: 13 }}>Target {lane.target.filterId} {'->'} {lane.target.property}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: muted }}>
+                      <input
+                        type="checkbox"
+                        checked={lane.enabled ?? true}
+                        onChange={(event) => setLaneEnabled(lane.id, event.target.checked)}
+                      />
+                      Enabled
+                    </label>
+                    <ToolbarButton onClick={() => addKeyframe(lane.id, lane.keyframes.length > 0 ? lane.keyframes[lane.keyframes.length - 1].timeMs + 500 : 500, 0.8)}>
+                      Add Keyframe
+                    </ToolbarButton>
+                    <ToolbarButton onClick={() => resetLane(lane.id)}>Reset</ToolbarButton>
+                    <ToolbarButton onClick={() => removeLane(lane.id)}>Remove</ToolbarButton>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span style={{ color: muted, fontSize: 13 }}>Filter</span>
+                    <select
+                      value={lane.target.filterId}
+                      onChange={(event) => changeLaneTarget(lane.id, event.target.value, lane.target.property)}
+                      style={{ borderRadius: 12, padding: '10px 12px', background: 'rgba(13, 16, 22, 0.92)', color: '#f6f7f9', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      {stackFilters.map((filter) => (
+                        <option key={filter.id} value={filter.id}>{getFilterDefinition(filter.type)?.label ?? filter.type}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ display: 'grid', gap: 6 }}>
+                    <span style={{ color: muted, fontSize: 13 }}>Property</span>
+                    <select
+                      value={lane.target.property}
+                      onChange={(event) => changeLaneTarget(lane.id, lane.target.filterId, event.target.value as AutomationTargetProperty)}
+                      style={{ borderRadius: 12, padding: '10px 12px', background: 'rgba(13, 16, 22, 0.92)', color: '#f6f7f9', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      {laneProperties.map((property) => (
+                        <option key={property} value={property}>{formatParameterLabel(property)}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  {renderTimeline(durationMs, lane.keyframes.map((keyframe) => ({
+                    id: keyframe.id,
+                    timeMs: keyframe.timeMs,
+                    kind: 'accent',
+                    strength: keyframe.value
+                  })))}
+                </div>
+                <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+                  {lane.keyframes.map((keyframe) => (
+                    <div key={keyframe.id} style={{ display: 'grid', gridTemplateColumns: '140px 1fr 88px', gap: 10, alignItems: 'center' }}>
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span style={{ color: muted, fontSize: 12 }}>Time (ms)</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={durationMs}
+                          step={50}
+                          value={keyframe.timeMs}
+                          onChange={(event) => updateKeyframe(lane.id, keyframe.id, Number(event.target.value), keyframe.value)}
+                          style={{ borderRadius: 10, padding: '8px 10px', background: 'rgba(13, 16, 22, 0.92)', color: '#f6f7f9', border: '1px solid rgba(255,255,255,0.08)' }}
+                        />
+                      </label>
+                      <label style={{ display: 'grid', gap: 6 }}>
+                        <span style={{ color: muted, fontSize: 12 }}>{formatParameterLabel(lane.target.property)}</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={1}
+                          step={0.01}
+                          value={keyframe.value}
+                          onChange={(event) => updateKeyframe(lane.id, keyframe.id, keyframe.timeMs, Number(event.target.value))}
+                        />
+                      </label>
+                      <ToolbarButton onClick={() => removeKeyframe(lane.id, keyframe.id)}>Delete</ToolbarButton>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <ToolbarButton onClick={() => addKeyframe(lane.id, lane.keyframes.length * 500 + 500, 0.8)}>Add Keyframe</ToolbarButton>
-                <ToolbarButton onClick={() => resetLane(lane.id)}>Reset</ToolbarButton>
-              </div>
-            </div>
-            <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
-              {lane.keyframes.map((keyframe) => (
-                <div key={keyframe.id} style={{ color: muted }}>{keyframe.timeMs}ms {'->'} {keyframe.value.toFixed(2)}</div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Panel>
+            );
+          })}
+        </div>
+      </Panel>
+    </div>
   );
 }
 

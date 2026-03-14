@@ -1,0 +1,4 @@
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-dropout-foam/demos/dropout-foam-0004__seed-168191550.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-dropout-foam/demos/dropout-foam-0002__seed-360265967.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-dropout-foam/demos/dropout-foam-0003__seed-835252633.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-dropout-foam/demos/dropout-foam-0001__seed-88706002.mp4'

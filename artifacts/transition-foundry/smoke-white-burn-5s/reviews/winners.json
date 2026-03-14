@@ -1,0 +1,16 @@
+{
+  "reviewedAt": "2026-03-14T11:53:29.258Z",
+  "topK": 1,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "finalScore": 0.6252505446623093,
+      "mask": "masks/white-burn-0001__seed-897733046.mp4",
+      "maskPreview": "mask-previews/white-burn-0001__seed-897733046.mp4",
+      "overlay": "overlays/white-burn-0001__seed-897733046.mp4",
+      "demo": "demos/white-burn-0001__seed-897733046.mp4"
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "analyzedAt": "2026-03-14T12:12:19.703Z",
+  "manifestPath": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-block-texture/manifest.json",
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-block-texture",
+  "candidates": [
+    {
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 447958702,
+      "parameters": {
+        "noise": 26.894445901736617,
+        "blurA": 0.4567461246973835,
+        "blurB": 0.6563768912572413,
+        "contrast": 2.7137265680823472,
+        "threshold": 149.54953565541655
+      },
+      "paths": {
+        "mask": "masks/white-burn-0001__seed-447958702.mp4",
+        "maskPreview": "mask-previews/white-burn-0001__seed-447958702.mp4",
+        "overlay": "overlays/white-burn-0001__seed-447958702.mp4",
+        "demo": "demos/white-burn-0001__seed-447958702.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.9015947712418301,
+        "occupancy": 0.9777777777777777,
+        "structure": 0,
+        "temporalMotion": 0.8071895424836599,
+        "baseScore": 0.7261607843137254,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 1,
+        "finalScore": 0.7321921568627451
+      }
+    },
+    {
+      "id": "white-burn-0003",
+      "recipe": "white-burn",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 849337009,
+      "parameters": {
+        "noise": 25.334991676732898,
+        "blurA": 0.5933975582709536,
+        "blurB": 0.8972124980064109,
+        "contrast": 1.4751038235146552,
+        "threshold": 111.03130270540714
+      },
+      "paths": {
+        "mask": "masks/white-burn-0003__seed-849337009.mp4",
+        "maskPreview": "mask-previews/white-burn-0003__seed-849337009.mp4",
+        "overlay": "overlays/white-burn-0003__seed-849337009.mp4",
+        "demo": "demos/white-burn-0003__seed-849337009.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.705397385620915,
+        "occupancy": 0.9037037037037037,
+        "structure": 0.00025190640522875814,
+        "temporalMotion": 0.6865593681917211,
+        "baseScore": 0.6111191666840958,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.42724705882352937,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5306641122178648
+      }
+    },
+    {
+      "id": "white-burn-0002",
+      "recipe": "white-burn",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 273412610,
+      "parameters": {
+        "noise": 31.094404228031635,
+        "blurA": 0.7980010627070442,
+        "blurB": 0.5268769113812595,
+        "contrast": 2.7238825436681506,
+        "threshold": 117.58395450236276
+      },
+      "paths": {
+        "mask": "masks/white-burn-0002__seed-273412610.mp4",
+        "maskPreview": "mask-previews/white-burn-0002__seed-273412610.mp4",
+        "overlay": "overlays/white-burn-0002__seed-273412610.mp4",
+        "demo": "demos/white-burn-0002__seed-273412610.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7052287581699346,
+        "occupancy": 0.9037037037037037,
+        "structure": 0,
+        "temporalMotion": 0.6862745098039216,
+        "baseScore": 0.6109586056644879,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.42745098039215684,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.530511982570806
+      }
+    },
+    {
+      "id": "white-burn-0004",
+      "recipe": "white-burn",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 515672858,
+      "parameters": {
+        "noise": 18.97446582093835,
+        "blurA": 0.6152423979481683,
+        "blurB": 0.7063502512173727,
+        "contrast": 1.9378590037114916,
+        "threshold": 87.49434129847214
+      },
+      "paths": {
+        "mask": "masks/white-burn-0004__seed-515672858.mp4",
+        "maskPreview": "mask-previews/white-burn-0004__seed-515672858.mp4",
+        "overlay": "overlays/white-burn-0004__seed-515672858.mp4",
+        "demo": "demos/white-burn-0004__seed-515672858.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7052287581699346,
+        "occupancy": 0.9037037037037037,
+        "structure": 0,
+        "temporalMotion": 0.6862745098039216,
+        "baseScore": 0.6109586056644879,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.42745098039215684,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.530511982570806
+      }
+    }
+  ]
+}

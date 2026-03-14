@@ -1,0 +1,563 @@
+{
+  "createdAt": "2026-03-14T12:21:43.046Z",
+  "generator": "transition-foundry",
+  "config": {
+    "count": 24,
+    "width": 640,
+    "height": 360,
+    "fps": 15,
+    "duration": 0.75,
+    "recipes": [
+      "white-burn",
+      "head-switch-smear"
+    ],
+    "seed": 1816807939
+  },
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/white-head-pass",
+  "candidates": [
+    {
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 718883130,
+      "parameters": {
+        "noise": 25.713893581181765,
+        "blurA": 0.5433004664024338,
+        "blurB": 0.5464919436257332,
+        "contrast": 2.0641738060861825,
+        "threshold": 151.63540910976008
+      },
+      "paths": {
+        "mask": "masks/white-burn-0001__seed-718883130.mp4",
+        "maskPreview": "mask-previews/white-burn-0001__seed-718883130.mp4",
+        "overlay": "overlays/white-burn-0001__seed-718883130.mp4",
+        "demo": "demos/white-burn-0001__seed-718883130.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0002",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 219494283,
+      "parameters": {
+        "noise": 20.296913826838136,
+        "blurA": 0.34179798666154965,
+        "blurB": 0.4676070975372567,
+        "contrast": 1.689941066550091,
+        "threshold": 114.36506888177246
+      },
+      "paths": {
+        "mask": "masks/white-burn-0002__seed-219494283.mp4",
+        "maskPreview": "mask-previews/white-burn-0002__seed-219494283.mp4",
+        "overlay": "overlays/white-burn-0002__seed-219494283.mp4",
+        "demo": "demos/white-burn-0002__seed-219494283.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0003",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 19246774,
+      "parameters": {
+        "noise": 33.69774640630931,
+        "bandHeight": 15.566441718488932,
+        "smearShift": 29.247026509605348,
+        "jitter": 15.216911830939353,
+        "blur": 0.4954370549647137,
+        "contrast": 1.634500049962662,
+        "threshold": 88.06144901132211
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0003__seed-19246774.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0003__seed-19246774.mp4",
+        "overlay": "overlays/head-switch-smear-0003__seed-19246774.mp4",
+        "demo": "demos/head-switch-smear-0003__seed-19246774.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0004",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 775489499,
+      "parameters": {
+        "noise": 14.748918063938618,
+        "blurA": 0.2944458246813156,
+        "blurB": 0.638481451710686,
+        "contrast": 1.8079198459163308,
+        "threshold": 85.27003325801343
+      },
+      "paths": {
+        "mask": "masks/white-burn-0004__seed-775489499.mp4",
+        "maskPreview": "mask-previews/white-burn-0004__seed-775489499.mp4",
+        "overlay": "overlays/white-burn-0004__seed-775489499.mp4",
+        "demo": "demos/white-burn-0004__seed-775489499.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0005",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 300459659,
+      "parameters": {
+        "noise": 19.17811236716807,
+        "blurA": 0.4662910216604359,
+        "blurB": 0.3541165916947648,
+        "contrast": 2.5831460929475725,
+        "threshold": 97.02850306220353
+      },
+      "paths": {
+        "mask": "masks/white-burn-0005__seed-300459659.mp4",
+        "maskPreview": "mask-previews/white-burn-0005__seed-300459659.mp4",
+        "overlay": "overlays/white-burn-0005__seed-300459659.mp4",
+        "demo": "demos/white-burn-0005__seed-300459659.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0006",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 505575335,
+      "parameters": {
+        "noise": 26.7687505800277,
+        "blurA": 0.5525619975291193,
+        "blurB": 1.0575573771726339,
+        "contrast": 2.2338873984292147,
+        "threshold": 103.65215130662546
+      },
+      "paths": {
+        "mask": "masks/white-burn-0006__seed-505575335.mp4",
+        "maskPreview": "mask-previews/white-burn-0006__seed-505575335.mp4",
+        "overlay": "overlays/white-burn-0006__seed-505575335.mp4",
+        "demo": "demos/white-burn-0006__seed-505575335.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0007",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 673003308,
+      "parameters": {
+        "noise": 24.107488622888923,
+        "bandHeight": 17.14451850578189,
+        "smearShift": 36.62453788053244,
+        "jitter": 8.28683498967439,
+        "blur": 0.07279667436378076,
+        "contrast": 2.527288434910588,
+        "threshold": 87.76868308475241
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0007__seed-673003308.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0007__seed-673003308.mp4",
+        "overlay": "overlays/head-switch-smear-0007__seed-673003308.mp4",
+        "demo": "demos/head-switch-smear-0007__seed-673003308.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0008",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 330402933,
+      "parameters": {
+        "noise": 15.09026581980288,
+        "bandHeight": 16.706231772899628,
+        "smearShift": 30.93907600780949,
+        "jitter": 10.010046990588307,
+        "blur": 0.0915976191405207,
+        "contrast": 2.4994140091817827,
+        "threshold": 136.05433729058132
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0008__seed-330402933.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0008__seed-330402933.mp4",
+        "overlay": "overlays/head-switch-smear-0008__seed-330402933.mp4",
+        "demo": "demos/head-switch-smear-0008__seed-330402933.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0009",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 249682944,
+      "parameters": {
+        "noise": 27.365313600748777,
+        "blurA": 0.5519225778989494,
+        "blurB": 0.7296109025599434,
+        "contrast": 2.281228914065286,
+        "threshold": 93.69805117882788
+      },
+      "paths": {
+        "mask": "masks/white-burn-0009__seed-249682944.mp4",
+        "maskPreview": "mask-previews/white-burn-0009__seed-249682944.mp4",
+        "overlay": "overlays/white-burn-0009__seed-249682944.mp4",
+        "demo": "demos/white-burn-0009__seed-249682944.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0010",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 746860607,
+      "parameters": {
+        "noise": 25.210870374925435,
+        "bandHeight": 23.145304061472416,
+        "smearShift": 26.565807156730443,
+        "jitter": 11.159444087184966,
+        "blur": 0.20761907841078936,
+        "contrast": 2.7308995623374357,
+        "threshold": 94.94234587345272
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0010__seed-746860607.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0010__seed-746860607.mp4",
+        "overlay": "overlays/head-switch-smear-0010__seed-746860607.mp4",
+        "demo": "demos/head-switch-smear-0010__seed-746860607.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0011",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 391585798,
+      "parameters": {
+        "noise": 32.05234566703439,
+        "blurA": 0.17053948051761836,
+        "blurB": 0.6462785668903961,
+        "contrast": 2.0641870199702677,
+        "threshold": 91.03840729733929
+      },
+      "paths": {
+        "mask": "masks/white-burn-0011__seed-391585798.mp4",
+        "maskPreview": "mask-previews/white-burn-0011__seed-391585798.mp4",
+        "overlay": "overlays/white-burn-0011__seed-391585798.mp4",
+        "demo": "demos/white-burn-0011__seed-391585798.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0012",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 127355544,
+      "parameters": {
+        "noise": 27.795088360086083,
+        "blurA": 0.3906746681313962,
+        "blurB": 1.0019461383344606,
+        "contrast": 2.4781290340702977,
+        "threshold": 117.79437041655183
+      },
+      "paths": {
+        "mask": "masks/white-burn-0012__seed-127355544.mp4",
+        "maskPreview": "mask-previews/white-burn-0012__seed-127355544.mp4",
+        "overlay": "overlays/white-burn-0012__seed-127355544.mp4",
+        "demo": "demos/white-burn-0012__seed-127355544.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0013",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 89374467,
+      "parameters": {
+        "noise": 16.705572773702443,
+        "bandHeight": 18.718859054148197,
+        "smearShift": 23.911091384943575,
+        "jitter": 7.036383503116667,
+        "blur": 0.06858888416318223,
+        "contrast": 1.7675951623823494,
+        "threshold": 87.90409327298403
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0013__seed-89374467.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0013__seed-89374467.mp4",
+        "overlay": "overlays/head-switch-smear-0013__seed-89374467.mp4",
+        "demo": "demos/head-switch-smear-0013__seed-89374467.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0014",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 653746992,
+      "parameters": {
+        "noise": 25.040361538529396,
+        "blurA": 0.2936942912288941,
+        "blurB": 0.49107490635942663,
+        "contrast": 2.2527926951646804,
+        "threshold": 144.52135256538168
+      },
+      "paths": {
+        "mask": "masks/white-burn-0014__seed-653746992.mp4",
+        "maskPreview": "mask-previews/white-burn-0014__seed-653746992.mp4",
+        "overlay": "overlays/white-burn-0014__seed-653746992.mp4",
+        "demo": "demos/white-burn-0014__seed-653746992.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0015",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 58795564,
+      "parameters": {
+        "noise": 14.867165265604854,
+        "blurA": 0.7053642757004127,
+        "blurB": 0.7604028183734044,
+        "contrast": 2.699716780055314,
+        "threshold": 111.31552692083642
+      },
+      "paths": {
+        "mask": "masks/white-burn-0015__seed-58795564.mp4",
+        "maskPreview": "mask-previews/white-burn-0015__seed-58795564.mp4",
+        "overlay": "overlays/white-burn-0015__seed-58795564.mp4",
+        "demo": "demos/white-burn-0015__seed-58795564.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0016",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 28718544,
+      "parameters": {
+        "noise": 33.70323700644076,
+        "blurA": 0.7216587188770064,
+        "blurB": 1.1777608069824055,
+        "contrast": 1.4618019379209726,
+        "threshold": 119.06780523294583
+      },
+      "paths": {
+        "mask": "masks/white-burn-0016__seed-28718544.mp4",
+        "maskPreview": "mask-previews/white-burn-0016__seed-28718544.mp4",
+        "overlay": "overlays/white-burn-0016__seed-28718544.mp4",
+        "demo": "demos/white-burn-0016__seed-28718544.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0017",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 93421998,
+      "parameters": {
+        "noise": 26.927019162103534,
+        "blurA": 0.364946771832183,
+        "blurB": 1.1145041511626914,
+        "contrast": 1.6332644917070864,
+        "threshold": 99.17230866430327
+      },
+      "paths": {
+        "mask": "masks/white-burn-0017__seed-93421998.mp4",
+        "maskPreview": "mask-previews/white-burn-0017__seed-93421998.mp4",
+        "overlay": "overlays/white-burn-0017__seed-93421998.mp4",
+        "demo": "demos/white-burn-0017__seed-93421998.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0018",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 72273742,
+      "parameters": {
+        "noise": 22.190900259651244,
+        "bandHeight": 11.809998508542776,
+        "smearShift": 33.100702554453164,
+        "jitter": 7.926047551445663,
+        "blur": 0.16684891681652514,
+        "contrast": 2.528019587416202,
+        "threshold": 91.77966003818437
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0018__seed-72273742.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0018__seed-72273742.mp4",
+        "overlay": "overlays/head-switch-smear-0018__seed-72273742.mp4",
+        "demo": "demos/head-switch-smear-0018__seed-72273742.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0019",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 875663185,
+      "parameters": {
+        "noise": 17.631026500836015,
+        "blurA": 0.5473137673689052,
+        "blurB": 1.1876484276959671,
+        "contrast": 2.432565603032708,
+        "threshold": 130.19147498346865
+      },
+      "paths": {
+        "mask": "masks/white-burn-0019__seed-875663185.mp4",
+        "maskPreview": "mask-previews/white-burn-0019__seed-875663185.mp4",
+        "overlay": "overlays/white-burn-0019__seed-875663185.mp4",
+        "demo": "demos/white-burn-0019__seed-875663185.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0020",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 293919919,
+      "parameters": {
+        "noise": 22.025568244978786,
+        "blurA": 0.6363991160527803,
+        "blurB": 0.7505619799951091,
+        "contrast": 1.7373261129017918,
+        "threshold": 127.54991361685097
+      },
+      "paths": {
+        "mask": "masks/white-burn-0020__seed-293919919.mp4",
+        "maskPreview": "mask-previews/white-burn-0020__seed-293919919.mp4",
+        "overlay": "overlays/white-burn-0020__seed-293919919.mp4",
+        "demo": "demos/white-burn-0020__seed-293919919.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0021",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 595874777,
+      "parameters": {
+        "noise": 14.489119039848447,
+        "bandHeight": 25.4900844655931,
+        "smearShift": 30.42500904854387,
+        "jitter": 14.929257805459201,
+        "blur": 0.5769501769565977,
+        "contrast": 1.653361796424724,
+        "threshold": 110.48155320156366
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0021__seed-595874777.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0021__seed-595874777.mp4",
+        "overlay": "overlays/head-switch-smear-0021__seed-595874777.mp4",
+        "demo": "demos/head-switch-smear-0021__seed-595874777.mp4"
+      }
+    },
+    {
+      "id": "head-switch-smear-0022",
+      "recipe": "head-switch-smear",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 752348082,
+      "parameters": {
+        "noise": 31.90268875192851,
+        "bandHeight": 16.174341920763254,
+        "smearShift": 64.64148721238598,
+        "jitter": 10.025308790616691,
+        "blur": 0.5496741237817332,
+        "contrast": 2.2000864981207995,
+        "threshold": 138.31808193633333
+      },
+      "paths": {
+        "mask": "masks/head-switch-smear-0022__seed-752348082.mp4",
+        "maskPreview": "mask-previews/head-switch-smear-0022__seed-752348082.mp4",
+        "overlay": "overlays/head-switch-smear-0022__seed-752348082.mp4",
+        "demo": "demos/head-switch-smear-0022__seed-752348082.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0023",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 925888099,
+      "parameters": {
+        "noise": 33.64842666871846,
+        "blurA": 0.24808116868371144,
+        "blurB": 0.7523947583511471,
+        "contrast": 2.6771671453956514,
+        "threshold": 88.71828343998641
+      },
+      "paths": {
+        "mask": "masks/white-burn-0023__seed-925888099.mp4",
+        "maskPreview": "mask-previews/white-burn-0023__seed-925888099.mp4",
+        "overlay": "overlays/white-burn-0023__seed-925888099.mp4",
+        "demo": "demos/white-burn-0023__seed-925888099.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0024",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 860137386,
+      "parameters": {
+        "noise": 23.470185535028577,
+        "blurA": 0.16011164482915774,
+        "blurB": 0.9377614367287606,
+        "contrast": 1.6463854698464273,
+        "threshold": 100.94616922363639
+      },
+      "paths": {
+        "mask": "masks/white-burn-0024__seed-860137386.mp4",
+        "maskPreview": "mask-previews/white-burn-0024__seed-860137386.mp4",
+        "overlay": "overlays/white-burn-0024__seed-860137386.mp4",
+        "demo": "demos/white-burn-0024__seed-860137386.mp4"
+      }
+    }
+  ]
+}

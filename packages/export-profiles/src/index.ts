@@ -37,11 +37,13 @@ export const exportProfiles = [
     height: 1080,
     aspectRatio: '16:9',
     frameRate: 30,
-    container: 'mov',
-    videoCodec: 'prores_ks',
-    audioCodec: 'pcm_s24le',
-    pixelFormat: 'yuv422p10le',
-    videoProfile: '3',
+    container: 'mp4',
+    videoCodec: 'libx264',
+    audioCodec: 'aac',
+    pixelFormat: 'yuv420p',
+    crf: 18,
+    videoPreset: 'medium',
+    audioBitrateKbps: 256,
     namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}'
   },
   {

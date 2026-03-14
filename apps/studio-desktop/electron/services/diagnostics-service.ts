@@ -1,5 +1,6 @@
 import { access } from 'node:fs/promises';
 import type { NormalizedProjectFile } from '@afterimage/project-model';
+import { collectProjectIntegrityIssues } from '@afterimage/project-model';
 import { getToolchainHealth, resolveFfmpegTools } from '@afterimage/ffmpeg-compiler';
 import type { DiagnosticsSnapshot } from '../../src/shared/contracts.js';
 import type { Logger } from './logger.js';
@@ -25,6 +26,7 @@ export function createDiagnosticsService({ logger }: DiagnosticsServiceOptions) 
       }
 
       const missingMedia: string[] = [];
+      const integrityWarnings: string[] = [];
       if (project) {
         for (const asset of project.assets) {
           try {
@@ -33,12 +35,15 @@ export function createDiagnosticsService({ logger }: DiagnosticsServiceOptions) 
             missingMedia.push(asset.path.absolutePath);
           }
         }
+        integrityWarnings.push(
+          ...collectProjectIntegrityIssues(project).map((issue) => `${issue.path}: ${issue.message}`)
+        );
       }
 
       const logs = logger.list();
       return {
         toolchain,
-        warnings: [...toolchain.warnings],
+        warnings: [...toolchain.warnings, ...integrityWarnings],
         missingMedia,
         recentCommands: logs.map((entry) => entry.message).slice(-12),
         logs,

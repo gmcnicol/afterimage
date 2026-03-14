@@ -1,0 +1,166 @@
+{
+  "reviewedAt": "2026-03-14T12:21:46.108Z",
+  "topK": 16,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "finalScore": 0.6810625743744363,
+      "mask": "masks/white-burn-0001__seed-718883130.mp4",
+      "maskPreview": "mask-previews/white-burn-0001__seed-718883130.mp4",
+      "overlay": "overlays/white-burn-0001__seed-718883130.mp4",
+      "demo": "demos/white-burn-0001__seed-718883130.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "white-burn-0014",
+      "recipe": "white-burn",
+      "finalScore": 0.5758956646353341,
+      "mask": "masks/white-burn-0014__seed-653746992.mp4",
+      "maskPreview": "mask-previews/white-burn-0014__seed-653746992.mp4",
+      "overlay": "overlays/white-burn-0014__seed-653746992.mp4",
+      "demo": "demos/white-burn-0014__seed-653746992.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "head-switch-smear-0022",
+      "recipe": "head-switch-smear",
+      "finalScore": 0.487676710386968,
+      "mask": "masks/head-switch-smear-0022__seed-752348082.mp4",
+      "maskPreview": "mask-previews/head-switch-smear-0022__seed-752348082.mp4",
+      "overlay": "overlays/head-switch-smear-0022__seed-752348082.mp4",
+      "demo": "demos/head-switch-smear-0022__seed-752348082.mp4"
+    },
+    {
+      "rank": 4,
+      "id": "head-switch-smear-0008",
+      "recipe": "head-switch-smear",
+      "finalScore": 0.48607540319742554,
+      "mask": "masks/head-switch-smear-0008__seed-330402933.mp4",
+      "maskPreview": "mask-previews/head-switch-smear-0008__seed-330402933.mp4",
+      "overlay": "overlays/head-switch-smear-0008__seed-330402933.mp4",
+      "demo": "demos/head-switch-smear-0008__seed-330402933.mp4"
+    },
+    {
+      "rank": 5,
+      "id": "white-burn-0019",
+      "recipe": "white-burn",
+      "finalScore": 0.48244250559393975,
+      "mask": "masks/white-burn-0019__seed-875663185.mp4",
+      "maskPreview": "mask-previews/white-burn-0019__seed-875663185.mp4",
+      "overlay": "overlays/white-burn-0019__seed-875663185.mp4",
+      "demo": "demos/white-burn-0019__seed-875663185.mp4"
+    },
+    {
+      "rank": 6,
+      "id": "white-burn-0016",
+      "recipe": "white-burn",
+      "finalScore": 0.46342006121485474,
+      "mask": "masks/white-burn-0016__seed-28718544.mp4",
+      "maskPreview": "mask-previews/white-burn-0016__seed-28718544.mp4",
+      "overlay": "overlays/white-burn-0016__seed-28718544.mp4",
+      "demo": "demos/white-burn-0016__seed-28718544.mp4"
+    },
+    {
+      "rank": 7,
+      "id": "white-burn-0020",
+      "recipe": "white-burn",
+      "finalScore": 0.4621375936476797,
+      "mask": "masks/white-burn-0020__seed-293919919.mp4",
+      "maskPreview": "mask-previews/white-burn-0020__seed-293919919.mp4",
+      "overlay": "overlays/white-burn-0020__seed-293919919.mp4",
+      "demo": "demos/white-burn-0020__seed-293919919.mp4"
+    },
+    {
+      "rank": 8,
+      "id": "white-burn-0002",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0002__seed-219494283.mp4",
+      "maskPreview": "mask-previews/white-burn-0002__seed-219494283.mp4",
+      "overlay": "overlays/white-burn-0002__seed-219494283.mp4",
+      "demo": "demos/white-burn-0002__seed-219494283.mp4"
+    },
+    {
+      "rank": 9,
+      "id": "white-burn-0004",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0004__seed-775489499.mp4",
+      "maskPreview": "mask-previews/white-burn-0004__seed-775489499.mp4",
+      "overlay": "overlays/white-burn-0004__seed-775489499.mp4",
+      "demo": "demos/white-burn-0004__seed-775489499.mp4"
+    },
+    {
+      "rank": 10,
+      "id": "white-burn-0005",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0005__seed-300459659.mp4",
+      "maskPreview": "mask-previews/white-burn-0005__seed-300459659.mp4",
+      "overlay": "overlays/white-burn-0005__seed-300459659.mp4",
+      "demo": "demos/white-burn-0005__seed-300459659.mp4"
+    },
+    {
+      "rank": 11,
+      "id": "white-burn-0006",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0006__seed-505575335.mp4",
+      "maskPreview": "mask-previews/white-burn-0006__seed-505575335.mp4",
+      "overlay": "overlays/white-burn-0006__seed-505575335.mp4",
+      "demo": "demos/white-burn-0006__seed-505575335.mp4"
+    },
+    {
+      "rank": 12,
+      "id": "white-burn-0009",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0009__seed-249682944.mp4",
+      "maskPreview": "mask-previews/white-burn-0009__seed-249682944.mp4",
+      "overlay": "overlays/white-burn-0009__seed-249682944.mp4",
+      "demo": "demos/white-burn-0009__seed-249682944.mp4"
+    },
+    {
+      "rank": 13,
+      "id": "white-burn-0011",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0011__seed-391585798.mp4",
+      "maskPreview": "mask-previews/white-burn-0011__seed-391585798.mp4",
+      "overlay": "overlays/white-burn-0011__seed-391585798.mp4",
+      "demo": "demos/white-burn-0011__seed-391585798.mp4"
+    },
+    {
+      "rank": 14,
+      "id": "white-burn-0012",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0012__seed-127355544.mp4",
+      "maskPreview": "mask-previews/white-burn-0012__seed-127355544.mp4",
+      "overlay": "overlays/white-burn-0012__seed-127355544.mp4",
+      "demo": "demos/white-burn-0012__seed-127355544.mp4"
+    },
+    {
+      "rank": 15,
+      "id": "white-burn-0015",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0015__seed-58795564.mp4",
+      "maskPreview": "mask-previews/white-burn-0015__seed-58795564.mp4",
+      "overlay": "overlays/white-burn-0015__seed-58795564.mp4",
+      "demo": "demos/white-burn-0015__seed-58795564.mp4"
+    },
+    {
+      "rank": 16,
+      "id": "white-burn-0017",
+      "recipe": "white-burn",
+      "finalScore": 0.4621266014545062,
+      "mask": "masks/white-burn-0017__seed-93421998.mp4",
+      "maskPreview": "mask-previews/white-burn-0017__seed-93421998.mp4",
+      "overlay": "overlays/white-burn-0017__seed-93421998.mp4",
+      "demo": "demos/white-burn-0017__seed-93421998.mp4"
+    }
+  ]
+}

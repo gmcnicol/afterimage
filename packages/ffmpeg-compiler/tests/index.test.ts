@@ -10,6 +10,7 @@ import {
   buildAudioChangeAnalysisPlan,
   buildExportPlan,
   buildPreviewPlan,
+  buildRenderPlan,
   buildThumbnailPlan,
   buildWaveformPlan,
   executeCommandSpec,
@@ -210,7 +211,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "-i",
             "fixtures/audio/score-alpha.wav",
             "-filter_complex",
-            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=0.900,eq=saturation=0.938,fps=30.000,scale=1920:1080,setsar=1,format=yuv422p10le[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]format=yuv422p10le[vout];[1:a]atrim=start=0:duration=2.000,asetpts=PTS-STARTPTS[amusic]",
+            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=2.150,eq=saturation=0.938,fps=30.000,scale=1920:1080,setsar=1,format=yuv422p10le[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]format=yuv422p10le[vout];[1:a]atrim=start=0:duration=2.000,asetpts=PTS-STARTPTS[amusic]",
             "-map",
             "[vout]",
             "-c:v",
@@ -319,5 +320,73 @@ describe('@afterimage/ffmpeg-compiler', () => {
 
     expect(health.available).toBe(true);
     expect(health.versions.ffmpeg.versionLine).toContain('/custom/ffmpeg version test');
+  });
+
+  it('renders automation as deterministic clip segments instead of a midpoint snapshot', () => {
+    const plan = buildRenderPlan(parseProject({
+      ...fixtureProject,
+      filterStacks: [
+        {
+          ...fixtureProject.filterStacks[0],
+          filters: [
+            {
+              id: 'filter-main-bloom',
+              type: 'bloom-soft',
+              enabled: true,
+              orderIndex: 0,
+              parameters: {
+                strength: 0.2
+              },
+              mix: 1,
+              automationLaneIds: ['lane-bloom-strength']
+            }
+          ]
+        }
+      ],
+      automationLanes: [
+        {
+          id: 'lane-bloom-strength',
+          name: 'Bloom Strength',
+          target: {
+            filterId: 'filter-main-bloom',
+            property: 'strength'
+          },
+          enabled: true,
+          keyframes: [
+            {
+              id: 'keyframe-1',
+              timeMs: 0,
+              value: 0.1
+            },
+            {
+              id: 'keyframe-2',
+              timeMs: 1000,
+              value: 0.6
+            },
+            {
+              id: 'keyframe-3',
+              timeMs: 2000,
+              value: 0.9
+            }
+          ]
+        }
+      ]
+    }), {
+      outputPath: 'exports/studio-fixture-automation.mov',
+      profile: {
+        width: 1920,
+        height: 1080,
+        frameRate: 30,
+        container: 'mov',
+        videoCodec: 'prores_ks',
+        audioCodec: 'pcm_s24le',
+        pixelFormat: 'yuv422p10le'
+      }
+    });
+
+    expect(plan.command.args).toContain('exports/studio-fixture-automation.mov');
+    expect(plan.command.args.join(' ')).toContain('concat=n=2:v=1:a=0[vconcat]');
+    expect(plan.command.args.join(' ')).toContain('gblur=sigma=1.800');
+    expect(plan.command.args.join(' ')).toContain('gblur=sigma=3.400');
   });
 });

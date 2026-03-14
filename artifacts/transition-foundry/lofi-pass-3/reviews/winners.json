@@ -1,0 +1,166 @@
+{
+  "reviewedAt": "2026-03-14T12:06:35.482Z",
+  "topK": 16,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "plasma-0022",
+      "recipe": "plasma",
+      "finalScore": 0.7607312154126472,
+      "mask": "masks/plasma-0022__seed-785583466.mp4",
+      "maskPreview": "mask-previews/plasma-0022__seed-785583466.mp4",
+      "overlay": "overlays/plasma-0022__seed-785583466.mp4",
+      "demo": "demos/plasma-0022__seed-785583466.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "plasma-0003",
+      "recipe": "plasma",
+      "finalScore": 0.6872484674097424,
+      "mask": "masks/plasma-0003__seed-543052227.mp4",
+      "maskPreview": "mask-previews/plasma-0003__seed-543052227.mp4",
+      "overlay": "overlays/plasma-0003__seed-543052227.mp4",
+      "demo": "demos/plasma-0003__seed-543052227.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "plasma-0032",
+      "recipe": "plasma",
+      "finalScore": 0.6742129989093795,
+      "mask": "masks/plasma-0032__seed-721594661.mp4",
+      "maskPreview": "mask-previews/plasma-0032__seed-721594661.mp4",
+      "overlay": "overlays/plasma-0032__seed-721594661.mp4",
+      "demo": "demos/plasma-0032__seed-721594661.mp4"
+    },
+    {
+      "rank": 4,
+      "id": "plasma-0006",
+      "recipe": "plasma",
+      "finalScore": 0.674068556371253,
+      "mask": "masks/plasma-0006__seed-305626299.mp4",
+      "maskPreview": "mask-previews/plasma-0006__seed-305626299.mp4",
+      "overlay": "overlays/plasma-0006__seed-305626299.mp4",
+      "demo": "demos/plasma-0006__seed-305626299.mp4"
+    },
+    {
+      "rank": 5,
+      "id": "plasma-0017",
+      "recipe": "plasma",
+      "finalScore": 0.6515740252347244,
+      "mask": "masks/plasma-0017__seed-887994340.mp4",
+      "maskPreview": "mask-previews/plasma-0017__seed-887994340.mp4",
+      "overlay": "overlays/plasma-0017__seed-887994340.mp4",
+      "demo": "demos/plasma-0017__seed-887994340.mp4"
+    },
+    {
+      "rank": 6,
+      "id": "plasma-0008",
+      "recipe": "plasma",
+      "finalScore": 0.6405244032541613,
+      "mask": "masks/plasma-0008__seed-880657965.mp4",
+      "maskPreview": "mask-previews/plasma-0008__seed-880657965.mp4",
+      "overlay": "overlays/plasma-0008__seed-880657965.mp4",
+      "demo": "demos/plasma-0008__seed-880657965.mp4"
+    },
+    {
+      "rank": 7,
+      "id": "glitch-bands-0035",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6361992629253563,
+      "mask": "masks/glitch-bands-0035__seed-196910040.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0035__seed-196910040.mp4",
+      "overlay": "overlays/glitch-bands-0035__seed-196910040.mp4",
+      "demo": "demos/glitch-bands-0035__seed-196910040.mp4"
+    },
+    {
+      "rank": 8,
+      "id": "glitch-bands-0039",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6345318183495678,
+      "mask": "masks/glitch-bands-0039__seed-443797902.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0039__seed-443797902.mp4",
+      "overlay": "overlays/glitch-bands-0039__seed-443797902.mp4",
+      "demo": "demos/glitch-bands-0039__seed-443797902.mp4"
+    },
+    {
+      "rank": 9,
+      "id": "plasma-0009",
+      "recipe": "plasma",
+      "finalScore": 0.6199918118723424,
+      "mask": "masks/plasma-0009__seed-219097779.mp4",
+      "maskPreview": "mask-previews/plasma-0009__seed-219097779.mp4",
+      "overlay": "overlays/plasma-0009__seed-219097779.mp4",
+      "demo": "demos/plasma-0009__seed-219097779.mp4"
+    },
+    {
+      "rank": 10,
+      "id": "plasma-0027",
+      "recipe": "plasma",
+      "finalScore": 0.6009028484918052,
+      "mask": "masks/plasma-0027__seed-976607068.mp4",
+      "maskPreview": "mask-previews/plasma-0027__seed-976607068.mp4",
+      "overlay": "overlays/plasma-0027__seed-976607068.mp4",
+      "demo": "demos/plasma-0027__seed-976607068.mp4"
+    },
+    {
+      "rank": 11,
+      "id": "glitch-bands-0026",
+      "recipe": "glitch-bands",
+      "finalScore": 0.5929851709754653,
+      "mask": "masks/glitch-bands-0026__seed-844294198.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0026__seed-844294198.mp4",
+      "overlay": "overlays/glitch-bands-0026__seed-844294198.mp4",
+      "demo": "demos/glitch-bands-0026__seed-844294198.mp4"
+    },
+    {
+      "rank": 12,
+      "id": "glitch-bands-0023",
+      "recipe": "glitch-bands",
+      "finalScore": 0.5909211158302219,
+      "mask": "masks/glitch-bands-0023__seed-356768077.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0023__seed-356768077.mp4",
+      "overlay": "overlays/glitch-bands-0023__seed-356768077.mp4",
+      "demo": "demos/glitch-bands-0023__seed-356768077.mp4"
+    },
+    {
+      "rank": 13,
+      "id": "white-burn-0038",
+      "recipe": "white-burn",
+      "finalScore": 0.5898453174131117,
+      "mask": "masks/white-burn-0038__seed-322795258.mp4",
+      "maskPreview": "mask-previews/white-burn-0038__seed-322795258.mp4",
+      "overlay": "overlays/white-burn-0038__seed-322795258.mp4",
+      "demo": "demos/white-burn-0038__seed-322795258.mp4"
+    },
+    {
+      "rank": 14,
+      "id": "glitch-bands-0033",
+      "recipe": "glitch-bands",
+      "finalScore": 0.5880722406305124,
+      "mask": "masks/glitch-bands-0033__seed-392009376.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0033__seed-392009376.mp4",
+      "overlay": "overlays/glitch-bands-0033__seed-392009376.mp4",
+      "demo": "demos/glitch-bands-0033__seed-392009376.mp4"
+    },
+    {
+      "rank": 15,
+      "id": "glitch-bands-0042",
+      "recipe": "glitch-bands",
+      "finalScore": 0.5688937731468522,
+      "mask": "masks/glitch-bands-0042__seed-30489031.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0042__seed-30489031.mp4",
+      "overlay": "overlays/glitch-bands-0042__seed-30489031.mp4",
+      "demo": "demos/glitch-bands-0042__seed-30489031.mp4"
+    },
+    {
+      "rank": 16,
+      "id": "plasma-0007",
+      "recipe": "plasma",
+      "finalScore": 0.5687723644779266,
+      "mask": "masks/plasma-0007__seed-243978423.mp4",
+      "maskPreview": "mask-previews/plasma-0007__seed-243978423.mp4",
+      "overlay": "overlays/plasma-0007__seed-243978423.mp4",
+      "demo": "demos/plasma-0007__seed-243978423.mp4"
+    }
+  ]
+}

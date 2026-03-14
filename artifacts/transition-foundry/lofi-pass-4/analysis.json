@@ -1,0 +1,861 @@
+{
+  "analyzedAt": "2026-03-14T12:14:49.106Z",
+  "manifestPath": "/Users/gareth/src/afterimage/artifacts/transition-foundry/lofi-pass-4/manifest.json",
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/lofi-pass-4",
+  "candidates": [
+    {
+      "id": "white-burn-0022",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 606538343,
+      "parameters": {
+        "noise": 19.251209888607264,
+        "blurA": 0.31256444598548117,
+        "blurB": 1.153105880320072,
+        "contrast": 2.2713296574074775,
+        "threshold": 146.42825304111466
+      },
+      "paths": {
+        "mask": "masks/white-burn-0022__seed-606538343.mp4",
+        "maskPreview": "mask-previews/white-burn-0022__seed-606538343.mp4",
+        "overlay": "overlays/white-burn-0022__seed-606538343.mp4",
+        "demo": "demos/white-burn-0022__seed-606538343.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.8669536885628281,
+        "occupancy": 0.9407407407407408,
+        "structure": 0,
+        "temporalMotion": 0.5964052287581699,
+        "baseScore": 0.6714274449240419,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 1,
+        "finalScore": 0.6810427234588634
+      }
+    },
+    {
+      "id": "white-burn-0003",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 567967539,
+      "parameters": {
+        "noise": 16.632335422560573,
+        "blurA": 0.7988606634549797,
+        "blurB": 0.6426346637774258,
+        "contrast": 1.9555726544000207,
+        "threshold": 143.6452457779087
+      },
+      "paths": {
+        "mask": "masks/white-burn-0003__seed-567967539.mp4",
+        "maskPreview": "mask-previews/white-burn-0003__seed-567967539.mp4",
+        "overlay": "overlays/white-burn-0003__seed-567967539.mp4",
+        "demo": "demos/white-burn-0003__seed-567967539.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.8430974794125012,
+        "occupancy": 0.9407407407407408,
+        "structure": 0,
+        "temporalMotion": 0.59640522875817,
+        "baseScore": 0.6618849612639112,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5726930502562491
+      }
+    },
+    {
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 741375506,
+      "parameters": {
+        "noise": 36.83603576757014,
+        "blurA": 0.22224182703066617,
+        "blurB": 0.45461937021464105,
+        "contrast": 2.6220918078906834,
+        "threshold": 135.85650623356923
+      },
+      "paths": {
+        "mask": "masks/white-burn-0001__seed-741375506.mp4",
+        "maskPreview": "mask-previews/white-burn-0001__seed-741375506.mp4",
+        "overlay": "overlays/white-burn-0001__seed-741375506.mp4",
+        "demo": "demos/white-burn-0001__seed-741375506.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7568229696085798,
+        "occupancy": 0.9407407407407408,
+        "structure": 0,
+        "temporalMotion": 0.47113289760348576,
+        "baseScore": 0.60858430766914,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.24313725490196078,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5237061221516739
+      }
+    },
+    {
+      "id": "block-decay-0020",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 486181193,
+      "parameters": {
+        "noise": 14.966858811676502,
+        "blockWidth": 47.17593340296298,
+        "blockHeight": 18.150099557824433,
+        "blur": 0.5676111483597197,
+        "contrast": 1.5695289762108586,
+        "threshold": 151.52165033854544
+      },
+      "paths": {
+        "mask": "masks/block-decay-0020__seed-486181193.mp4",
+        "maskPreview": "mask-previews/block-decay-0020__seed-486181193.mp4",
+        "overlay": "overlays/block-decay-0020__seed-486181193.mp4",
+        "demo": "demos/block-decay-0020__seed-486181193.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.744404668954985,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.59640522875817,
+        "baseScore": 0.6038893185623863,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5233357517813035
+      }
+    },
+    {
+      "id": "white-burn-0010",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 571300859,
+      "parameters": {
+        "noise": 32.49448015727103,
+        "blurA": 0.566671911184676,
+        "blurB": 0.38958083116449416,
+        "contrast": 2.529327326128259,
+        "threshold": 134.8824890893884
+      },
+      "paths": {
+        "mask": "masks/white-burn-0010__seed-571300859.mp4",
+        "maskPreview": "mask-previews/white-burn-0010__seed-571300859.mp4",
+        "overlay": "overlays/white-burn-0010__seed-571300859.mp4",
+        "demo": "demos/white-burn-0010__seed-571300859.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7460386558830896,
+        "occupancy": 0.9407407407407408,
+        "structure": 0,
+        "temporalMotion": 0.45479302832244006,
+        "baseScore": 0.6018196017867871,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.26666666666666666,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5174806319555956
+      }
+    },
+    {
+      "id": "block-decay-0002",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 670484645,
+      "parameters": {
+        "noise": 20.39599882438779,
+        "blockWidth": 44.26380658801645,
+        "blockHeight": 30.956537022721022,
+        "blur": 0.7946850591222756,
+        "contrast": 1.9378636298235508,
+        "threshold": 146.42057393677533
+      },
+      "paths": {
+        "mask": "masks/block-decay-0002__seed-670484645.mp4",
+        "maskPreview": "mask-previews/block-decay-0002__seed-670484645.mp4",
+        "overlay": "overlays/block-decay-0002__seed-670484645.mp4",
+        "demo": "demos/block-decay-0002__seed-670484645.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7221824467327627,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.59640522875817,
+        "baseScore": 0.5950004296734973,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5155579740035258
+      }
+    },
+    {
+      "id": "block-decay-0004",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 969467130,
+      "parameters": {
+        "noise": 17.28977895155549,
+        "blockWidth": 17.82657306548208,
+        "blockHeight": 20.205067582428455,
+        "blur": 0.30237204396398737,
+        "contrast": 2.2650209483574146,
+        "threshold": 133.24030278995633
+      },
+      "paths": {
+        "mask": "masks/block-decay-0004__seed-969467130.mp4",
+        "maskPreview": "mask-previews/block-decay-0004__seed-969467130.mp4",
+        "overlay": "overlays/block-decay-0004__seed-969467130.mp4",
+        "demo": "demos/block-decay-0004__seed-969467130.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6787183944451811,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.5882352941176471,
+        "baseScore": 0.567130059303127,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.07450980392156863,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.49171265809938636
+      }
+    },
+    {
+      "id": "block-decay-0012",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 520026709,
+      "parameters": {
+        "noise": 21.22341388091445,
+        "blockWidth": 30.059979176148772,
+        "blockHeight": 11.35566905606538,
+        "blur": 0.5469001007266343,
+        "contrast": 1.5002586385118775,
+        "threshold": 133.93216038309038
+      },
+      "paths": {
+        "mask": "masks/block-decay-0012__seed-520026709.mp4",
+        "maskPreview": "mask-previews/block-decay-0012__seed-520026709.mp4",
+        "overlay": "overlays/block-decay-0012__seed-520026709.mp4",
+        "demo": "demos/block-decay-0012__seed-520026709.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6787183944451811,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.5882352941176471,
+        "baseScore": 0.567130059303127,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.07450980392156863,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.49171265809938636
+      }
+    },
+    {
+      "id": "block-decay-0019",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 411846931,
+      "parameters": {
+        "noise": 22.64575954899192,
+        "blockWidth": 19.626363762654364,
+        "blockHeight": 21.75700141582638,
+        "blur": 0.7284604026470334,
+        "contrast": 1.9321760320919568,
+        "threshold": 133.76562876440585
+      },
+      "paths": {
+        "mask": "masks/block-decay-0019__seed-411846931.mp4",
+        "maskPreview": "mask-previews/block-decay-0019__seed-411846931.mp4",
+        "overlay": "overlays/block-decay-0019__seed-411846931.mp4",
+        "demo": "demos/block-decay-0019__seed-411846931.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6787183944451811,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.5882352941176471,
+        "baseScore": 0.567130059303127,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.07450980392156863,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.49171265809938636
+      }
+    },
+    {
+      "id": "block-decay-0005",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 383753999,
+      "parameters": {
+        "noise": 15.727709267288446,
+        "blockWidth": 23.974356599152088,
+        "blockHeight": 17.56708672037348,
+        "blur": 0.20002477599773555,
+        "contrast": 1.7782003928325139,
+        "threshold": 121.89500182494521
+      },
+      "paths": {
+        "mask": "masks/block-decay-0005__seed-383753999.mp4",
+        "maskPreview": "mask-previews/block-decay-0005__seed-383753999.mp4",
+        "overlay": "overlays/block-decay-0005__seed-383753999.mp4",
+        "demo": "demos/block-decay-0005__seed-383753999.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0006",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 208865503,
+      "parameters": {
+        "noise": 28.776928901672363,
+        "blockWidth": 44.38570084236562,
+        "blockHeight": 15.571996595244855,
+        "blur": 0.5313599939225242,
+        "contrast": 2.356579161528498,
+        "threshold": 91.55205501057208
+      },
+      "paths": {
+        "mask": "masks/block-decay-0006__seed-208865503.mp4",
+        "maskPreview": "mask-previews/block-decay-0006__seed-208865503.mp4",
+        "overlay": "overlays/block-decay-0006__seed-208865503.mp4",
+        "demo": "demos/block-decay-0006__seed-208865503.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0007",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 679919867,
+      "parameters": {
+        "noise": 19.699897162616253,
+        "blockWidth": 35.11828270088881,
+        "blockHeight": 29.502643481828272,
+        "blur": 0.5036787276156247,
+        "contrast": 2.362362170929555,
+        "threshold": 88.3745409809053
+      },
+      "paths": {
+        "mask": "masks/block-decay-0007__seed-679919867.mp4",
+        "maskPreview": "mask-previews/block-decay-0007__seed-679919867.mp4",
+        "overlay": "overlays/block-decay-0007__seed-679919867.mp4",
+        "demo": "demos/block-decay-0007__seed-679919867.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0008",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 944140956,
+      "parameters": {
+        "noise": 26.01127465814352,
+        "blockWidth": 31.7116337409243,
+        "blockHeight": 10.024145741481334,
+        "blur": 0.40274308250518515,
+        "contrast": 2.6502503764233554,
+        "threshold": 90.7399214990437
+      },
+      "paths": {
+        "mask": "masks/block-decay-0008__seed-944140956.mp4",
+        "maskPreview": "mask-previews/block-decay-0008__seed-944140956.mp4",
+        "overlay": "overlays/block-decay-0008__seed-944140956.mp4",
+        "demo": "demos/block-decay-0008__seed-944140956.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0013",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 380276013,
+      "parameters": {
+        "noise": 21.8798133097589,
+        "blockWidth": 43.789801011793315,
+        "blockHeight": 39.92576527642086,
+        "blur": 0.32519230113830416,
+        "contrast": 1.80150980547769,
+        "threshold": 113.17147888429463
+      },
+      "paths": {
+        "mask": "masks/block-decay-0013__seed-380276013.mp4",
+        "maskPreview": "mask-previews/block-decay-0013__seed-380276013.mp4",
+        "overlay": "overlays/block-decay-0013__seed-380276013.mp4",
+        "demo": "demos/block-decay-0013__seed-380276013.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0017",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 331019489,
+      "parameters": {
+        "noise": 23.30405217409134,
+        "blockWidth": 38.35930143203586,
+        "blockHeight": 15.302232515532523,
+        "blur": 0.09378085606731475,
+        "contrast": 1.728383688419126,
+        "threshold": 112.74196406453848
+      },
+      "paths": {
+        "mask": "masks/block-decay-0017__seed-331019489.mp4",
+        "maskPreview": "mask-previews/block-decay-0017__seed-331019489.mp4",
+        "overlay": "overlays/block-decay-0017__seed-331019489.mp4",
+        "demo": "demos/block-decay-0017__seed-331019489.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0021",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 635079098,
+      "parameters": {
+        "noise": 27.083855219185352,
+        "blockWidth": 20.582187209278345,
+        "blockHeight": 21.82228419696912,
+        "blur": 0.6997871972969734,
+        "contrast": 1.6425025691161863,
+        "threshold": 126.80844602175057
+      },
+      "paths": {
+        "mask": "masks/block-decay-0021__seed-635079098.mp4",
+        "maskPreview": "mask-previews/block-decay-0021__seed-635079098.mp4",
+        "overlay": "overlays/block-decay-0021__seed-635079098.mp4",
+        "demo": "demos/block-decay-0021__seed-635079098.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0023",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 85145244,
+      "parameters": {
+        "noise": 29.170259069651365,
+        "blockWidth": 32.542283731512725,
+        "blockHeight": 36.69656902551651,
+        "blur": 0.6064758144319058,
+        "contrast": 2.5113982897484677,
+        "threshold": 103.70420905575156
+      },
+      "paths": {
+        "mask": "masks/block-decay-0023__seed-85145244.mp4",
+        "maskPreview": "mask-previews/block-decay-0023__seed-85145244.mp4",
+        "overlay": "overlays/block-decay-0023__seed-85145244.mp4",
+        "demo": "demos/block-decay-0023__seed-85145244.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "block-decay-0024",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 911783612,
+      "parameters": {
+        "noise": 16.832631647586823,
+        "blockWidth": 36.21381703391671,
+        "blockHeight": 36.48073876975104,
+        "blur": 0.6015350031200797,
+        "contrast": 1.6525639556813985,
+        "threshold": 125.88461032323539
+      },
+      "paths": {
+        "mask": "masks/block-decay-0024__seed-911783612.mp4",
+        "maskPreview": "mask-previews/block-decay-0024__seed-911783612.mp4",
+        "overlay": "overlays/block-decay-0024__seed-911783612.mp4",
+        "demo": "demos/block-decay-0024__seed-911783612.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6564961722229588,
+        "occupancy": 0.8296296296296296,
+        "structure": 0,
+        "temporalMotion": 0.525599128540305,
+        "baseScore": 0.5488457455776368,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.16470588235294117,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.47453945548500726
+      }
+    },
+    {
+      "id": "white-burn-0016",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 790120130,
+      "parameters": {
+        "noise": 30.67037543654442,
+        "blurA": 0.6113025177270174,
+        "blurB": 0.5580250297905878,
+        "contrast": 1.4613651169929653,
+        "threshold": 128.85891488101333
+      },
+      "paths": {
+        "mask": "masks/white-burn-0016__seed-790120130.mp4",
+        "maskPreview": "mask-previews/white-burn-0016__seed-790120130.mp4",
+        "overlay": "overlays/white-burn-0016__seed-790120130.mp4",
+        "demo": "demos/white-burn-0016__seed-790120130.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6803945382360306,
+        "occupancy": 0.8681630957298474,
+        "structure": 0.025785790849673206,
+        "temporalMotion": 0.3534183006535947,
+        "baseScore": 0.5473684924948479,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.42222745098039216,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.469940610796554
+      }
+    },
+    {
+      "id": "white-burn-0009",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 278050681,
+      "parameters": {
+        "noise": 14.335382895544171,
+        "blurA": 0.363540705491323,
+        "blurB": 0.4916023744968697,
+        "contrast": 1.709087720233947,
+        "threshold": 85.58100168639794
+      },
+      "paths": {
+        "mask": "masks/white-burn-0009__seed-278050681.mp4",
+        "maskPreview": "mask-previews/white-burn-0009__seed-278050681.mp4",
+        "overlay": "overlays/white-burn-0009__seed-278050681.mp4",
+        "demo": "demos/white-burn-0009__seed-278050681.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6780647996739393,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.3431372549019608,
+        "baseScore": 0.5393631747715365,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.42745098039215684,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.4621266014545062
+      }
+    },
+    {
+      "id": "white-burn-0011",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 290979904,
+      "parameters": {
+        "noise": 35.64688643068075,
+        "blurA": 0.4186898348387331,
+        "blurB": 0.7107889368664473,
+        "contrast": 1.6318101739976554,
+        "threshold": 99.77452049544081
+      },
+      "paths": {
+        "mask": "masks/white-burn-0011__seed-290979904.mp4",
+        "maskPreview": "mask-previews/white-burn-0011__seed-290979904.mp4",
+        "overlay": "overlays/white-burn-0011__seed-290979904.mp4",
+        "demo": "demos/white-burn-0011__seed-290979904.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6780647996739393,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.3431372549019608,
+        "baseScore": 0.5393631747715365,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.42745098039215684,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.4621266014545062
+      }
+    },
+    {
+      "id": "white-burn-0014",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 987163827,
+      "parameters": {
+        "noise": 25.65080844424665,
+        "blurA": 0.46951851522317156,
+        "blurB": 0.979884267412126,
+        "contrast": 2.5633036577608435,
+        "threshold": 91.10745552973822
+      },
+      "paths": {
+        "mask": "masks/white-burn-0014__seed-987163827.mp4",
+        "maskPreview": "mask-previews/white-burn-0014__seed-987163827.mp4",
+        "overlay": "overlays/white-burn-0014__seed-987163827.mp4",
+        "demo": "demos/white-burn-0014__seed-987163827.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6780647996739393,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.3431372549019608,
+        "baseScore": 0.5393631747715365,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.42745098039215684,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.4621266014545062
+      }
+    },
+    {
+      "id": "white-burn-0015",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 845453425,
+      "parameters": {
+        "noise": 19.50827429816127,
+        "blurA": 0.5035873109009117,
+        "blurB": 0.5376018921844661,
+        "contrast": 1.9259999003261328,
+        "threshold": 99.01030392898247
+      },
+      "paths": {
+        "mask": "masks/white-burn-0015__seed-845453425.mp4",
+        "maskPreview": "mask-previews/white-burn-0015__seed-845453425.mp4",
+        "overlay": "overlays/white-burn-0015__seed-845453425.mp4",
+        "demo": "demos/white-burn-0015__seed-845453425.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6780647996739393,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.3431372549019608,
+        "baseScore": 0.5393631747715365,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.42745098039215684,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.4621266014545062
+      }
+    },
+    {
+      "id": "white-burn-0018",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 900476850,
+      "parameters": {
+        "noise": 31.358469236642122,
+        "blurA": 0.34060059597250075,
+        "blurB": 1.1153341678669675,
+        "contrast": 2.09475876330398,
+        "threshold": 119.36330665647984
+      },
+      "paths": {
+        "mask": "masks/white-burn-0018__seed-900476850.mp4",
+        "maskPreview": "mask-previews/white-burn-0018__seed-900476850.mp4",
+        "overlay": "overlays/white-burn-0018__seed-900476850.mp4",
+        "demo": "demos/white-burn-0018__seed-900476850.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6780647996739393,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.3431372549019608,
+        "baseScore": 0.5393631747715365,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 12,
+        "startLuma": 0.42745098039215684,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.4621266014545062
+      }
+    }
+  ]
+}
