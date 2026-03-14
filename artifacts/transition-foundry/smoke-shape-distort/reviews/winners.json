@@ -1,0 +1,36 @@
+{
+  "reviewedAt": "2026-03-14T11:51:23.765Z",
+  "topK": 3,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "glitch-bands-0003",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6133717774509804,
+      "mask": "masks/glitch-bands-0003__seed-957853143.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0003__seed-957853143.mp4",
+      "overlay": "overlays/glitch-bands-0003__seed-957853143.mp4",
+      "demo": "demos/glitch-bands-0003__seed-957853143.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "block-decay-0001",
+      "recipe": "block-decay",
+      "finalScore": 0.501764705882353,
+      "mask": "masks/block-decay-0001__seed-235319857.mp4",
+      "maskPreview": "mask-previews/block-decay-0001__seed-235319857.mp4",
+      "overlay": "overlays/block-decay-0001__seed-235319857.mp4",
+      "demo": "demos/block-decay-0001__seed-235319857.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "block-decay-0002",
+      "recipe": "block-decay",
+      "finalScore": 0.476764705882353,
+      "mask": "masks/block-decay-0002__seed-263976030.mp4",
+      "maskPreview": "mask-previews/block-decay-0002__seed-263976030.mp4",
+      "overlay": "overlays/block-decay-0002__seed-263976030.mp4",
+      "demo": "demos/block-decay-0002__seed-263976030.mp4"
+    }
+  ]
+}

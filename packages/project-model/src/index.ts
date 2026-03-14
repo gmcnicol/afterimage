@@ -21,7 +21,8 @@ export type AssistedGenerationStrategy =
   | 'motif'
   | 'seeded-constrained';
 export type FilterStackScope = 'sequence' | 'clip' | 'preset';
-export type AutomationTargetProperty = 'mix' | 'amount' | 'contrast' | 'brightness' | 'saturation' | 'blur' | 'bloom' | 'chromaOffset' | 'glitch';
+export type SupportedFilterType = 'contrast' | 'brightness' | 'blur' | 'bloom-soft' | 'glitch-bands' | 'chroma-bleed';
+export type AutomationTargetProperty = 'mix' | 'contrast' | 'brightness' | 'radius' | 'strength';
 export type StudioErrorCode =
   | 'invalid-project-file'
   | 'schema-validation-failure'
@@ -450,9 +451,154 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
 }
 
 export interface ProjectIntegrityIssue {
-  code: 'duplicate-id' | 'missing-reference' | 'invalid-range';
+  code: 'duplicate-id' | 'missing-reference' | 'invalid-range' | 'unsupported-value';
   path: string;
   message: string;
+}
+
+export interface FilterParameterDefinition {
+  key: Exclude<AutomationTargetProperty, 'mix'>;
+  label: string;
+  min: number;
+  max: number;
+  defaultValue: number;
+  step: number;
+}
+
+export interface FilterDefinition {
+  type: SupportedFilterType;
+  label: string;
+  ffmpegGroup: 'eq' | 'gblur' | 'noise';
+  parameters: readonly FilterParameterDefinition[];
+}
+
+const SUPPORTED_FILTER_DEFINITIONS = [
+  {
+    type: 'contrast',
+    label: 'Contrast',
+    ffmpegGroup: 'eq',
+    parameters: [
+      {
+        key: 'contrast',
+        label: 'Contrast',
+        min: 0,
+        max: 1,
+        defaultValue: 0.35,
+        step: 0.01
+      }
+    ]
+  },
+  {
+    type: 'brightness',
+    label: 'Brightness',
+    ffmpegGroup: 'eq',
+    parameters: [
+      {
+        key: 'brightness',
+        label: 'Brightness',
+        min: 0,
+        max: 1,
+        defaultValue: 0.5,
+        step: 0.01
+      }
+    ]
+  },
+  {
+    type: 'blur',
+    label: 'Blur',
+    ffmpegGroup: 'gblur',
+    parameters: [
+      {
+        key: 'radius',
+        label: 'Radius',
+        min: 0,
+        max: 1,
+        defaultValue: 0.24,
+        step: 0.01
+      }
+    ]
+  },
+  {
+    type: 'bloom-soft',
+    label: 'Bloom Soft',
+    ffmpegGroup: 'gblur',
+    parameters: [
+      {
+        key: 'strength',
+        label: 'Strength',
+        min: 0,
+        max: 1,
+        defaultValue: 0.28,
+        step: 0.01
+      }
+    ]
+  },
+  {
+    type: 'glitch-bands',
+    label: 'Glitch Bands',
+    ffmpegGroup: 'noise',
+    parameters: [
+      {
+        key: 'strength',
+        label: 'Strength',
+        min: 0,
+        max: 1,
+        defaultValue: 0.22,
+        step: 0.01
+      }
+    ]
+  },
+  {
+    type: 'chroma-bleed',
+    label: 'Chroma Bleed',
+    ffmpegGroup: 'eq',
+    parameters: [
+      {
+        key: 'strength',
+        label: 'Strength',
+        min: 0,
+        max: 1,
+        defaultValue: 0.25,
+        step: 0.01
+      }
+    ]
+  }
+] as const satisfies readonly FilterDefinition[];
+
+export const supportedFilterDefinitions = SUPPORTED_FILTER_DEFINITIONS;
+export const supportedFilterTypes = SUPPORTED_FILTER_DEFINITIONS.map((definition) => definition.type);
+
+export function isSupportedFilterType(value: string): value is SupportedFilterType {
+  return supportedFilterTypes.includes(value as SupportedFilterType);
+}
+
+export function getFilterDefinition(type: string): FilterDefinition | undefined {
+  return SUPPORTED_FILTER_DEFINITIONS.find((definition) => definition.type === type);
+}
+
+export function getDefaultFilterParameters(type: SupportedFilterType): Record<Exclude<AutomationTargetProperty, 'mix'>, JsonPrimitive> {
+  const definition = getFilterDefinition(type);
+  return Object.fromEntries(
+    (definition?.parameters ?? []).map((parameter) => [parameter.key, parameter.defaultValue])
+  ) as Record<Exclude<AutomationTargetProperty, 'mix'>, JsonPrimitive>;
+}
+
+export function getSupportedAutomationProperties(type: string): AutomationTargetProperty[] {
+  const definition = getFilterDefinition(type);
+  return definition ? ['mix', ...definition.parameters.map((parameter) => parameter.key)] : [];
+}
+
+export function getFilterParameterValue(filter: FilterInstance | PresetFilter, property: Exclude<AutomationTargetProperty, 'mix'>): number | undefined {
+  if ('amount' in filter) {
+    return property === getPrimaryAutomationProperty(filter.type) ? filter.amount : undefined;
+  }
+
+  const value = filter.parameters?.[property];
+  return typeof value === 'number' ? value : undefined;
+}
+
+export function getPrimaryAutomationProperty(type: string): Exclude<AutomationTargetProperty, 'mix'> | undefined {
+  return getFilterDefinition(type)?.parameters[0]?.key;
 }
 
 function compareStrings(left: string, right: string): number {
@@ -510,6 +656,7 @@ export function normalizeProjectPathRef(path: ProjectPathRef): ProjectPathRef {
 export function normalizePresetFilter(filter: PresetFilter): PresetFilter {
   return {
     ...filter,
+    amount: clampUnit(filter.amount) ?? 0,
     mix: filter.mix ?? 1
   };
 }
@@ -668,11 +815,23 @@ export function normalizeSection(section: Section): Section {
 }
 
 export function normalizeFilterInstance(filter: FilterInstance): FilterInstance {
+  const definition = getFilterDefinition(filter.type);
+  const normalizedParameters = normalizeJsonRecord(filter.parameters);
+  const mergedParameters = definition
+    ? Object.fromEntries(
+        definition.parameters.map((parameter) => {
+          const candidate = normalizedParameters[parameter.key];
+          const numericValue = typeof candidate === 'number' ? candidate : parameter.defaultValue;
+          return [parameter.key, Math.max(parameter.min, Math.min(parameter.max, numericValue))];
+        })
+      )
+    : normalizedParameters;
+
   return {
     ...filter,
     enabled: normalizeBoolean(filter.enabled, true),
-    parameters: normalizeJsonRecord(filter.parameters),
-    mix: filter.mix ?? 1,
+    parameters: mergedParameters,
+    mix: clampUnit(filter.mix) ?? 1,
     automationLaneIds: normalizeStringArray(filter.automationLaneIds)
   };
 }
@@ -927,9 +1086,29 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   for (const stack of project.filterStacks) {
     issues.push(...collectDuplicateIdIssues(`filterStacks.${stack.id}.filters`, stack.filters.map((filter) => filter.id)));
     for (const filter of stack.filters) {
+      const definition = getFilterDefinition(filter.type);
+      if (!definition) {
+        issues.push({
+          code: 'unsupported-value',
+          path: `filterStacks.${stack.id}.filters.${filter.id}.type`,
+          message: `Filter "${filter.id}" uses unsupported type "${filter.type}".`
+        });
+      }
       for (const laneId of filter.automationLaneIds ?? []) {
         if (!laneIds.has(laneId)) {
           pushMissingReference(issues, `filterStacks.${stack.id}.filters.${filter.id}.automationLaneIds`, `Filter "${filter.id}" references missing automation lane "${laneId}".`);
+        }
+      }
+      if (definition) {
+        const supportedKeys = new Set(definition.parameters.map((parameter) => parameter.key));
+        for (const parameterKey of Object.keys(filter.parameters ?? {})) {
+          if (!supportedKeys.has(parameterKey as Exclude<AutomationTargetProperty, 'mix'>)) {
+            issues.push({
+              code: 'unsupported-value',
+              path: `filterStacks.${stack.id}.filters.${filter.id}.parameters.${parameterKey}`,
+              message: `Filter "${filter.id}" does not support parameter "${parameterKey}".`
+            });
+          }
         }
       }
     }
@@ -938,11 +1117,37 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   for (const lane of project.automationLanes) {
     if (!filterIds.has(lane.target.filterId)) {
       pushMissingReference(issues, `automationLanes.${lane.id}.target.filterId`, `Automation lane "${lane.id}" references missing filter "${lane.target.filterId}".`);
+    } else {
+      const targetFilter = project.filterStacks
+        .flatMap((stack) => stack.filters)
+        .find((filter) => filter.id === lane.target.filterId);
+      if (targetFilter) {
+        const supportedProperties = new Set(getSupportedAutomationProperties(targetFilter.type));
+        if (!supportedProperties.has(lane.target.property)) {
+          issues.push({
+            code: 'unsupported-value',
+            path: `automationLanes.${lane.id}.target.property`,
+            message: `Automation lane "${lane.id}" targets unsupported property "${lane.target.property}" for filter "${targetFilter.id}".`
+          });
+        }
+      }
     }
     if (lane.midiIntent && !midiMappingIds.has(lane.midiIntent.mappingId)) {
       pushMissingReference(issues, `automationLanes.${lane.id}.midiIntent.mappingId`, `Automation lane "${lane.id}" references missing MIDI mapping "${lane.midiIntent.mappingId}".`);
     }
     issues.push(...collectDuplicateIdIssues(`automationLanes.${lane.id}.keyframes`, lane.keyframes.map((keyframe) => keyframe.id)));
+  }
+
+  for (const preset of project.presets) {
+    for (const filter of preset.filters) {
+      if (!isSupportedFilterType(filter.type)) {
+        issues.push({
+          code: 'unsupported-value',
+          path: `presets.${preset.id}.filters.${filter.type}`,
+          message: `Preset "${preset.id}" uses unsupported filter type "${filter.type}".`
+        });
+      }
+    }
   }
 
   if (project.defaultSequenceId && !sequenceIds.has(project.defaultSequenceId)) {

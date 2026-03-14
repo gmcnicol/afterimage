@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { MediaAsset, NormalizedProjectFile } from '@afterimage/project-model';
-import { createEmptyProject } from '@afterimage/project-model';
+import type { AutomationTargetProperty, MediaAsset, NormalizedProjectFile, SupportedFilterType } from '@afterimage/project-model';
+import { createEmptyProject, getDefaultFilterParameters, getFilterDefinition, getPrimaryAutomationProperty } from '@afterimage/project-model';
 import {
   addCutToSequence,
   addMarker,
@@ -10,11 +10,43 @@ import {
   moveClip,
   trimClip
 } from '../operations/sequence-ops';
-import { addLaneKeyframe, addAutomationLane, resetLane } from '../operations/automation-ops';
+import {
+  addLaneKeyframe,
+  addAutomationLane,
+  removeAutomationLane,
+  removeLaneKeyframe,
+  resetLane,
+  setAutomationLaneEnabled,
+  updateAutomationLaneTarget,
+  updateLaneKeyframe
+} from '../operations/automation-ops';
 import { addCutToBin, toggleCutFavorite, trimCut, updateCutStatus } from '../operations/cut-ops';
 import { mergeImportedAssets, replaceAssetPath, setVariantMusicAsset, setVariantMusicSyncMode, toggleExportProfile } from '../operations/project-ops';
-import { addFilterToStack, safeRandomizeFilter, safeRandomizeStack, toggleFilterEnabled } from '../operations/style-ops';
+import {
+  addFilterToStack,
+  applyPresetToStack,
+  moveFilterInStack,
+  removeFilterFromStack,
+  safeRandomizeFilter,
+  safeRandomizeStack,
+  toggleFilterEnabled,
+  updateFilterMix,
+  updateFilterParameter
+} from '../operations/style-ops';
 import type { Marker, SyncMode } from '@afterimage/project-model';
+import { useUiStore } from './ui-store';
+
+function invalidatePreview(): void {
+  useUiStore.getState().setPreviewPath(undefined);
+}
+
+function markDirty<T extends Record<string, unknown>>(partial: T): T & { dirty: true } {
+  invalidatePreview();
+  return {
+    ...partial,
+    dirty: true
+  };
+}
 
 interface ProjectSessionState {
   project: NormalizedProjectFile;
@@ -36,12 +68,22 @@ interface ProjectSessionState {
   duplicateVariant: (variantId: string) => void;
   addMarker: (variantId: string, label: string, timeMs: number) => void;
   addSection: (variantId: string, label: string, startMs: number, endMs: number) => void;
-  addFilterToSequenceStack: (type: string) => void;
+  addFilterToSequenceStack: (type: SupportedFilterType) => void;
+  removeFilterFromSequenceStack: (stackId: string, filterId: string) => void;
+  moveFilterInSequenceStack: (stackId: string, filterId: string, direction: -1 | 1) => void;
   toggleFilterEnabled: (stackId: string, filterId: string) => void;
+  updateFilterMix: (stackId: string, filterId: string, mix: number) => void;
+  updateFilterParameter: (stackId: string, filterId: string, key: Exclude<AutomationTargetProperty, 'mix'>, value: number) => void;
+  applyPresetToSequenceStack: (presetId: string) => void;
   safeRandomizeFilter: (stackId: string, filterId: string) => void;
   safeRandomizeStack: (stackId: string) => void;
-  addAutomationLane: (filterId: string, name: string) => void;
+  addAutomationLane: (filterId: string, property: AutomationTargetProperty, name: string) => void;
+  removeAutomationLane: (laneId: string) => void;
+  updateAutomationLaneTarget: (laneId: string, filterId: string, property: AutomationTargetProperty) => void;
+  setAutomationLaneEnabled: (laneId: string, enabled: boolean) => void;
   addLaneKeyframe: (laneId: string, timeMs: number, value: number) => void;
+  updateLaneKeyframe: (laneId: string, keyframeId: string, timeMs: number, value: number) => void;
+  removeLaneKeyframe: (laneId: string, keyframeId: string) => void;
   resetLane: (laneId: string) => void;
   toggleExportProfile: (profileId: string) => void;
   setVariantMusicAsset: (variantId: string, assetId: string) => void;
@@ -71,6 +113,7 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       project,
       dirty: true
     });
+    invalidatePreview();
   },
   mergeImportedAssets: (assets) => {
     set((state) => ({
@@ -112,96 +155,116 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
     }));
   },
   addCutToSequence: (cutId) => {
-    set((state) => ({
-      project: addCutToSequence(state.project, cutId),
-      dirty: true
+    set((state) => markDirty({
+      project: addCutToSequence(state.project, cutId)
     }));
   },
   moveClip: (variantId, clipId, direction) => {
-    set((state) => ({
-      project: moveClip(state.project, variantId, clipId, direction),
-      dirty: true
+    set((state) => markDirty({
+      project: moveClip(state.project, variantId, clipId, direction)
     }));
   },
   trimClip: (variantId, clipId, deltaMs) => {
-    set((state) => ({
-      project: trimClip(state.project, variantId, clipId, deltaMs),
-      dirty: true
+    set((state) => markDirty({
+      project: trimClip(state.project, variantId, clipId, deltaMs)
     }));
   },
   duplicateVariant: (variantId) => {
-    set((state) => ({
-      project: duplicateVariant(state.project, variantId),
-      dirty: true
+    set((state) => markDirty({
+      project: duplicateVariant(state.project, variantId)
     }));
   },
   addMarker: (variantId, label, timeMs) => {
-    set((state) => ({
+    set((state) => markDirty({
       project: addMarker(state.project, variantId, {
         id: `marker-${Date.now()}`,
         label,
         timeMs,
         kind: 'marker'
-      }),
-      dirty: true
+      })
     }));
   },
   addSection: (variantId, label, startMs, endMs) => {
-    set((state) => ({
+    set((state) => markDirty({
       project: addSection(state.project, variantId, {
         id: `section-${Date.now()}`,
         label,
         startMs,
         endMs
-      }),
-      dirty: true
+      })
     }));
   },
   addFilterToSequenceStack: (type) => {
+    const stackId = get().project.variants[0]?.stackId;
+    const definition = getFilterDefinition(type);
+    const primaryKey = getPrimaryAutomationProperty(type);
+    if (!stackId || !definition || !primaryKey) {
+      return;
+    }
+
+    set((state) => markDirty({
+      project: addFilterToStack(state.project, stackId, {
+        id: `filter-${Date.now()}`,
+        type,
+        enabled: true,
+        parameters: getDefaultFilterParameters(type),
+        mix: 0.8
+      })
+    }));
+  },
+  removeFilterFromSequenceStack: (stackId, filterId) => {
+    set((state) => markDirty({
+      project: removeFilterFromStack(state.project, stackId, filterId)
+    }));
+  },
+  moveFilterInSequenceStack: (stackId, filterId, direction) => {
+    set((state) => markDirty({
+      project: moveFilterInStack(state.project, stackId, filterId, direction)
+    }));
+  },
+  toggleFilterEnabled: (stackId, filterId) => {
+    set((state) => markDirty({
+      project: toggleFilterEnabled(state.project, stackId, filterId)
+    }));
+  },
+  updateFilterMix: (stackId, filterId, mix) => {
+    set((state) => markDirty({
+      project: updateFilterMix(state.project, stackId, filterId, mix)
+    }));
+  },
+  updateFilterParameter: (stackId, filterId, key, value) => {
+    set((state) => markDirty({
+      project: updateFilterParameter(state.project, stackId, filterId, key, value)
+    }));
+  },
+  applyPresetToSequenceStack: (presetId) => {
     const stackId = get().project.variants[0]?.stackId;
     if (!stackId) {
       return;
     }
 
-    set((state) => ({
-      project: addFilterToStack(state.project, stackId, {
-        id: `filter-${Date.now()}`,
-        type,
-        enabled: true,
-        parameters: {
-          amount: 0.25
-        },
-        mix: 0.8
-      }),
-      dirty: true
-    }));
-  },
-  toggleFilterEnabled: (stackId, filterId) => {
-    set((state) => ({
-      project: toggleFilterEnabled(state.project, stackId, filterId),
-      dirty: true
+    set((state) => markDirty({
+      project: applyPresetToStack(state.project, presetId, stackId)
     }));
   },
   safeRandomizeFilter: (stackId, filterId) => {
-    set((state) => ({
-      project: safeRandomizeFilter(state.project, stackId, filterId),
-      dirty: true
+    set((state) => markDirty({
+      project: safeRandomizeFilter(state.project, stackId, filterId)
     }));
   },
   safeRandomizeStack: (stackId) => {
-    set((state) => ({
-      project: safeRandomizeStack(state.project, stackId),
-      dirty: true
+    set((state) => markDirty({
+      project: safeRandomizeStack(state.project, stackId)
     }));
   },
-  addAutomationLane: (filterId, name) => {
-    set((state) => ({
+  addAutomationLane: (filterId, property, name) => {
+    set((state) => markDirty({
       project: addAutomationLane(state.project, {
         id: `lane-${Date.now()}`,
         name,
         target: {
           filterId,
-          property: 'mix'
+          property
         },
         enabled: true,
         keyframes: [
@@ -211,24 +274,46 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
             value: 0.5
           }
         ]
-      }),
-      dirty: true
+      })
+    }));
+  },
+  removeAutomationLane: (laneId) => {
+    set((state) => markDirty({
+      project: removeAutomationLane(state.project, laneId)
+    }));
+  },
+  updateAutomationLaneTarget: (laneId, filterId, property) => {
+    set((state) => markDirty({
+      project: updateAutomationLaneTarget(state.project, laneId, { filterId, property })
+    }));
+  },
+  setAutomationLaneEnabled: (laneId, enabled) => {
+    set((state) => markDirty({
+      project: setAutomationLaneEnabled(state.project, laneId, enabled)
     }));
   },
   addLaneKeyframe: (laneId, timeMs, value) => {
-    set((state) => ({
+    set((state) => markDirty({
       project: addLaneKeyframe(state.project, laneId, {
         id: `keyframe-${Date.now()}`,
         timeMs,
         value
-      }),
-      dirty: true
+      })
+    }));
+  },
+  updateLaneKeyframe: (laneId, keyframeId, timeMs, value) => {
+    set((state) => markDirty({
+      project: updateLaneKeyframe(state.project, laneId, keyframeId, { timeMs, value })
+    }));
+  },
+  removeLaneKeyframe: (laneId, keyframeId) => {
+    set((state) => markDirty({
+      project: removeLaneKeyframe(state.project, laneId, keyframeId)
     }));
   },
   resetLane: (laneId) => {
-    set((state) => ({
-      project: resetLane(state.project, laneId),
-      dirty: true
+    set((state) => markDirty({
+      project: resetLane(state.project, laneId)
     }));
   },
   toggleExportProfile: (profileId) => {
@@ -238,21 +323,18 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
     }));
   },
   setVariantMusicAsset: (variantId, assetId) => {
-    set((state) => ({
-      project: setVariantMusicAsset(state.project, variantId, assetId),
-      dirty: true
+    set((state) => markDirty({
+      project: setVariantMusicAsset(state.project, variantId, assetId)
     }));
   },
   setVariantMusicSyncMode: (variantId, syncMode) => {
-    set((state) => ({
-      project: setVariantMusicSyncMode(state.project, variantId, syncMode),
-      dirty: true
+    set((state) => markDirty({
+      project: setVariantMusicSyncMode(state.project, variantId, syncMode)
     }));
   },
   applySyncMarkers: (variantId, markers) => {
-    set((state) => ({
-      project: applySyncMarkers(state.project, variantId, markers),
-      dirty: true
+    set((state) => markDirty({
+      project: applySyncMarkers(state.project, variantId, markers)
     }));
   },
   markSaved: (input) => {

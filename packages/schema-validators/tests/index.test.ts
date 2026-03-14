@@ -52,6 +52,53 @@ describe('@afterimage/schema-validators', () => {
     expect(migrated.variants[0].clips[0].cutId).toBe('cut-segment-intro');
   });
 
+  it('silently upgrades stale style contracts in current-shape project files', () => {
+    const migrated = parseProject({
+      ...fixtureProject,
+      version: 2,
+      filterStacks: [
+        {
+          ...fixtureProject.filterStacks[0],
+          filters: [
+            {
+              id: 'filter-legacy-contrast',
+              type: 'contrast-pulse',
+              enabled: true,
+              orderIndex: 0,
+              parameters: {
+                amount: 0.3
+              },
+              mix: 0.75,
+              automationLaneIds: ['lane-legacy-contrast']
+            }
+          ]
+        }
+      ],
+      automationLanes: [
+        {
+          id: 'lane-legacy-contrast',
+          name: 'Legacy Contrast',
+          target: {
+            filterId: 'filter-legacy-contrast',
+            property: 'amount'
+          },
+          enabled: true,
+          keyframes: [
+            {
+              id: 'keyframe-1',
+              timeMs: 0,
+              value: 0.4
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(migrated.filterStacks[0].filters[0].type).toBe('contrast');
+    expect(migrated.filterStacks[0].filters[0].parameters?.contrast).toBe(0.3);
+    expect(migrated.automationLanes[0].target.property).toBe('contrast');
+  });
+
   it('returns structured validation issues for invalid input', () => {
     expect(validateProject({
       ...fixtureProject,
@@ -92,6 +139,30 @@ describe('@afterimage/schema-validators', () => {
           message: "must have required property 'family'",
           path: '/',
           source: 'schema'
+        }
+      ]
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      automationLanes: [
+        {
+          ...fixtureProject.automationLanes[0],
+          target: {
+            filterId: fixtureProject.filterStacks[0].filters[0].id,
+            property: 'brightness'
+          }
+        }
+      ]
+    })).toEqual({
+      ok: false,
+      code: 'invalid-project-file',
+      errors: [
+        {
+          keyword: 'unsupported-value',
+          message: 'Automation lane "lane-bloom-mix" targets unsupported property "brightness" for filter "filter-main-bloom".',
+          path: 'automationLanes.lane-bloom-mix.target.property',
+          source: 'integrity'
         }
       ]
     });

@@ -16,7 +16,7 @@ if (!projectPath) {
 }
 
 const projectRoot = path.dirname(projectPath);
-const expectedOutputPath = path.join(projectRoot, 'exports', 'afterimagetest1-landscape-master.mov');
+const expectedOutputPath = path.join(projectRoot, 'exports', 'afterimagetest1-landscape-master.mp4');
 
 async function waitForFile(filePath, timeoutMs = 600000) {
   const deadline = Date.now() + timeoutMs;

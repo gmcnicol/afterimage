@@ -1,0 +1,166 @@
+{
+  "reviewedAt": "2026-03-14T12:14:49.513Z",
+  "topK": 16,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "white-burn-0022",
+      "recipe": "white-burn",
+      "finalScore": 0.6810427234588634,
+      "mask": "masks/white-burn-0022__seed-606538343.mp4",
+      "maskPreview": "mask-previews/white-burn-0022__seed-606538343.mp4",
+      "overlay": "overlays/white-burn-0022__seed-606538343.mp4",
+      "demo": "demos/white-burn-0022__seed-606538343.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "white-burn-0003",
+      "recipe": "white-burn",
+      "finalScore": 0.5726930502562491,
+      "mask": "masks/white-burn-0003__seed-567967539.mp4",
+      "maskPreview": "mask-previews/white-burn-0003__seed-567967539.mp4",
+      "overlay": "overlays/white-burn-0003__seed-567967539.mp4",
+      "demo": "demos/white-burn-0003__seed-567967539.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "finalScore": 0.5237061221516739,
+      "mask": "masks/white-burn-0001__seed-741375506.mp4",
+      "maskPreview": "mask-previews/white-burn-0001__seed-741375506.mp4",
+      "overlay": "overlays/white-burn-0001__seed-741375506.mp4",
+      "demo": "demos/white-burn-0001__seed-741375506.mp4"
+    },
+    {
+      "rank": 4,
+      "id": "block-decay-0020",
+      "recipe": "block-decay",
+      "finalScore": 0.5233357517813035,
+      "mask": "masks/block-decay-0020__seed-486181193.mp4",
+      "maskPreview": "mask-previews/block-decay-0020__seed-486181193.mp4",
+      "overlay": "overlays/block-decay-0020__seed-486181193.mp4",
+      "demo": "demos/block-decay-0020__seed-486181193.mp4"
+    },
+    {
+      "rank": 5,
+      "id": "white-burn-0010",
+      "recipe": "white-burn",
+      "finalScore": 0.5174806319555956,
+      "mask": "masks/white-burn-0010__seed-571300859.mp4",
+      "maskPreview": "mask-previews/white-burn-0010__seed-571300859.mp4",
+      "overlay": "overlays/white-burn-0010__seed-571300859.mp4",
+      "demo": "demos/white-burn-0010__seed-571300859.mp4"
+    },
+    {
+      "rank": 6,
+      "id": "block-decay-0002",
+      "recipe": "block-decay",
+      "finalScore": 0.5155579740035258,
+      "mask": "masks/block-decay-0002__seed-670484645.mp4",
+      "maskPreview": "mask-previews/block-decay-0002__seed-670484645.mp4",
+      "overlay": "overlays/block-decay-0002__seed-670484645.mp4",
+      "demo": "demos/block-decay-0002__seed-670484645.mp4"
+    },
+    {
+      "rank": 7,
+      "id": "block-decay-0004",
+      "recipe": "block-decay",
+      "finalScore": 0.49171265809938636,
+      "mask": "masks/block-decay-0004__seed-969467130.mp4",
+      "maskPreview": "mask-previews/block-decay-0004__seed-969467130.mp4",
+      "overlay": "overlays/block-decay-0004__seed-969467130.mp4",
+      "demo": "demos/block-decay-0004__seed-969467130.mp4"
+    },
+    {
+      "rank": 8,
+      "id": "block-decay-0012",
+      "recipe": "block-decay",
+      "finalScore": 0.49171265809938636,
+      "mask": "masks/block-decay-0012__seed-520026709.mp4",
+      "maskPreview": "mask-previews/block-decay-0012__seed-520026709.mp4",
+      "overlay": "overlays/block-decay-0012__seed-520026709.mp4",
+      "demo": "demos/block-decay-0012__seed-520026709.mp4"
+    },
+    {
+      "rank": 9,
+      "id": "block-decay-0019",
+      "recipe": "block-decay",
+      "finalScore": 0.49171265809938636,
+      "mask": "masks/block-decay-0019__seed-411846931.mp4",
+      "maskPreview": "mask-previews/block-decay-0019__seed-411846931.mp4",
+      "overlay": "overlays/block-decay-0019__seed-411846931.mp4",
+      "demo": "demos/block-decay-0019__seed-411846931.mp4"
+    },
+    {
+      "rank": 10,
+      "id": "block-decay-0005",
+      "recipe": "block-decay",
+      "finalScore": 0.47453945548500726,
+      "mask": "masks/block-decay-0005__seed-383753999.mp4",
+      "maskPreview": "mask-previews/block-decay-0005__seed-383753999.mp4",
+      "overlay": "overlays/block-decay-0005__seed-383753999.mp4",
+      "demo": "demos/block-decay-0005__seed-383753999.mp4"
+    },
+    {
+      "rank": 11,
+      "id": "block-decay-0006",
+      "recipe": "block-decay",
+      "finalScore": 0.47453945548500726,
+      "mask": "masks/block-decay-0006__seed-208865503.mp4",
+      "maskPreview": "mask-previews/block-decay-0006__seed-208865503.mp4",
+      "overlay": "overlays/block-decay-0006__seed-208865503.mp4",
+      "demo": "demos/block-decay-0006__seed-208865503.mp4"
+    },
+    {
+      "rank": 12,
+      "id": "block-decay-0007",
+      "recipe": "block-decay",
+      "finalScore": 0.47453945548500726,
+      "mask": "masks/block-decay-0007__seed-679919867.mp4",
+      "maskPreview": "mask-previews/block-decay-0007__seed-679919867.mp4",
+      "overlay": "overlays/block-decay-0007__seed-679919867.mp4",
+      "demo": "demos/block-decay-0007__seed-679919867.mp4"
+    },
+    {
+      "rank": 13,
+      "id": "block-decay-0008",
+      "recipe": "block-decay",
+      "finalScore": 0.47453945548500726,
+      "mask": "masks/block-decay-0008__seed-944140956.mp4",
+      "maskPreview": "mask-previews/block-decay-0008__seed-944140956.mp4",
+      "overlay": "overlays/block-decay-0008__seed-944140956.mp4",
+      "demo": "demos/block-decay-0008__seed-944140956.mp4"
+    },
+    {
+      "rank": 14,
+      "id": "block-decay-0013",
+      "recipe": "block-decay",
+      "finalScore": 0.47453945548500726,
+      "mask": "masks/block-decay-0013__seed-380276013.mp4",
+      "maskPreview": "mask-previews/block-decay-0013__seed-380276013.mp4",
+      "overlay": "overlays/block-decay-0013__seed-380276013.mp4",
+      "demo": "demos/block-decay-0013__seed-380276013.mp4"
+    },
+    {
+      "rank": 15,
+      "id": "block-decay-0017",
+      "recipe": "block-decay",
+      "finalScore": 0.47453945548500726,
+      "mask": "masks/block-decay-0017__seed-331019489.mp4",
+      "maskPreview": "mask-previews/block-decay-0017__seed-331019489.mp4",
+      "overlay": "overlays/block-decay-0017__seed-331019489.mp4",
+      "demo": "demos/block-decay-0017__seed-331019489.mp4"
+    },
+    {
+      "rank": 16,
+      "id": "block-decay-0021",
+      "recipe": "block-decay",
+      "finalScore": 0.47453945548500726,
+      "mask": "masks/block-decay-0021__seed-635079098.mp4",
+      "maskPreview": "mask-previews/block-decay-0021__seed-635079098.mp4",
+      "overlay": "overlays/block-decay-0021__seed-635079098.mp4",
+      "demo": "demos/block-decay-0021__seed-635079098.mp4"
+    }
+  ]
+}

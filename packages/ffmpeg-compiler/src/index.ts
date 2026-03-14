@@ -8,10 +8,15 @@ import {
   getCutCandidateById,
   getDefaultSequence,
   getDefaultVariant,
+  getFilterDefinition,
   getFilterStackById,
+  getFilterParameterValue,
+  getPrimaryAutomationProperty,
   getPresetById,
   getSequenceById,
+  getSupportedAutomationProperties,
   getVariantById,
+  isSupportedFilterType,
   normalizeProject,
   type AutomationLane,
   type FilterInstance,
@@ -261,17 +266,28 @@ function resolveTimeline(project: NormalizedProjectFile, sequenceId?: string, va
 }
 
 function compilePresetFilters(filters: PresetFilter[]): FilterInstance[] {
-  return filters.map((filter, index) => ({
-    id: `preset-filter-${index + 1}`,
-    type: filter.type,
-    enabled: true,
-    orderIndex: index,
-    parameters: {
-      amount: filter.amount
-    },
-    mix: filter.mix ?? 1,
-    seed: filter.seed
-  }));
+  return filters.flatMap((filter, index) => {
+    if (!isSupportedFilterType(filter.type)) {
+      return [];
+    }
+
+    const primaryProperty = getPrimaryAutomationProperty(filter.type);
+    if (!primaryProperty) {
+      return [];
+    }
+
+    return [{
+      id: `preset-filter-${index + 1}`,
+      type: filter.type,
+      enabled: true,
+      orderIndex: index,
+      parameters: {
+        [primaryProperty]: filter.amount
+      },
+      mix: filter.mix ?? 1,
+      seed: filter.seed
+    }];
+  });
 }
 
 function evaluateAutomationLane(lane: AutomationLane, timeMs: number, fallback: number): number {
@@ -304,6 +320,7 @@ function evaluateAutomationLane(lane: AutomationLane, timeMs: number, fallback: 
 }
 
 function applyAutomationToFilter(project: NormalizedProjectFile, filter: FilterInstance, timeMs: number): FilterInstance {
+  const supportedProperties = new Set(getSupportedAutomationProperties(filter.type));
   let next = {
     ...filter,
     parameters: { ...(filter.parameters ?? {}) }
@@ -314,10 +331,13 @@ function applyAutomationToFilter(project: NormalizedProjectFile, filter: FilterI
     if (!lane) {
       continue;
     }
+    if (!supportedProperties.has(lane.target.property)) {
+      continue;
+    }
 
     const fallback = lane.target.property === 'mix'
       ? Number(next.mix ?? 1)
-      : Number(next.parameters?.[lane.target.property] ?? next.parameters?.amount ?? 0);
+      : Number(next.parameters?.[lane.target.property] ?? 0);
     const value = evaluateAutomationLane(lane, timeMs, fallback);
 
     if (lane.target.property === 'mix') {
@@ -334,20 +354,19 @@ function applyAutomationToFilter(project: NormalizedProjectFile, filter: FilterI
 }
 
 function compileFilterExpression(filter: FilterInstance): string {
-  const amount = Number(filter.parameters?.amount ?? filter.parameters?.intensity ?? 0.2);
-  const effectiveAmount = amount * Number(filter.mix ?? 1);
+  const definition = getFilterDefinition(filter.type);
+  if (!definition) {
+    throw new Error(`Unsupported filter type "${filter.type}" in render compiler.`);
+  }
+
+  const mix = Number(filter.mix ?? 1);
+  const primaryProperty = definition.parameters[0]?.key;
+  const primaryValue = primaryProperty ? Number(getFilterParameterValue(filter, primaryProperty) ?? 0) : 0;
+  const effectiveAmount = primaryValue * mix;
 
   switch (filter.type) {
-    case 'tracking-wobble':
-      return `gblur=sigma=${formatDecimal(0.2 + (effectiveAmount * 2))}`;
     case 'chroma-bleed':
       return `eq=saturation=${formatDecimal(1 - (effectiveAmount * 0.25))}`;
-    case 'fluorescent-flicker':
-      return `eq=brightness=${formatDecimal(effectiveAmount * 0.08)}`;
-    case 'desaturation-lfo':
-      return `eq=saturation=${formatDecimal(1 - effectiveAmount)}`;
-    case 'contrast-pulse':
-      return `eq=contrast=${formatDecimal(1 + (effectiveAmount * 0.4))}`;
     case 'bloom-soft':
       return `gblur=sigma=${formatDecimal(0.4 + (effectiveAmount * 4))}`;
     case 'glitch-bands':
@@ -358,13 +377,12 @@ function compileFilterExpression(filter: FilterInstance): string {
       return `eq=contrast=${formatDecimal(1 + effectiveAmount)}`;
     case 'brightness':
       return `eq=brightness=${formatDecimal((effectiveAmount - 0.5) * 0.2)}`;
-    default:
-      return `eq=saturation=${formatDecimal(1 - (effectiveAmount * 0.15))}`;
   }
+
+  throw new Error(`Unsupported filter type "${filter.type}" in render compiler.`);
 }
 
-function collectClipFilters(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip): string[] {
-  const midpointMs = clip.timelineStartMs + Math.round(clip.durationMs / 2);
+function collectAuthoredClipFilters(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip): FilterInstance[] {
   const sequenceStack = variant.stackId ? getFilterStackById(project, variant.stackId) : undefined;
   const clipStack = clip.stackOverrideId ? getFilterStackById(project, clip.stackOverrideId) : undefined;
   const preset = clip.presetId ? getPresetById(project, clip.presetId) : undefined;
@@ -375,10 +393,64 @@ function collectClipFilters(project: NormalizedProjectFile, variant: Variant, cl
   ];
 
   return [...presetFilters, ...stackFilters]
-    .map((filter) => applyAutomationToFilter(project, filter, midpointMs))
     .filter((filter) => filter.enabled !== false)
     .sort((left, right) => left.orderIndex - right.orderIndex || left.id.localeCompare(right.id))
-    .map(compileFilterExpression);
+    .map((filter) => ({
+      ...filter,
+      parameters: { ...(filter.parameters ?? {}) }
+    }));
+}
+
+interface ClipRenderSegment {
+  sourceStartMs: number;
+  durationMs: number;
+  filterExpressions: string[];
+}
+
+function collectClipRenderSegments(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip): ClipRenderSegment[] {
+  const filters = collectAuthoredClipFilters(project, variant, clip);
+  const boundaryTimes = new Set<number>([clip.timelineStartMs, clip.timelineStartMs + clip.durationMs]);
+
+  for (const filter of filters) {
+    for (const laneId of filter.automationLaneIds ?? []) {
+      const lane = getAutomationLaneById(project, laneId);
+      if (!lane || lane.enabled === false) {
+        continue;
+      }
+      if (lane.target.filterId !== filter.id) {
+        continue;
+      }
+      for (const keyframe of lane.keyframes) {
+        if (keyframe.timeMs > clip.timelineStartMs && keyframe.timeMs < clip.timelineStartMs + clip.durationMs) {
+          boundaryTimes.add(keyframe.timeMs);
+        }
+      }
+    }
+  }
+
+  const orderedBoundaries = [...boundaryTimes].sort((left, right) => left - right);
+  const segments: ClipRenderSegment[] = [];
+
+  for (let index = 0; index < orderedBoundaries.length - 1; index += 1) {
+    const segmentStartMs = orderedBoundaries[index];
+    const segmentEndMs = orderedBoundaries[index + 1];
+    const segmentDurationMs = segmentEndMs - segmentStartMs;
+    if (segmentDurationMs <= 0) {
+      continue;
+    }
+
+    const sampleTimeMs = segmentStartMs + Math.round(segmentDurationMs / 2);
+    segments.push({
+      sourceStartMs: clip.sourceStartMs + (segmentStartMs - clip.timelineStartMs),
+      durationMs: segmentDurationMs,
+      filterExpressions: filters
+        .map((filter) => applyAutomationToFilter(project, filter, sampleTimeMs))
+        .filter((filter) => filter.enabled !== false)
+        .map(compileFilterExpression)
+    });
+  }
+
+  return segments;
 }
 
 function resolveToolFromPath(binaryName: string, env: NodeJS.ProcessEnv): string | undefined {
@@ -729,35 +801,45 @@ function buildRenderCommand(
   const musicInputIndex = musicAssetId ? inputIndexByAssetId.get(musicAssetId) : undefined;
   const includeClipAudio = musicInputIndex === undefined && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
 
-  variant.clips.forEach((clip, index) => {
+  let segmentIndex = 0;
+
+  variant.clips.forEach((clip) => {
     const inputIndex = inputIndexByAssetId.get(clip.assetId);
     if (inputIndex === undefined) {
       throw new Error(`Missing input index for asset "${clip.assetId}".`);
     }
 
-    const videoFilters = [
-      `trim=start=${formatSeconds(clip.sourceStartMs)}:duration=${formatSeconds(clip.durationMs)}`,
-      'setpts=PTS-STARTPTS',
-      ...collectClipFilters(project, variant, clip),
-      `fps=${formatDecimal(profile.frameRate)}`,
-      `scale=${profile.width}:${profile.height}`,
-      'setsar=1',
-      `format=${profile.pixelFormat}`
-    ];
+    for (const segment of collectClipRenderSegments(project, variant, clip)) {
+      const videoFilters = [
+        `trim=start=${formatSeconds(segment.sourceStartMs)}:duration=${formatSeconds(segment.durationMs)}`,
+        'setpts=PTS-STARTPTS',
+        ...segment.filterExpressions,
+        `fps=${formatDecimal(profile.frameRate)}`,
+        `scale=${profile.width}:${profile.height}`,
+        'setsar=1',
+        `format=${profile.pixelFormat}`
+      ];
 
-    filterSegments.push(`[${inputIndex}:v]${videoFilters.join(',')}[v${index}]`);
-    videoConcatInputs.push(`[v${index}]`);
+      filterSegments.push(`[${inputIndex}:v]${videoFilters.join(',')}[v${segmentIndex}]`);
+      videoConcatInputs.push(`[v${segmentIndex}]`);
 
-    if (includeClipAudio) {
-      filterSegments.push(`[${inputIndex}:a]atrim=start=${formatSeconds(clip.sourceStartMs)}:duration=${formatSeconds(clip.durationMs)},asetpts=PTS-STARTPTS[a${index}]`);
-      audioConcatInputs.push(`[a${index}]`);
+      if (includeClipAudio) {
+        filterSegments.push(`[${inputIndex}:a]atrim=start=${formatSeconds(segment.sourceStartMs)}:duration=${formatSeconds(segment.durationMs)},asetpts=PTS-STARTPTS[a${segmentIndex}]`);
+        audioConcatInputs.push(`[a${segmentIndex}]`);
+      }
+
+      segmentIndex += 1;
     }
   });
 
+  if (segmentIndex === 0) {
+    throw new Error(`Variant "${variant.id}" does not produce any renderable segments.`);
+  }
+
   if (includeClipAudio) {
-    filterSegments.push(`${videoConcatInputs.join('')}${audioConcatInputs.join('')}concat=n=${variant.clips.length}:v=1:a=1[vconcat][aconcat]`);
+    filterSegments.push(`${videoConcatInputs.join('')}${audioConcatInputs.join('')}concat=n=${segmentIndex}:v=1:a=1[vconcat][aconcat]`);
   } else {
-    filterSegments.push(`${videoConcatInputs.join('')}concat=n=${variant.clips.length}:v=1:a=0[vconcat]`);
+    filterSegments.push(`${videoConcatInputs.join('')}concat=n=${segmentIndex}:v=1:a=0[vconcat]`);
   }
 
   filterSegments.push(`[vconcat]format=${profile.pixelFormat}[vout]`);

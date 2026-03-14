@@ -1,0 +1,3 @@
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-shape-distort/demos/glitch-bands-0003__seed-957853143.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-shape-distort/demos/block-decay-0001__seed-235319857.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-shape-distort/demos/block-decay-0002__seed-263976030.mp4'

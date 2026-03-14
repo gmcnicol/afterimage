@@ -1,0 +1,5 @@
+rank,id,recipe,final_score,ramp_fit,occupancy,structure,temporal_motion,novelty,start_luma,end_luma,mask,mask_preview,demo
+1,head-switch-smear-0002,head-switch-smear,0.6430,0.7314,0.8296,0.0000,0.8072,1.0000,0.0627,0.9216,masks/head-switch-smear-0002__seed-548827925.mp4,mask-previews/head-switch-smear-0002__seed-548827925.mp4,demos/head-switch-smear-0002__seed-548827925.mp4
+2,head-switch-smear-0004,head-switch-smear,0.5423,0.6667,0.8296,0.0000,0.9536,0.0000,0.2350,0.9216,masks/head-switch-smear-0004__seed-339983527.mp4,mask-previews/head-switch-smear-0004__seed-339983527.mp4,demos/head-switch-smear-0004__seed-339983527.mp4
+3,head-switch-smear-0001,head-switch-smear,0.5422,0.6667,0.8296,0.0000,0.9532,0.0000,0.2353,0.9216,masks/head-switch-smear-0001__seed-212859974.mp4,mask-previews/head-switch-smear-0001__seed-212859974.mp4,demos/head-switch-smear-0001__seed-212859974.mp4
+4,head-switch-smear-0003,head-switch-smear,0.5412,0.7261,0.8296,0.0000,0.8072,0.0000,0.0627,0.9216,masks/head-switch-smear-0003__seed-574557577.mp4,mask-previews/head-switch-smear-0003__seed-574557577.mp4,demos/head-switch-smear-0003__seed-574557577.mp4

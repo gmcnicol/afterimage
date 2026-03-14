@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyProject } from '@afterimage/project-model';
 import { addCutToSequence, duplicateVariant, moveClip } from '../src/operations/sequence-ops';
-import { addAutomationLane, addLaneKeyframe } from '../src/operations/automation-ops';
+import { addAutomationLane, addLaneKeyframe, updateAutomationLaneTarget } from '../src/operations/automation-ops';
 import { mergeImportedAssets, toggleExportProfile } from '../src/operations/project-ops';
-import { addFilterToStack, safeRandomizeFilter } from '../src/operations/style-ops';
+import { addFilterToStack, applyPresetToStack, safeRandomizeFilter, updateFilterParameter } from '../src/operations/style-ops';
 
 function makeProject() {
   const project = createEmptyProject({
@@ -83,11 +83,12 @@ describe('@afterimage/studio-desktop operations', () => {
       type: 'bloom-soft',
       enabled: true,
       parameters: {
-        amount: 0.2
+        strength: 0.2
       },
       mix: 0.7
     });
-    const randomized = safeRandomizeFilter(project, 'stack-sequence-main', 'filter-bloom');
+    const updated = updateFilterParameter(project, 'stack-sequence-main', 'filter-bloom', 'strength', 0.4);
+    const randomized = safeRandomizeFilter(updated, 'stack-sequence-main', 'filter-bloom');
     const withLane = addAutomationLane(randomized, {
       id: 'lane-bloom',
       name: 'Bloom Mix',
@@ -103,13 +104,42 @@ describe('@afterimage/studio-desktop operations', () => {
         }
       ]
     });
-    const updatedLane = addLaneKeyframe(withLane, 'lane-bloom', {
+    const retargetedLane = updateAutomationLaneTarget(withLane, 'lane-bloom', {
+      filterId: 'filter-bloom',
+      property: 'strength'
+    });
+    const updatedLane = addLaneKeyframe(retargetedLane, 'lane-bloom', {
       id: 'keyframe-2',
       timeMs: 800,
       value: 0.9
     });
 
     expect(updatedLane.filterStacks[0].filters[0].mix).not.toBe(0.7);
+    expect(updatedLane.filterStacks[0].filters[0].parameters?.strength).not.toBe(0.2);
+    expect(updatedLane.filterStacks[0].filters[0].automationLaneIds).toContain('lane-bloom');
+    expect(updatedLane.automationLanes[0].target.property).toBe('strength');
     expect(updatedLane.automationLanes[0].keyframes).toHaveLength(2);
+  });
+
+  it('applies presets into the authored stack using supported filters only', () => {
+    const project = applyPresetToStack({
+      ...makeProject(),
+      presets: [
+        {
+          id: 'preset-test',
+          name: 'Preset Test',
+          family: 'glitch',
+          filters: [
+            {
+              type: 'glitch-bands',
+              amount: 0.3
+            }
+          ]
+        }
+      ]
+    }, 'preset-test', 'stack-sequence-main');
+
+    expect(project.filterStacks[0].filters[0].type).toBe('glitch-bands');
+    expect(project.filterStacks[0].filters[0].parameters?.strength).toBe(0.3);
   });
 });

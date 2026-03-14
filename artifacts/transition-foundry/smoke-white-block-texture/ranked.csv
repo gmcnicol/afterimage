@@ -1,0 +1,5 @@
+rank,id,recipe,final_score,ramp_fit,occupancy,structure,temporal_motion,novelty,start_luma,end_luma,mask,mask_preview,demo
+1,white-burn-0001,white-burn,0.7322,0.9016,0.9778,0.0000,0.8072,1.0000,0.0627,0.9216,masks/white-burn-0001__seed-447958702.mp4,mask-previews/white-burn-0001__seed-447958702.mp4,demos/white-burn-0001__seed-447958702.mp4
+2,white-burn-0003,white-burn,0.5307,0.7054,0.9037,0.0003,0.6866,0.0000,0.4272,0.9216,masks/white-burn-0003__seed-849337009.mp4,mask-previews/white-burn-0003__seed-849337009.mp4,demos/white-burn-0003__seed-849337009.mp4
+3,white-burn-0002,white-burn,0.5305,0.7052,0.9037,0.0000,0.6863,0.0000,0.4275,0.9216,masks/white-burn-0002__seed-273412610.mp4,mask-previews/white-burn-0002__seed-273412610.mp4,demos/white-burn-0002__seed-273412610.mp4
+4,white-burn-0004,white-burn,0.5305,0.7052,0.9037,0.0000,0.6863,0.0000,0.4275,0.9216,masks/white-burn-0004__seed-515672858.mp4,mask-previews/white-burn-0004__seed-515672858.mp4,demos/white-burn-0004__seed-515672858.mp4
