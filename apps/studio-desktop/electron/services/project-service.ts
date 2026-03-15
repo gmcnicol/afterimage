@@ -7,6 +7,7 @@ import {
   createEmptyProject,
   normalizeProjectPathRef,
   slugify,
+  type AssetRole,
   type MediaAsset,
   type ProjectPathRef
 } from '@afterimage/project-model';
@@ -34,7 +35,7 @@ function stableHash(value: string): string {
   return Math.abs(hash).toString(36);
 }
 
-function inferMediaType(filePath: string, kind: 'media' | 'music'): MediaAsset['mediaType'] {
+function inferMediaType(filePath: string, kind: 'media' | 'music' | 'transition-mask' | 'transition-overlay'): MediaAsset['mediaType'] {
   const lower = filePath.toLowerCase();
   if (kind === 'music' || /\.(wav|mp3|aif|aiff|flac|m4a)$/i.test(lower)) {
     return 'audio';
@@ -157,13 +158,24 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     };
   }
 
-  async function mapImportedAsset(filePath: string, kind: 'media' | 'music', projectRoot?: string): Promise<MediaAsset> {
+  async function mapImportedAsset(
+    filePath: string,
+    kind: 'media' | 'music' | 'transition-mask' | 'transition-overlay',
+    projectRoot?: string
+  ): Promise<MediaAsset> {
     const stem = basename(filePath, extname(filePath));
     const mediaType = kind === 'music' ? 'audio' : inferMediaType(filePath, kind);
+    const assetRole: AssetRole = kind === 'music'
+      ? 'music'
+      : kind === 'transition-mask'
+        ? 'transition-mask'
+        : kind === 'transition-overlay'
+          ? 'transition-overlay'
+          : 'source';
     const fallbackHasAudio = kind === 'music' || mediaType === 'audio' || !/\.(png|jpg|jpeg|webp|gif)$/i.test(filePath);
     let probeMetadata: Pick<MediaAsset, 'durationMs' | 'hasAudio'> | undefined;
 
-    if (mediaType !== 'image') {
+    if (mediaType !== 'image' && kind !== 'transition-mask' && kind !== 'transition-overlay') {
       try {
         probeMetadata = await probeImportedAsset(filePath);
       } catch (error) {
@@ -175,10 +187,13 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       id: `asset-${slugify(stem)}-${stableHash(filePath).slice(0, 6)}`,
       filename: basename(filePath),
       mediaType,
+      assetRole,
       path: projectRoot ? buildPathRef(projectRoot, filePath) : { absolutePath: filePath },
       label: stem,
       durationMs: probeMetadata?.durationMs,
-      hasAudio: probeMetadata?.hasAudio ?? fallbackHasAudio,
+      hasAudio: kind === 'transition-mask' || kind === 'transition-overlay'
+        ? false
+        : (probeMetadata?.hasAudio ?? fallbackHasAudio),
       importStatus: 'ready',
       analysisStatus: mediaType === 'image' ? 'completed' : 'pending',
       tags: kind === 'music' ? ['music'] : []
@@ -348,6 +363,38 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
 
       const assets = await Promise.all(result.filePaths.map((filePath) => mapImportedAsset(filePath, 'music', projectRoot)));
       await logger.log('info', 'Imported music files.', `${assets.length} file(s)${projectRoot ? '' : ' into unsaved project state'}`);
+      return assets;
+    },
+    async importTransitionMasks(projectRoot?: string): Promise<MediaAsset[]> {
+      const result = await dialog.showOpenDialog({
+        title: 'Import Transition Masks',
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Video Files', extensions: ['mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi'] }]
+      });
+
+      if (result.canceled) {
+        await logger.log('info', 'Transition mask import cancelled.');
+        return [];
+      }
+
+      const assets = await Promise.all(result.filePaths.map((filePath) => mapImportedAsset(filePath, 'transition-mask', projectRoot)));
+      await logger.log('info', 'Imported transition masks.', `${assets.length} file(s)${projectRoot ? '' : ' into unsaved project state'}`);
+      return assets;
+    },
+    async importTransitionOverlays(projectRoot?: string): Promise<MediaAsset[]> {
+      const result = await dialog.showOpenDialog({
+        title: 'Import Transition Overlays',
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Video Files', extensions: ['mp4', 'mov', 'm4v', 'mkv', 'webm', 'avi'] }]
+      });
+
+      if (result.canceled) {
+        await logger.log('info', 'Transition overlay import cancelled.');
+        return [];
+      }
+
+      const assets = await Promise.all(result.filePaths.map((filePath) => mapImportedAsset(filePath, 'transition-overlay', projectRoot)));
+      await logger.log('info', 'Imported transition overlays.', `${assets.length} file(s)${projectRoot ? '' : ' into unsaved project state'}`);
       return assets;
     },
     async relinkAsset(input: { projectRoot: string; assetId: string; currentPath?: string }): Promise<RelinkAssetResult | null> {

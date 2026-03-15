@@ -13,8 +13,10 @@ import {
   type AutomationTargetProperty,
   type FilterInstance,
   type Marker,
+  type MediaAsset,
   type NormalizedProjectFile,
   type SupportedFilterType,
+  type TransitionStyle,
   type SyncMode
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
@@ -36,6 +38,10 @@ function getCurrentVariant(project: NormalizedProjectFile, selectedVariantId?: s
 
 function getAnalysisSummaryByAsset(project: NormalizedProjectFile, assetId: string) {
   return project.analysisRefs.find((ref) => ref.assetId === assetId)?.summary;
+}
+
+function formatSequenceName(name: string): string {
+  return name.replace(/\bAssembly\b/g, 'Sequence');
 }
 
 function useAnalysisFile(analysisPath?: string): AnalysisFile | null {
@@ -111,6 +117,126 @@ function renderTimeline(durationMs: number, events: Array<{ id: string; timeMs: 
   );
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function AutomationLaneTimeline({
+  durationMs,
+  keyframes,
+  propertyLabel,
+  onUpdate
+}: {
+  durationMs: number;
+  keyframes: Array<{ id: string; timeMs: number; value: number }>;
+  propertyLabel: string;
+  onUpdate: (keyframeId: string, timeMs: number, value: number) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [draggingKeyframeId, setDraggingKeyframeId] = useState<string>();
+
+  useEffect(() => {
+    if (!draggingKeyframeId) {
+      return undefined;
+    }
+
+    const updateFromPointer = (clientX: number, clientY: number) => {
+      const track = trackRef.current;
+      if (!track) {
+        return;
+      }
+
+      const bounds = track.getBoundingClientRect();
+      const nextTimeMs = Math.round((clamp((clientX - bounds.left) / bounds.width, 0, 1) * durationMs) / 10) * 10;
+      const nextValue = Number((1 - clamp((clientY - bounds.top) / bounds.height, 0, 1)).toFixed(2));
+      onUpdate(draggingKeyframeId, nextTimeMs, nextValue);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      updateFromPointer(event.clientX, event.clientY);
+    };
+
+    const handlePointerUp = () => {
+      setDraggingKeyframeId(undefined);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp, { once: true });
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [draggingKeyframeId, durationMs, onUpdate]);
+
+  const sortedKeyframes = [...keyframes].sort((left, right) => left.timeMs - right.timeMs);
+  const polylinePoints = sortedKeyframes
+    .map((keyframe) => `${(keyframe.timeMs / Math.max(durationMs, 1)) * 100},${(1 - keyframe.value) * 100}`)
+    .join(' ');
+
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: muted, fontSize: 12 }}>
+        <span>{propertyLabel}</span>
+        <span>Drag keyframes directly</span>
+      </div>
+      <div
+        ref={trackRef}
+        style={{
+          position: 'relative',
+          height: 170,
+          borderRadius: 16,
+          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))',
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '100% 25%, 12.5% 100%' }} />
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+          <polyline
+            points={polylinePoints}
+            fill="none"
+            stroke="#ff9f7f"
+            strokeWidth="1.6"
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </svg>
+        {sortedKeyframes.map((keyframe) => (
+          <button
+            key={keyframe.id}
+            type="button"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              setDraggingKeyframeId(keyframe.id);
+            }}
+            title={`${Math.round(keyframe.timeMs)}ms • ${keyframe.value.toFixed(2)}`}
+            style={{
+              position: 'absolute',
+              left: `${(keyframe.timeMs / Math.max(durationMs, 1)) * 100}%`,
+              top: `${(1 - keyframe.value) * 100}%`,
+              transform: 'translate(-50%, -50%)',
+              width: 14,
+              height: 14,
+              borderRadius: 999,
+              border: '2px solid rgba(9, 11, 15, 0.96)',
+              background: draggingKeyframeId === keyframe.id ? '#ffd18a' : '#ff9f7f',
+              boxShadow: '0 0 0 4px rgba(255,159,127,0.16)',
+              cursor: 'grab',
+              padding: 0
+            }}
+          />
+        ))}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: muted, fontSize: 12 }}>
+        <span>0ms</span>
+        <span>{durationMs}ms</span>
+      </div>
+    </div>
+  );
+}
+
 function formatParameterLabel(value: string): string {
   return value
     .replace(/([A-Z])/g, ' $1')
@@ -121,6 +247,23 @@ function formatParameterLabel(value: string): string {
 function getStackForCurrentVariant(project: NormalizedProjectFile, variantId?: string) {
   const variant = getCurrentVariant(project, variantId);
   return variant?.stackId ? project.filterStacks.find((stack) => stack.id === variant.stackId) : undefined;
+}
+
+function filterTransitionAssets(assets: MediaAsset[], kind: 'mask' | 'overlay') {
+  const role = kind === 'mask' ? 'transition-mask' : 'transition-overlay';
+  return assets.filter((asset) => asset.mediaType === 'video' && asset.assetRole === role);
+}
+
+function formatSequenceAssetLabel(asset: MediaAsset): string {
+  const raw = asset.label ?? asset.filename;
+  const foundryMatch = raw.match(/__(.+?)__seed-(\d+)/);
+  if (!foundryMatch) {
+    return raw;
+  }
+
+  const descriptor = foundryMatch[1] ?? raw;
+  const seed = foundryMatch[2];
+  return `${descriptor} • ${seed}`;
 }
 
 export function ProjectView() {
@@ -246,12 +389,60 @@ export function MediaView() {
     );
   };
 
+  const importTransitionMasks = async () => {
+    const imported = await api.project.importTransitionMasks(projectRoot);
+    if (imported.length === 0) {
+      addNotification('Transition mask import cancelled.', 'warn');
+      return;
+    }
+    mergeAssets(imported);
+    if (resolvedProjectFilePath) {
+      const session = await api.project.saveProject({
+        project: useProjectSessionStore.getState().project,
+        projectFilePath: resolvedProjectFilePath
+      });
+      setSession(session);
+    }
+    setCurrentTab('media');
+    addNotification(
+      resolvedProjectFilePath
+        ? `Imported ${imported.length} transition mask${imported.length === 1 ? '' : 's'} and saved the project.`
+        : `Imported ${imported.length} transition mask${imported.length === 1 ? '' : 's'}${projectRoot ? '.' : ' into an unsaved project.'}`,
+      'success'
+    );
+  };
+
+  const importTransitionOverlays = async () => {
+    const imported = await api.project.importTransitionOverlays(projectRoot);
+    if (imported.length === 0) {
+      addNotification('Transition overlay import cancelled.', 'warn');
+      return;
+    }
+    mergeAssets(imported);
+    if (resolvedProjectFilePath) {
+      const session = await api.project.saveProject({
+        project: useProjectSessionStore.getState().project,
+        projectFilePath: resolvedProjectFilePath
+      });
+      setSession(session);
+    }
+    setCurrentTab('media');
+    addNotification(
+      resolvedProjectFilePath
+        ? `Imported ${imported.length} transition overlay${imported.length === 1 ? '' : 's'} and saved the project.`
+        : `Imported ${imported.length} transition overlay${imported.length === 1 ? '' : 's'}${projectRoot ? '.' : ' into an unsaved project.'}`,
+      'success'
+    );
+  };
+
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <Panel title="Media Library">
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           <ToolbarButton primary onClick={() => void importMedia()}>Import Media</ToolbarButton>
           <ToolbarButton onClick={() => void importMusic()}>Import Music</ToolbarButton>
+          <ToolbarButton onClick={() => void importTransitionMasks()}>Import Masks</ToolbarButton>
+          <ToolbarButton onClick={() => void importTransitionOverlays()}>Import Overlays</ToolbarButton>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -298,6 +489,9 @@ export function MediaView() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <span style={pillStyle()}>{asset.mediaType}</span>
+                  <span style={pillStyle(asset.assetRole === 'transition-mask' || asset.assetRole === 'transition-overlay' ? 'warn' : asset.assetRole === 'music' ? 'success' : undefined)}>
+                    {asset.assetRole ?? 'source'}
+                  </span>
                   <span style={pillStyle(asset.analysisStatus === 'completed' ? 'success' : 'warn')}>{asset.analysisStatus}</span>
                 </div>
               </div>
@@ -663,19 +857,189 @@ export function AnalysisView() {
 
 export function CutsView() {
   const project = useProjectSessionStore((state) => state.project);
+  const currentTab = useUiStore((state) => state.currentTab);
+  const selectedCutId = useUiStore((state) => state.selectedCutId);
   const selectCut = useUiStore((state) => state.selectCut);
+  const addNotification = useUiStore((state) => state.addNotification);
   const addCutToSequence = useProjectSessionStore((state) => state.addCutToSequence);
   const updateCutStatus = useProjectSessionStore((state) => state.updateCutStatus);
   const toggleCutFavorite = useProjectSessionStore((state) => state.toggleCutFavorite);
   const [query, setQuery] = useState('');
+  const [brokenThumbnailPaths, setBrokenThumbnailPaths] = useState<Set<string>>(() => new Set());
   const deferredQuery = useDeferredValue(query);
-  const cuts = useMemo(() => project.cutCandidates.filter((cut) =>
-    `${cut.id} ${(cut.tags ?? []).join(' ')}`.toLowerCase().includes(deferredQuery.toLowerCase())
-  ), [deferredQuery, project.cutCandidates]);
+  const previewRef = useRef<HTMLVideoElement | null>(null);
   const assetLabels = useMemo(() => new Map(project.assets.map((asset) => [asset.id, asset.label ?? asset.filename])), [project.assets]);
+  const assetById = useMemo(() => new Map(project.assets.map((asset) => [asset.id, asset])), [project.assets]);
+  const cuts = useMemo(() => project.cutCandidates.filter((cut) => {
+    const asset = assetById.get(cut.assetId);
+    if (!asset || asset.assetRole === 'transition-mask' || asset.assetRole === 'transition-overlay') {
+      return false;
+    }
+
+    return `${cut.id} ${(cut.tags ?? []).join(' ')}`.toLowerCase().includes(deferredQuery.toLowerCase());
+  }), [assetById, deferredQuery, project.cutCandidates]);
+  const selectedCut = useMemo(
+    () => cuts.find((cut) => cut.id === selectedCutId) ?? cuts[0],
+    [cuts, selectedCutId]
+  );
+  const selectedCutIndex = selectedCut ? cuts.findIndex((cut) => cut.id === selectedCut.id) : -1;
+  const selectedAsset = selectedCut ? assetById.get(selectedCut.assetId) : undefined;
+  const markThumbnailBroken = (thumbnailPath?: string) => {
+    if (!thumbnailPath) {
+      return;
+    }
+
+    setBrokenThumbnailPaths((current) => {
+      if (current.has(thumbnailPath)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(thumbnailPath);
+      return next;
+    });
+  };
+
+  const selectRelativeCut = (baseCutId: string, delta: -1 | 1 | 0 = 1) => {
+    const index = cuts.findIndex((cut) => cut.id === baseCutId);
+    if (index < 0) {
+      return;
+    }
+    const nextIndex = clamp(index + delta, 0, Math.max(cuts.length - 1, 0));
+    selectCut(cuts[nextIndex]?.id);
+  };
+
+  const reviewCut = (cutId: string, status: 'kept' | 'rejected') => {
+    updateCutStatus(cutId, status);
+    selectRelativeCut(cutId, 1);
+  };
+
+  useEffect(() => {
+    if (!selectedCut && selectedCutId) {
+      selectCut(undefined);
+      return;
+    }
+
+    if (!selectedCut && cuts.length > 0) {
+      selectCut(cuts[0]?.id);
+    }
+  }, [cuts, selectCut, selectedCut, selectedCutId]);
+
+  useEffect(() => {
+    const video = previewRef.current;
+    if (!video || !selectedCut) {
+      return;
+    }
+
+    const syncToCut = () => {
+      video.currentTime = selectedCut.startMs / 1000;
+    };
+
+    const loopWithinCut = () => {
+      if (video.currentTime >= (selectedCut.endMs / 1000) - 0.03) {
+        video.currentTime = selectedCut.startMs / 1000;
+        if (video.paused) {
+          return;
+        }
+        void video.play().catch(() => undefined);
+      }
+    };
+
+    const onLoadedMetadata = () => {
+      syncToCut();
+      void video.play().catch(() => undefined);
+    };
+
+    video.addEventListener('loadedmetadata', onLoadedMetadata);
+    video.addEventListener('timeupdate', loopWithinCut);
+    syncToCut();
+
+    if (video.readyState >= 1) {
+      onLoadedMetadata();
+    }
+
+    return () => {
+      video.removeEventListener('loadedmetadata', onLoadedMetadata);
+      video.removeEventListener('timeupdate', loopWithinCut);
+    };
+  }, [selectedCut?.id, selectedCut?.startMs, selectedCut?.endMs]);
+
+  useEffect(() => {
+    if (currentTab !== 'cuts' || cuts.length === 0) {
+      return;
+    }
+
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) {
+        return false;
+      }
+      const tagName = target.tagName;
+      return target.isContentEditable || tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
+    };
+
+    const handler = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+
+      if (!selectedCut) {
+        return;
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        reviewCut(selectedCut.id, 'kept');
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        reviewCut(selectedCut.id, 'rejected');
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        selectRelativeCut(selectedCut.id, 1);
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectRelativeCut(selectedCut.id, -1);
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        addCutToSequence(selectedCut.id);
+        addNotification(`Added ${selectedCut.id} to sequence.`, 'success', 1200);
+        selectRelativeCut(selectedCut.id, 1);
+        return;
+      }
+
+      if (event.key === ' ') {
+        event.preventDefault();
+        const video = previewRef.current;
+        if (!video) {
+          return;
+        }
+        if (video.paused) {
+          void video.play().catch(() => undefined);
+        } else {
+          video.pause();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+    };
+  }, [addCutToSequence, addNotification, currentTab, cuts, selectCut, selectedCut, updateCutStatus]);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(360px, 0.85fr)', gap: 16, alignItems: 'start' }}>
       <Panel title="Cut Browser">
         <input
           value={query}
@@ -691,61 +1055,120 @@ export function CutsView() {
             marginBottom: 16
           }}
         />
+        <div style={{ color: muted, fontSize: 12, marginBottom: 12 }}>
+          `Right` keep, `Left` reject, `Up/Down` navigate, `Enter` add to sequence, `Space` play/pause.
+        </div>
         <VirtualList
           items={cuts}
           estimateSize={176}
-          renderItem={(cut) => (
-            <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14, background: 'rgba(255,255,255,0.03)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 14 }}>
-                <button
-                  type="button"
-                  onClick={() => selectCut(cut.id)}
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    background: 'rgba(10, 12, 18, 0.92)',
-                    borderRadius: 14,
-                    padding: 0,
-                    overflow: 'hidden',
-                    aspectRatio: '16 / 9'
-                  }}
-                >
-                  {cut.thumbnailPath ? (
-                    <img
-                      src={toMediaSrc(cut.thumbnailPath)}
-                      alt={cut.id}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: muted, fontSize: 12 }}>
-                      No thumbnail
+          activeIndex={selectedCutIndex}
+          renderItem={(cut) => {
+            const hasWorkingThumbnail = !!cut.thumbnailPath && !brokenThumbnailPaths.has(cut.thumbnailPath);
+
+            return (
+              <div style={{
+                border: cut.id === selectedCut?.id ? '1px solid rgba(255,159,127,0.85)' : '1px solid rgba(255,255,255,0.08)',
+                boxShadow: cut.id === selectedCut?.id ? '0 0 0 1px rgba(255,159,127,0.22)' : 'none',
+                borderRadius: 16,
+                padding: 14,
+                background: cut.id === selectedCut?.id ? 'rgba(255,159,127,0.08)' : 'rgba(255,255,255,0.03)'
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 14 }}>
+                  <button
+                    type="button"
+                    onClick={() => selectCut(cut.id)}
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'rgba(10, 12, 18, 0.92)',
+                      borderRadius: 14,
+                      padding: 0,
+                      overflow: 'hidden',
+                      aspectRatio: '16 / 9'
+                    }}
+                  >
+                    {hasWorkingThumbnail ? (
+                      <img
+                        src={toMediaSrc(cut.thumbnailPath)}
+                        alt={cut.id}
+                        loading="lazy"
+                        decoding="async"
+                        onError={() => markThumbnailBroken(cut.thumbnailPath)}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: muted, fontSize: 12 }}>
+                        {cut.thumbnailPath ? 'Thumbnail unavailable' : 'No thumbnail'}
+                      </div>
+                    )}
+                  </button>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <button type="button" onClick={() => selectCut(cut.id)} style={{ background: 'transparent', border: 'none', color: '#f6f7f9', textAlign: 'left', padding: 0, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700 }}>{cut.id}</div>
+                        <div style={{ color: muted, fontSize: 13 }}>{assetLabels.get(cut.assetId) ?? cut.assetId}</div>
+                      </button>
+                      <span style={pillStyle(cut.favorite ? 'success' : 'default')}>{cut.status}</span>
                     </div>
-                  )}
-                </button>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                    <button type="button" onClick={() => selectCut(cut.id)} style={{ background: 'transparent', border: 'none', color: '#f6f7f9', textAlign: 'left', padding: 0, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700 }}>{cut.id}</div>
-                      <div style={{ color: muted, fontSize: 13 }}>{assetLabels.get(cut.assetId) ?? cut.assetId}</div>
-                    </button>
-                    <span style={pillStyle(cut.favorite ? 'success' : 'default')}>{cut.status}</span>
-                  </div>
-                  <div style={{ color: muted, fontSize: 13, marginTop: 8 }}>
-                    {cut.startMs}ms {'->'} {cut.endMs}ms • {cut.durationMs}ms
-                  </div>
-                  <div style={{ color: muted, fontSize: 13, marginTop: 4 }}>
-                    {cut.sceneScore !== undefined ? `scene score ${cut.sceneScore.toFixed(3)}` : 'no scene score'}{cut.thumbnailPath ? ' • thumbnail ready' : ''}
+                    <div style={{ color: muted, fontSize: 13, marginTop: 8 }}>
+                      {cut.startMs}ms {'->'} {cut.endMs}ms • {cut.durationMs}ms
+                    </div>
+                    <div style={{ color: muted, fontSize: 13, marginTop: 4 }}>
+                      {cut.sceneScore !== undefined ? `scene score ${cut.sceneScore.toFixed(3)}` : 'no scene score'}{hasWorkingThumbnail ? ' • thumbnail ready' : cut.thumbnailPath ? ' • thumbnail missing' : ''}
+                    </div>
                   </div>
                 </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  <ToolbarButton onClick={() => addCutToSequence(cut.id)}>Add</ToolbarButton>
+                  <ToolbarButton onClick={() => reviewCut(cut.id, 'kept')}>Keep</ToolbarButton>
+                  <ToolbarButton onClick={() => reviewCut(cut.id, 'rejected')}>Reject</ToolbarButton>
+                  <ToolbarButton onClick={() => toggleCutFavorite(cut.id)}>Favorite</ToolbarButton>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                <ToolbarButton onClick={() => addCutToSequence(cut.id)}>Add</ToolbarButton>
-                <ToolbarButton onClick={() => updateCutStatus(cut.id, 'kept')}>Keep</ToolbarButton>
-                <ToolbarButton onClick={() => updateCutStatus(cut.id, 'rejected')}>Reject</ToolbarButton>
-                <ToolbarButton onClick={() => toggleCutFavorite(cut.id)}>Favorite</ToolbarButton>
-              </div>
-            </div>
-          )}
+            );
+          }}
         />
+      </Panel>
+      <Panel title="Cut Preview">
+        {selectedCut && selectedAsset ? (
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div style={{ color: muted, fontSize: 13 }}>
+              {selectedCut.id} • {assetLabels.get(selectedCut.assetId) ?? selectedCut.assetId}
+            </div>
+            <video
+              ref={previewRef}
+              key={`${selectedCut.id}:${selectedAsset.path.absolutePath}`}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              src={toMediaSrc(selectedAsset.path.absolutePath)}
+              style={{ width: '100%', borderRadius: 18, background: '#090a0d', aspectRatio: '16 / 9' }}
+            />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+              <StatCard label="Start" value={`${selectedCut.startMs}ms`} />
+              <StatCard label="End" value={`${selectedCut.endMs}ms`} />
+              <StatCard label="Duration" value={`${selectedCut.durationMs}ms`} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+              <ToolbarButton onClick={() => reviewCut(selectedCut.id, 'rejected')}>Reject</ToolbarButton>
+              <ToolbarButton primary onClick={() => reviewCut(selectedCut.id, 'kept')}>Keep</ToolbarButton>
+              <ToolbarButton onClick={() => {
+                addCutToSequence(selectedCut.id);
+                selectRelativeCut(selectedCut.id, 1);
+              }}>Add</ToolbarButton>
+              <ToolbarButton onClick={() => toggleCutFavorite(selectedCut.id)}>Favorite</ToolbarButton>
+            </div>
+            <div style={{ color: muted, fontSize: 13, lineHeight: 1.5 }}>
+              Status: {selectedCut.status}
+              {selectedCut.sceneScore !== undefined ? ` • scene score ${selectedCut.sceneScore.toFixed(3)}` : ''}
+              {(selectedCut.tags?.length ?? 0) > 0 ? ` • tags: ${(selectedCut.tags ?? []).join(', ')}` : ''}
+            </div>
+          </div>
+        ) : (
+          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted }}>
+            Select a cut to preview it.
+          </div>
+        )}
       </Panel>
     </div>
   );
@@ -760,12 +1183,39 @@ export function SequenceView() {
   const setPreviewPath = useUiStore((state) => state.setPreviewPath);
   const selectedVariantId = useUiStore((state) => state.selectedVariantId);
   const selectVariant = useUiStore((state) => state.selectVariant);
+  const buildVariantFromReviewedCutsAction = useProjectSessionStore((state) => state.buildVariantFromReviewedCuts);
+  const buildNewVariantFromReviewedCutsAction = useProjectSessionStore((state) => state.buildNewVariantFromReviewedCuts);
+  const deleteVariantAction = useProjectSessionStore((state) => state.deleteVariant);
   const moveClipAction = useProjectSessionStore((state) => state.moveClip);
+  const removeClipAction = useProjectSessionStore((state) => state.removeClip);
   const trimClipAction = useProjectSessionStore((state) => state.trimClip);
+  const setClipOverlayAssetAction = useProjectSessionStore((state) => state.setClipOverlayAsset);
+  const setClipTransitionAction = useProjectSessionStore((state) => state.setClipTransition);
+  const setClipTransitionDurationAction = useProjectSessionStore((state) => state.setClipTransitionDuration);
+  const setClipTransitionAssetAction = useProjectSessionStore((state) => state.setClipTransitionAsset);
+  const randomizeFoundryTransitionsAction = useProjectSessionStore((state) => state.randomizeFoundryTransitions);
+  const randomizeFoundryOverlaysAction = useProjectSessionStore((state) => state.randomizeFoundryOverlays);
   const duplicateVariantAction = useProjectSessionStore((state) => state.duplicateVariant);
   const addMarkerAction = useProjectSessionStore((state) => state.addMarker);
   const addSectionAction = useProjectSessionStore((state) => state.addSection);
   const variant = useMemo(() => getCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
+  const transitionMaskAssets = useMemo(() => filterTransitionAssets(project.assets, 'mask'), [project.assets]);
+  const overlayAssets = useMemo(() => filterTransitionAssets(project.assets, 'overlay'), [project.assets]);
+  const transitionMaskOptions = useMemo(
+    () => transitionMaskAssets.map((asset) => ({ id: asset.id, label: formatSequenceAssetLabel(asset), title: asset.label ?? asset.filename })),
+    [transitionMaskAssets]
+  );
+  const overlayOptions = useMemo(
+    () => overlayAssets.map((asset) => ({ id: asset.id, label: formatSequenceAssetLabel(asset), title: asset.label ?? asset.filename })),
+    [overlayAssets]
+  );
+  const canRandomizeFoundry = Boolean(variant && variant.clips.length > 1 && transitionMaskAssets.length > 0);
+  const canRandomizeOverlays = Boolean(variant && variant.clips.length > 0 && overlayAssets.length > 0);
+  const variantSequence = useMemo(
+    () => variant ? project.sequences.find((candidate) => candidate.id === variant.sequenceId) : undefined,
+    [project.sequences, variant]
+  );
+  const canDeleteSequence = Boolean(variantSequence && variantSequence.variantIds.length > 1);
   const previewOutputPath = variant ? `${projectRoot}/.afterimage/preview/${variant.id}.mp4` : undefined;
   const previewJob = useMemo(
     () =>
@@ -784,48 +1234,61 @@ export function SequenceView() {
       : 'Build Preview';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(360px, 0.9fr)', gap: 16, alignItems: 'start' }}>
       <Panel title="Sequence Builder">
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-          {project.variants.map((candidate) => (
-            <button
-              key={candidate.id}
-              type="button"
-              onClick={() => selectVariant(candidate.id)}
-              style={{
-                border: candidate.id === variant?.id ? '1px solid #ff9f7f' : '1px solid #41495b',
-                background: candidate.id === variant?.id ? 'linear-gradient(135deg, #ff9f7f, #f48762)' : 'rgba(255,255,255,0.05)',
-                color: candidate.id === variant?.id ? '#130f12' : '#f6f7f9',
-                borderRadius: 999,
-                padding: '9px 14px',
-                fontWeight: 700
+        <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {project.variants.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  onClick={() => selectVariant(candidate.id)}
+                  style={{
+                    border: candidate.id === variant?.id ? '1px solid #ff9f7f' : '1px solid #41495b',
+                    background: candidate.id === variant?.id ? 'linear-gradient(135deg, #ff9f7f, #f48762)' : 'rgba(255,255,255,0.05)',
+                    color: candidate.id === variant?.id ? '#130f12' : '#f6f7f9',
+                    borderRadius: 999,
+                    padding: '9px 14px',
+                    fontWeight: 700
+                  }}
+                >
+                  {formatSequenceName(candidate.name)}
+                </button>
+              ))}
+            </div>
+            <ToolbarButton
+              primary
+              disabled={!variant || previewBusy}
+              onClick={() => {
+                if (!variant) {
+                  return;
+                }
+
+                setPreviewPath(undefined);
+                void api.jobs.runPreview({
+                  project,
+                  projectRoot,
+                  variantId: variant.id,
+                  outputPath: `${projectRoot}/.afterimage/preview/${variant.id}.mp4`
+                });
               }}
             >
-              {candidate.name}
-            </button>
-          ))}
-          <ToolbarButton onClick={() => variant && duplicateVariantAction(variant.id)}>Duplicate Variant</ToolbarButton>
-          <ToolbarButton onClick={() => variant && addMarkerAction(variant.id, `Marker ${Date.now() % 1000}`, 500)}>Add Marker</ToolbarButton>
-          <ToolbarButton onClick={() => variant && addSectionAction(variant.id, `Section ${Date.now() % 1000}`, 0, 1500)}>Add Section</ToolbarButton>
-          <ToolbarButton
-            primary
-            disabled={!variant || previewBusy}
-            onClick={() => {
-              if (!variant) {
-                return;
-              }
-
-              setPreviewPath(undefined);
-              void api.jobs.runPreview({
-                project,
-                projectRoot,
-                variantId: variant.id,
-                outputPath: `${projectRoot}/.afterimage/preview/${variant.id}.mp4`
-              });
-            }}
-          >
-            {previewButtonLabel}
-          </ToolbarButton>
+              {previewButtonLabel}
+            </ToolbarButton>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'tight')}>Build Tight</ToolbarButton>
+            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'balanced')}>Build</ToolbarButton>
+            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'longer')}>Build Longer</ToolbarButton>
+            <ToolbarButton onClick={() => variant && buildNewVariantFromReviewedCutsAction(variant.id, 'balanced')}>Build New</ToolbarButton>
+            <ToolbarButton onClick={() => variant && duplicateVariantAction(variant.id)}>Duplicate Sequence</ToolbarButton>
+            <ToolbarButton disabled={!canDeleteSequence} onClick={() => variant && deleteVariantAction(variant.id)}>Delete Sequence</ToolbarButton>
+            <ToolbarButton disabled={!canRandomizeFoundry} onClick={() => variant && randomizeFoundryTransitionsAction(variant.id)}>Shuffle Masks</ToolbarButton>
+            <ToolbarButton disabled={!canRandomizeOverlays} onClick={() => variant && randomizeFoundryOverlaysAction(variant.id)}>Shuffle Overlays</ToolbarButton>
+            <ToolbarButton onClick={() => variant && addMarkerAction(variant.id, `Marker ${Date.now() % 1000}`, 500)}>Add Marker</ToolbarButton>
+            <ToolbarButton onClick={() => variant && addSectionAction(variant.id, `Section ${Date.now() % 1000}`, 0, 1500)}>Add Section</ToolbarButton>
+          </div>
         </div>
         {previewJob && previewJob.status !== 'completed' ? (
           <div style={{ marginBottom: 16 }}>
@@ -833,22 +1296,114 @@ export function SequenceView() {
           </div>
         ) : null}
         <div style={{ display: 'grid', gap: 10 }}>
-          {(variant?.clips ?? []).map((clip) => (
+          {(variant?.clips ?? []).map((clip, clipIndex, clips) => {
+            const canUseMaskTransition = clipIndex < clips.length - 1;
+
+            return (
             <div key={clip.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14, background: 'rgba(255,255,255,0.03)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'start' }}>
+                <div style={{ minWidth: 0 }}>
                   <strong>{clip.id}</strong>
                   <div style={{ color: muted, fontSize: 13 }}>timeline {clip.timelineStartMs}ms | source {clip.sourceStartMs}ms | duration {clip.durationMs}ms</div>
+                  <div style={{ color: muted, fontSize: 13 }}>
+                    transition {clip.transition}
+                    {clip.transition !== 'cut' ? ` @ ${clip.transitionDurationMs ?? 600}ms` : ''}
+                    {clip.transition === 'mask' ? ' | white reveals next clip' : ''}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <ToolbarButton onClick={() => variant && moveClipAction(variant.id, clip.id, -1)}>Up</ToolbarButton>
                   <ToolbarButton onClick={() => variant && moveClipAction(variant.id, clip.id, 1)}>Down</ToolbarButton>
                   <ToolbarButton onClick={() => variant && trimClipAction(variant.id, clip.id, -250)}>[</ToolbarButton>
                   <ToolbarButton onClick={() => variant && trimClipAction(variant.id, clip.id, 250)}>]</ToolbarButton>
+                  <ToolbarButton onClick={() => variant && removeClipAction(variant.id, clip.id)}>Remove</ToolbarButton>
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)', gap: 12, marginTop: 14, alignItems: 'start' }}>
+                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                  Clip overlay
+                  <select
+                    value={clip.overlayAssetId ?? ''}
+                    onChange={(event) => variant && setClipOverlayAssetAction(variant.id, clip.id, event.target.value || undefined)}
+                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                    title={overlayAssets.find((asset) => asset.id === clip.overlayAssetId)?.label ?? overlayAssets.find((asset) => asset.id === clip.overlayAssetId)?.filename}
+                  >
+                    <option value="">No overlay</option>
+                    {overlayOptions.map((asset) => (
+                      <option key={asset.id} value={asset.id} title={asset.title}>{asset.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div style={{ display: 'grid', gap: 10 }}>
+                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                  Transition
+                  <select
+                    value={clip.transition}
+                    onChange={(event) => variant && setClipTransitionAction(variant.id, clip.id, event.target.value as TransitionStyle)}
+                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                  >
+                    <option value="cut">Cut</option>
+                    <option value="crossfade">Crossfade</option>
+                    <option value="mask" disabled={!canUseMaskTransition}>Mask</option>
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                  Duration ms
+                  <input
+                    type="number"
+                    min={100}
+                    step={50}
+                    value={clip.transition === 'cut' ? '' : String(clip.transitionDurationMs ?? 600)}
+                    disabled={clip.transition === 'cut'}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      if (!variant || Number.isNaN(nextValue)) {
+                        return;
+                      }
+                      setClipTransitionDurationAction(variant.id, clip.id, nextValue);
+                    }}
+                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                  />
+                </label>
+                </div>
+
+                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                  Mask asset
+                  <select
+                    value={clip.transitionAssetId ?? ''}
+                    disabled={clip.transition !== 'mask'}
+                    onChange={(event) => variant && setClipTransitionAssetAction(variant.id, clip.id, event.target.value || undefined)}
+                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                    title={transitionMaskAssets.find((asset) => asset.id === clip.transitionAssetId)?.label ?? transitionMaskAssets.find((asset) => asset.id === clip.transitionAssetId)?.filename}
+                  >
+                    <option value="">Select mask asset…</option>
+                    {transitionMaskOptions.map((asset) => (
+                      <option key={asset.id} value={asset.id} title={asset.title}>{asset.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                {clip.transition === 'mask' ? (
+                  <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
+                    White luma in the mask reveals the next clip.
+                    {!clip.transitionAssetId ? ' Pick a mask asset before building preview.' : ''}
+                  </div>
+                ) : (
+                  <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
+                    Use masks for reveal transitions. Overlays stay independent and ride over the clip.
+                  </div>
+                )}
+                {clip.overlayAssetId ? (
+                  <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
+                    Overlay is blended over this clip independently of the transition.
+                  </div>
+                ) : null}
+              </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </Panel>
 
@@ -1214,6 +1769,14 @@ export function AutomationView() {
                     kind: 'accent',
                     strength: keyframe.value
                   })))}
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <AutomationLaneTimeline
+                    durationMs={durationMs}
+                    keyframes={lane.keyframes}
+                    propertyLabel={formatParameterLabel(lane.target.property)}
+                    onUpdate={(keyframeId, timeMs, value) => updateKeyframe(lane.id, keyframeId, timeMs, value)}
+                  />
                 </div>
                 <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
                   {lane.keyframes.map((keyframe) => (

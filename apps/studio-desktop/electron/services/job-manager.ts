@@ -1,4 +1,5 @@
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getExportProfileById } from '@afterimage/export-profiles';
 import {
@@ -15,6 +16,10 @@ import {
   buildPreviewPlan,
   buildThumbnailPlan,
   buildWaveformPlan,
+  type CommandExecutionResult,
+  type CommandRunner,
+  type CommandRunnerOptions,
+  type CommandSpec,
   executeCommandSpec,
   resolveFfmpegTools
 } from '@afterimage/ffmpeg-compiler';
@@ -90,6 +95,155 @@ async function resolveAvailableOutputPath(basePath: string): Promise<string> {
   }
 
   throw new Error(`Unable to allocate export filename for "${basePath}".`);
+}
+
+function clampProgress(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function parseFfmpegTimeToMs(value: string): number | undefined {
+  const match = /^(\d+):(\d+):(\d+(?:\.\d+)?)$/.exec(value.trim());
+  if (!match) {
+    return undefined;
+  }
+
+  const hours = Number.parseInt(match[1], 10);
+  const minutes = Number.parseInt(match[2], 10);
+  const seconds = Number.parseFloat(match[3]);
+
+  if ([hours, minutes, seconds].some((part) => Number.isNaN(part))) {
+    return undefined;
+  }
+
+  return Math.round((((hours * 60) + minutes) * 60 + seconds) * 1000);
+}
+
+function resolveRenderedVariantDurationMs(project: NormalizedProjectFile, variant: NonNullable<ReturnType<typeof getVariantById>>): number {
+  let durationMs = variant.clips.reduce((sum, clip) => sum + clip.durationMs, 0);
+
+  for (let index = 0; index < variant.clips.length - 1; index += 1) {
+    const clip = variant.clips[index];
+    const nextClip = variant.clips[index + 1];
+
+    if (clip.transition !== 'mask' || !nextClip) {
+      continue;
+    }
+
+    durationMs -= Math.max(0, Math.min(clip.transitionDurationMs ?? 250, clip.durationMs, nextClip.durationMs));
+  }
+
+  return Math.max(0, durationMs);
+}
+
+function resolveTargetRenderDurationMs(project: NormalizedProjectFile, variantId?: string, sequenceId?: string): number {
+  const sequence = sequenceId ? getSequenceById(project, sequenceId) : getDefaultSequence(project);
+  const variant = variantId ? getVariantById(project, variantId) : (sequence ? getDefaultVariant(project, sequence.id) : getDefaultVariant(project));
+
+  if (!variant) {
+    return 0;
+  }
+
+  const musicDurationMs = variant.musicAlignment?.primaryAssetId
+    ? project.assets.find((asset) => asset.id === variant.musicAlignment?.primaryAssetId)?.durationMs
+    : undefined;
+
+  return typeof musicDurationMs === 'number' && musicDurationMs > 0
+    ? musicDurationMs
+    : variant.clips.some((clip) => clip.transition === 'mask')
+      ? resolveRenderedVariantDurationMs(project, variant)
+      : Math.max(0, ...variant.clips.map((clip) => clip.timelineStartMs + clip.durationMs));
+}
+
+function createProgressRunner(
+  command: CommandSpec,
+  options: {
+    phaseLabel: string;
+    report: (message: string, progress: number) => void;
+    durationMs: number;
+    startProgress: number;
+    endProgress: number;
+  }
+): CommandRunner {
+  return async (binary: string, args: string[], runnerOptions: CommandRunnerOptions): Promise<CommandExecutionResult> => {
+    if (runnerOptions.signal?.aborted) {
+      throw new DOMException('Command aborted before start.', 'AbortError');
+    }
+
+    return await new Promise((resolve, reject) => {
+      const child = spawn(binary, args, {
+        cwd: runnerOptions.cwd,
+        env: runnerOptions.env,
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+      let stderrWindow = '';
+      let lastReportedProgress = options.startProgress;
+      let lastReportedAt = 0;
+
+      const maybeReportProgress = () => {
+        if (options.durationMs <= 0) {
+          return;
+        }
+
+        const matches = [...stderrWindow.matchAll(/time=(\d+:\d+:\d+(?:\.\d+)?)/g)];
+        const latest = matches.at(-1)?.[1];
+        if (!latest) {
+          return;
+        }
+
+        const encodedMs = parseFfmpegTimeToMs(latest);
+        if (encodedMs === undefined) {
+          return;
+        }
+
+        const ratio = clampProgress(encodedMs / options.durationMs);
+        const nextProgress = clampProgress(options.startProgress + ((options.endProgress - options.startProgress) * ratio));
+        const now = Date.now();
+
+        if ((nextProgress - lastReportedProgress) < 0.01 && (now - lastReportedAt) < 250) {
+          return;
+        }
+
+        lastReportedProgress = nextProgress;
+        lastReportedAt = now;
+        options.report(`${options.phaseLabel} ${Math.round(nextProgress * 100)}%`, nextProgress);
+      };
+
+      const abortHandler = () => {
+        child.kill('SIGTERM');
+        reject(new DOMException(`Command "${command.label}" aborted.`, 'AbortError'));
+      };
+
+      runnerOptions.signal?.addEventListener('abort', abortHandler, { once: true });
+
+      child.stdout.on('data', (chunk) => {
+        stdout += chunk.toString();
+      });
+
+      child.stderr.on('data', (chunk) => {
+        const text = chunk.toString();
+        stderr += text;
+        stderrWindow = `${stderrWindow}${text}`.slice(-4096);
+        maybeReportProgress();
+      });
+
+      child.on('error', (error) => {
+        runnerOptions.signal?.removeEventListener('abort', abortHandler);
+        reject(error);
+      });
+
+      child.on('close', (exitCode) => {
+        runnerOptions.signal?.removeEventListener('abort', abortHandler);
+        resolve({
+          exitCode: exitCode ?? 1,
+          stdout,
+          stderr
+        });
+      });
+    });
+  };
 }
 
 export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
@@ -399,13 +553,31 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
       retryPayload: { kind: 'preview', ...input },
       run: async (signal, report) => {
         await ensureArtifactDirs(input.projectRoot);
+        const tempOutputPath = `${input.outputPath}.rendering-${Date.now()}.mp4`;
+        const durationMs = resolveTargetRenderDurationMs(input.project, input.variantId, input.sequenceId);
         const plan = buildPreviewPlan(input.project, {
-          outputPath: input.outputPath,
+          outputPath: tempOutputPath,
           sequenceId: input.sequenceId,
           variantId: input.variantId
         }, tools);
-        report('Rendering preview cache', 0.2);
-        await executeCommandSpec(plan.command, { signal });
+        report('Rendering preview cache', 0.02);
+        try {
+          await executeCommandSpec(plan.command, {
+            signal,
+            runner: createProgressRunner(plan.command, {
+              phaseLabel: 'Rendering preview cache',
+              report,
+              durationMs,
+              startProgress: 0.02,
+              endProgress: 0.98
+            })
+          });
+          await rm(input.outputPath, { force: true });
+          await rename(tempOutputPath, input.outputPath);
+        } catch (error) {
+          await rm(tempOutputPath, { force: true }).catch(() => undefined);
+          throw error;
+        }
         await logger.log('info', 'Rendered preview cache.', input.outputPath);
         return {
           kind: 'preview',
@@ -442,14 +614,24 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
 
         const baseOutputPath = `${input.outputPath}-${profile.id}.${profile.container}`;
         const outputPath = await resolveAvailableOutputPath(baseOutputPath);
+        const durationMs = resolveTargetRenderDurationMs(input.project, variant.id, sequence.id);
         const plan = buildExportPlan(input.project, {
           outputPath,
           profile,
           sequenceId: sequence.id,
           variantId: variant.id
         }, tools);
-        report(`Rendering ${profile.name}`, 0.25);
-        await executeCommandSpec(plan.command, { signal });
+        report(`Rendering ${profile.name}`, 0.02);
+        await executeCommandSpec(plan.command, {
+          signal,
+          runner: createProgressRunner(plan.command, {
+            phaseLabel: `Rendering ${profile.name}`,
+            report,
+            durationMs,
+            startProgress: 0.02,
+            endProgress: 0.98
+          })
+        });
         await logger.log('info', 'Rendered export profile.', outputPath);
         return {
           kind: 'export',

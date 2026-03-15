@@ -23,3 +23,74 @@ recorded_at,run_label,asset_path,asset_id,recipe,asset_kind,sentiment,notes
 2026-03-14,white-foam-pass,,white-burn-0019__seed-2906144,white-burn,overlay,positive,"Liked in overlays; demos matched."
 2026-03-14,white-foam-pass,,dropout-foam-all,dropout-foam,overlay,mixed,"Strong positive overall; requested less uniform drop layout."
 2026-03-14,white-foam-pass,,white-burn-all,white-burn,overlay,mixed,"White-burn seen as useful for some transitions, especially as a mask."
+2026-03-14,white-burn-slow-pass,,white-burn-slow-0001__seed-544520042,white-burn-slow,overlay,positive,"Called out as a keeper."
+2026-03-14,white-burn-slow-pass,,white-burn-slow-0012__seed-298273656,white-burn-slow,overlay,positive,"Called out as the right attack speed and as keeping some texture."
+2026-03-14,white-burn-slow-pass-2,,white-burn-slow-0009__seed-161734135,white-burn-slow,overlay,positive,"Selected for iteration before combo testing."
+2026-03-14,white-burn-slow-pass-2,,white-burn-slow-0013__seed-420765728,white-burn-slow,overlay,positive,"Selected for iteration before combo testing."
+2026-03-14,white-burn-slow-pass-2,,white-burn-slow-0018__seed-401543283,white-burn-slow,overlay,positive,"Selected for iteration before combo testing."
+2026-03-14,white-burn-slow-pass-2,,white-burn-slow-0021__seed-126524712,white-burn-slow,overlay,positive,"Selected for iteration before combo testing."
+2026-03-14,white-burn-slow-pass-2,,white-burn-slow-0023__seed-229321112,white-burn-slow,overlay,positive,"Selected for iteration before combo testing."
+2026-03-14,white-burn-slow-pass-3,,white-burn-slow-0005__seed-911108979,white-burn-slow,overlay,positive,"Strong texture."
+2026-03-14,white-burn-slow-pass-3,,white-burn-slow-0007__seed-897771939,white-burn-slow,overlay,positive,"Strong attack."
+2026-03-14,white-burn-slow-pass-3,,white-burn-slow-0012__seed-478177521,white-burn-slow,overlay,positive,"Strong attack."
+2026-03-14,white-burn-slow-pass-3,,white-burn-slow-0017__seed-205477016,white-burn-slow,overlay,mixed,"Great attack; user wanted more texture."
+2026-03-14,white-burn-slow-pass-3,,white-burn-slow-0018__seed-178402803,white-burn-slow,overlay,mixed,"Strong texture but not attack."
+2026-03-14,white-burn-slow-pass-3,,white-burn-slow-0019__seed-846976119,white-burn-slow,overlay,mixed,"Same read as 0017: good attack, needs texture."
+2026-03-14,white-burn-slow-pass-3,,white-burn-slow-0023__seed-622618550,white-burn-slow,overlay,positive,"Closest overall balance."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0001__seed-328499131,white-burn-slow,overlay,positive,"Close overall; strong texture-side reference."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0003__seed-530817271,white-burn-slow,overlay,positive,"Attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0004__seed-167566520,white-burn-slow,overlay,positive,"Best attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0005__seed-902358304,white-burn-slow,overlay,positive,"Best attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0006__seed-854581773,white-burn-slow,overlay,positive,"Attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0007__seed-525287682,white-burn-slow,overlay,positive,"Attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0008__seed-764212228,white-burn-slow,overlay,positive,"Attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0011__seed-377232831,white-burn-slow,overlay,positive,"Attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0013__seed-28826357,white-burn-slow,overlay,positive,"Close overall; strong texture-side reference."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0014__seed-818648449,white-burn-slow,overlay,positive,"Attack."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0020__seed-230126501,white-burn-slow,overlay,positive,"Close overall; strong texture-side reference."
+2026-03-14,white-burn-slow-pass-4,,white-burn-slow-0022__seed-504914347,white-burn-slow,overlay,positive,"Very close overall."
+2026-03-14,white-burn-slow-pass-5,,white-burn-slow-0004__seed-838502275,white-burn-slow,overlay,positive,"Texture."
+2026-03-14,white-burn-slow-pass-5,,white-burn-slow-0009__seed-899452463,white-burn-slow,overlay,positive,"Texture."
+2026-03-14,white-burn-slow-pass-5,,white-burn-slow-0010__seed-106265288,white-burn-slow,overlay,positive,"Texture."
+2026-03-14,white-burn-slow-pass-5,,white-burn-slow-0015__seed-600221774,white-burn-slow,overlay,positive,"Texture."
+2026-03-14,white-burn-slow-pass-5,,white-burn-slow-0023__seed-102378820,white-burn-slow,overlay,positive,"Texture."
+2026-03-14,white-burn-slow-pass-5,,white-burn-slow-pass-5-others,white-burn-slow,overlay,negative,"The rest of the pass lacked texture."
+2026-03-14,white-burn-slow-pass-6,,white-burn-slow-0002__seed-354334999,white-burn-slow,overlay,positive,"Finder tag import: Orange/attack."
+2026-03-14,white-burn-slow-pass-6,,white-burn-slow-0012__seed-961985449,white-burn-slow,overlay,positive,"Finder tag import: Red texture plus Orange attack."
+2026-03-14,white-burn-slow-pass-6,,white-burn-slow-0014__seed-630164169,white-burn-slow,overlay,positive,"Finder tag import: Orange/attack."
+2026-03-14,white-burn-slow-pass-6,,white-burn-slow-0015__seed-664529433,white-burn-slow,overlay,positive,"Finder tag import: Red texture plus Orange attack."
+2026-03-14,white-burn-slow-pass-6,,white-burn-slow-0019__seed-529574000,white-burn-slow,overlay,positive,"Finder tag import: Orange/attack."
+2026-03-14,white-burn-slow-pass-6,,white-burn-slow-0020__seed-821627050,white-burn-slow,overlay,positive,"Finder tag import: Orange/attack."
+2026-03-14,white-burn-slow-pass-6,,white-burn-slow-pass-6-texture-regression,white-burn-slow,overlay,negative,"Finder-tagged pass showed texture regression; only two overlays were tagged for texture and both also needed attack."
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0001__seed-60847594,white-burn-slow,overlays,positive,Finder tag import: ADSR.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0003__seed-482742902,white-burn-slow,overlays,positive,Finder tag import: texture.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0004__seed-971078272,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0007__seed-378401835,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0008__seed-30858366,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0011__seed-482741416,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0014__seed-823596696,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0015__seed-952381120,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0016__seed-97744529,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0017__seed-870496876,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0018__seed-441846947,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0020__seed-669082722,white-burn-slow,overlays,positive,Finder tag import: texture.
+2026-03-14,white-burn-slow-pass-8,,white-burn-slow-0023__seed-80988530,white-burn-slow,overlays,mixed,Finder tag import: liked combo/refinement candidate.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0002__seed-451359547,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0003__seed-683209502,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0004__seed-929216265,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0005__seed-144071719,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0007__seed-645963213,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0008__seed-518306292,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0009__seed-860635239,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0010__seed-592181965,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0011__seed-149166659,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0012__seed-41832400,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0013__seed-812083987,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0014__seed-212942085,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0015__seed-339704792,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0016__seed-860643187,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0018__seed-831721093,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0019__seed-343005384,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0021__seed-672556587,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0022__seed-695055318,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.
+2026-03-14,white-burn-slow-pass-9,,white-burn-slow-0023__seed-347378122,white-burn-slow,overlays,positive,Finder tag import: texture plus ADSR.

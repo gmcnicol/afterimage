@@ -87,6 +87,58 @@ describe('@afterimage/project-model', () => {
     ]);
   });
 
+  it('reports invalid mask transition references and placement', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      variants: [
+        {
+          ...fixtureProject.variants[0],
+          clips: [
+            {
+              ...fixtureProject.variants[0].clips[0],
+              transition: 'mask',
+              transitionDurationMs: 500
+            },
+            {
+              id: 'clip-outro',
+              assetId: 'asset-alpha',
+              timelineStartMs: 2000,
+              sourceStartMs: 0,
+              durationMs: 1500,
+              transition: 'mask',
+              transitionDurationMs: 400,
+              transitionAssetId: 'missing-mask',
+              transitionOverlayAssetId: 'missing-overlay'
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Sequence clip "clip-intro" uses mask transition without a transition asset.',
+        path: 'variants.variant-main.clips.clip-intro.transitionAssetId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Sequence clip "clip-outro" references missing transition asset "missing-mask".',
+        path: 'variants.variant-main.clips.clip-outro.transitionAssetId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Sequence clip "clip-outro" references missing transition overlay asset "missing-overlay".',
+        path: 'variants.variant-main.clips.clip-outro.transitionOverlayAssetId'
+      },
+      {
+        code: 'invalid-range',
+        message: 'Sequence clip "clip-outro" cannot use a mask transition without a following clip.',
+        path: 'variants.variant-main.clips.clip-outro.transition'
+      }
+    ]));
+  });
+
   it('creates empty projects with deterministic defaults', () => {
     const project = createEmptyProject({
       id: 'project-empty',

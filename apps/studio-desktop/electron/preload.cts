@@ -14,6 +14,8 @@ const api: DesktopApi = {
     loadAnalysis: (analysisPath) => ipcRenderer.invoke('project:loadAnalysis', analysisPath),
     importMedia: (projectRoot) => ipcRenderer.invoke('project:importMedia', projectRoot),
     importMusic: (projectRoot) => ipcRenderer.invoke('project:importMusic', projectRoot),
+    importTransitionMasks: (projectRoot) => ipcRenderer.invoke('project:importTransitionMasks', projectRoot),
+    importTransitionOverlays: (projectRoot) => ipcRenderer.invoke('project:importTransitionOverlays', projectRoot),
     relinkAsset: (input) => ipcRenderer.invoke('project:relinkAsset', input)
   },
   jobs: {

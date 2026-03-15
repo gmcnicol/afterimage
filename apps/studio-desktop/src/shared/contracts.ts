@@ -96,6 +96,8 @@ export interface DesktopApi {
     loadAnalysis: (analysisPath: string) => Promise<AnalysisFile | null>;
     importMedia: (projectRoot?: string) => Promise<MediaAsset[]>;
     importMusic: (projectRoot?: string) => Promise<MediaAsset[]>;
+    importTransitionMasks: (projectRoot?: string) => Promise<MediaAsset[]>;
+    importTransitionOverlays: (projectRoot?: string) => Promise<MediaAsset[]>;
     relinkAsset: (input: { projectRoot: string; assetId: string; currentPath?: string }) => Promise<RelinkAssetResult | null>;
   };
   jobs: {

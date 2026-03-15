@@ -43,7 +43,7 @@ export function useDesktopBootstrap(): void {
         }
       }
       if (job.status === 'completed' && job.result?.kind === 'preview' && job.result.outputPath) {
-        setPreviewPath(job.result.outputPath);
+        setPreviewPath(`${job.result.outputPath}?v=${Date.now()}`);
       }
     }
   });

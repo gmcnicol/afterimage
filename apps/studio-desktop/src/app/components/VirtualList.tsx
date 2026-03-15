@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
 export function VirtualList<T>({
   items,
   estimateSize,
-  renderItem
+  renderItem,
+  activeIndex
 }: {
   items: T[];
   estimateSize: number;
   renderItem: (item: T, index: number) => React.ReactNode;
+  activeIndex?: number;
 }) {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const virtualizer = useVirtualizer({
@@ -17,6 +19,16 @@ export function VirtualList<T>({
     estimateSize: () => estimateSize,
     overscan: 6
   });
+
+  useEffect(() => {
+    if (activeIndex === undefined || activeIndex < 0 || activeIndex >= items.length) {
+      return;
+    }
+
+    virtualizer.scrollToIndex(activeIndex, {
+      align: 'auto'
+    });
+  }, [activeIndex, items.length, virtualizer]);
 
   return (
     <div
