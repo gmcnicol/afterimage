@@ -229,6 +229,10 @@ htmlcov/
 
 # Local render/analysis scratch
 .artifacts/
+/artifacts/*
+!/artifacts/transition-foundry/
+/artifacts/transition-foundry/*
+!/artifacts/transition-foundry/feedback.csv
 renders/
 exports/
 recordings/

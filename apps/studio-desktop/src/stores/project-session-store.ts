@@ -1,13 +1,25 @@
 import { create } from 'zustand';
-import type { AutomationTargetProperty, MediaAsset, NormalizedProjectFile, SupportedFilterType } from '@afterimage/project-model';
+import type { AutomationTargetProperty, MediaAsset, NormalizedProjectFile, SupportedFilterType, TransitionStyle } from '@afterimage/project-model';
 import { createEmptyProject, getDefaultFilterParameters, getFilterDefinition, getPrimaryAutomationProperty } from '@afterimage/project-model';
 import {
   addCutToSequence,
   addMarker,
+  buildNewVariantFromReviewedCuts,
+  buildVariantFromReviewedCuts,
+  type SequenceBuildMode,
   applySyncMarkers,
   addSection,
+  deleteVariant,
   duplicateVariant,
   moveClip,
+  removeClip,
+  randomizeFoundryTransitions,
+  randomizeFoundryOverlays,
+  setClipOverlayAsset,
+  setClipTransition,
+  setClipTransitionAsset,
+  setClipTransitionDuration,
+  setClipTransitionOverlayAsset,
   trimClip
 } from '../operations/sequence-ops';
 import {
@@ -63,9 +75,20 @@ interface ProjectSessionState {
   trimCut: (cutId: string, startMs: number, endMs: number) => void;
   addCutToBin: (cutId: string, binId: string) => void;
   addCutToSequence: (cutId: string) => void;
+  buildVariantFromReviewedCuts: (variantId: string, mode?: SequenceBuildMode) => void;
+  buildNewVariantFromReviewedCuts: (variantId: string, mode?: SequenceBuildMode) => void;
   moveClip: (variantId: string, clipId: string, direction: -1 | 1) => void;
+  removeClip: (variantId: string, clipId: string) => void;
   trimClip: (variantId: string, clipId: string, deltaMs: number) => void;
+  setClipOverlayAsset: (variantId: string, clipId: string, assetId?: string) => void;
+  setClipTransition: (variantId: string, clipId: string, transition: TransitionStyle) => void;
+  setClipTransitionDuration: (variantId: string, clipId: string, durationMs: number) => void;
+  setClipTransitionAsset: (variantId: string, clipId: string, assetId?: string) => void;
+  setClipTransitionOverlayAsset: (variantId: string, clipId: string, assetId?: string) => void;
+  randomizeFoundryTransitions: (variantId: string) => void;
+  randomizeFoundryOverlays: (variantId: string) => void;
   duplicateVariant: (variantId: string) => void;
+  deleteVariant: (variantId: string) => void;
   addMarker: (variantId: string, label: string, timeMs: number) => void;
   addSection: (variantId: string, label: string, startMs: number, endMs: number) => void;
   addFilterToSequenceStack: (type: SupportedFilterType) => void;
@@ -159,9 +182,24 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       project: addCutToSequence(state.project, cutId)
     }));
   },
+  buildVariantFromReviewedCuts: (variantId, mode) => {
+    set((state) => markDirty({
+      project: buildVariantFromReviewedCuts(state.project, variantId, mode)
+    }));
+  },
+  buildNewVariantFromReviewedCuts: (variantId, mode) => {
+    set((state) => markDirty({
+      project: buildNewVariantFromReviewedCuts(state.project, variantId, mode)
+    }));
+  },
   moveClip: (variantId, clipId, direction) => {
     set((state) => markDirty({
       project: moveClip(state.project, variantId, clipId, direction)
+    }));
+  },
+  removeClip: (variantId, clipId) => {
+    set((state) => markDirty({
+      project: removeClip(state.project, variantId, clipId)
     }));
   },
   trimClip: (variantId, clipId, deltaMs) => {
@@ -169,9 +207,49 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       project: trimClip(state.project, variantId, clipId, deltaMs)
     }));
   },
+  setClipOverlayAsset: (variantId, clipId, assetId) => {
+    set((state) => markDirty({
+      project: setClipOverlayAsset(state.project, variantId, clipId, assetId)
+    }));
+  },
+  setClipTransition: (variantId, clipId, transition) => {
+    set((state) => markDirty({
+      project: setClipTransition(state.project, variantId, clipId, transition)
+    }));
+  },
+  setClipTransitionDuration: (variantId, clipId, durationMs) => {
+    set((state) => markDirty({
+      project: setClipTransitionDuration(state.project, variantId, clipId, durationMs)
+    }));
+  },
+  setClipTransitionAsset: (variantId, clipId, assetId) => {
+    set((state) => markDirty({
+      project: setClipTransitionAsset(state.project, variantId, clipId, assetId)
+    }));
+  },
+  setClipTransitionOverlayAsset: (variantId, clipId, assetId) => {
+    set((state) => markDirty({
+      project: setClipTransitionOverlayAsset(state.project, variantId, clipId, assetId)
+    }));
+  },
+  randomizeFoundryTransitions: (variantId) => {
+    set((state) => markDirty({
+      project: randomizeFoundryTransitions(state.project, variantId)
+    }));
+  },
+  randomizeFoundryOverlays: (variantId) => {
+    set((state) => markDirty({
+      project: randomizeFoundryOverlays(state.project, variantId)
+    }));
+  },
   duplicateVariant: (variantId) => {
     set((state) => markDirty({
       project: duplicateVariant(state.project, variantId)
+    }));
+  },
+  deleteVariant: (variantId) => {
+    set((state) => markDirty({
+      project: deleteVariant(state.project, variantId)
     }));
   },
   addMarker: (variantId, label, timeMs) => {

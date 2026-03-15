@@ -14,7 +14,8 @@
     "foundry:run": "node scripts/transition-foundry.mjs run",
     "foundry:generate": "node scripts/transition-foundry.mjs generate",
     "foundry:analyze": "node scripts/transition-foundry.mjs analyze",
-    "foundry:review": "node scripts/transition-foundry.mjs review"
+    "foundry:review": "node scripts/transition-foundry.mjs review",
+    "foundry:curate": "node scripts/transition-foundry.mjs curate"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",

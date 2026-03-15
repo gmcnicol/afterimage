@@ -5,6 +5,7 @@ export type PresetFamily = 'vhs' | 'liminal' | 'imagined-futures' | 'glitch';
 export type MidiBindingMode = 'set' | 'toggle' | 'scale' | 'trigger';
 export type ProbeStreamType = 'video' | 'audio' | 'subtitle' | 'data' | 'unknown';
 export type MediaType = 'video' | 'image' | 'audio';
+export type AssetRole = 'source' | 'music' | 'transition-mask' | 'transition-overlay';
 export type ImportStatus = 'ready' | 'excluded' | 'missing';
 export type AnalysisStatus = 'pending' | 'queued' | 'running' | 'completed' | 'failed';
 export type CutStatus = 'new' | 'kept' | 'rejected' | 'favorite';
@@ -13,7 +14,7 @@ export type AudioChangeSource = 'astats' | 'aspectralstats' | 'ebur128' | 'silen
 export type SyncEventSource = 'audio-change' | 'beat' | 'downbeat' | 'midi' | 'manual';
 export type SyncEventKind = 'change' | 'accent' | 'section' | 'silence-boundary' | 'cue' | 'beat' | 'downbeat';
 export type SyncMode = 'texture' | 'pulse' | 'performance' | 'hybrid';
-export type TransitionStyle = 'cut' | 'crossfade';
+export type TransitionStyle = 'cut' | 'crossfade' | 'mask';
 export type AssistedGenerationStrategy =
   | 'manual'
   | 'chronological'
@@ -54,6 +55,7 @@ export interface MediaAsset {
   id: string;
   filename: string;
   mediaType: MediaType;
+  assetRole?: AssetRole;
   path: ProjectPathRef;
   label?: string;
   durationMs?: number;
@@ -293,8 +295,11 @@ export interface SequenceClip {
   timelineStartMs: number;
   sourceStartMs: number;
   durationMs: number;
+  overlayAssetId?: string;
   transition?: TransitionStyle;
   transitionDurationMs?: number;
+  transitionAssetId?: string;
+  transitionOverlayAssetId?: string;
   presetId?: string;
   stackOverrideId?: string;
   tags?: string[];
@@ -669,14 +674,20 @@ export function normalizePreset(preset: Preset): Preset {
 }
 
 export function normalizeMediaAsset(asset: MediaAsset): MediaAsset {
+  const normalizedTags = normalizeStringArray(asset.tags);
+  const defaultRole: AssetRole = asset.mediaType === 'audio' || normalizedTags.includes('music')
+    ? 'music'
+    : 'source';
+
   return {
     ...asset,
     path: normalizeProjectPathRef(asset.path),
     hasAudio: normalizeBoolean(asset.hasAudio, asset.mediaType !== 'image'),
+    assetRole: asset.assetRole ?? defaultRole,
     importStatus: asset.importStatus ?? 'ready',
     analysisStatus: asset.analysisStatus ?? 'pending',
     favorite: normalizeBoolean(asset.favorite, false),
-    tags: normalizeStringArray(asset.tags)
+    tags: normalizedTags
   };
 }
 
@@ -848,8 +859,11 @@ export function normalizeFilterStack(stack: FilterStack): FilterStack {
 export function normalizeSequenceClip(clip: SequenceClip): SequenceClip {
   return {
     ...clip,
+    overlayAssetId: clip.overlayAssetId,
     transition: clip.transition ?? 'cut',
-    transitionDurationMs: clip.transition === 'crossfade' ? normalizeNumber(clip.transitionDurationMs, 250) : clip.transitionDurationMs,
+    transitionDurationMs: clip.transition === 'crossfade' || clip.transition === 'mask'
+      ? normalizeNumber(clip.transitionDurationMs, 250)
+      : clip.transitionDurationMs,
     tags: normalizeStringArray(clip.tags)
   };
 }
@@ -1063,6 +1077,22 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
       if (!assetIds.has(clip.assetId)) {
         pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.assetId`, `Sequence clip "${clip.id}" references missing asset "${clip.assetId}".`);
       }
+      if (clip.overlayAssetId && !assetIds.has(clip.overlayAssetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.overlayAssetId`, `Sequence clip "${clip.id}" references missing overlay asset "${clip.overlayAssetId}".`);
+      }
+      if (clip.transition === 'mask' && !clip.transitionAssetId) {
+        issues.push({
+          code: 'missing-reference',
+          path: `variants.${variant.id}.clips.${clip.id}.transitionAssetId`,
+          message: `Sequence clip "${clip.id}" uses mask transition without a transition asset.`
+        });
+      }
+      if (clip.transitionAssetId && !assetIds.has(clip.transitionAssetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionAssetId`, `Sequence clip "${clip.id}" references missing transition asset "${clip.transitionAssetId}".`);
+      }
+      if (clip.transitionOverlayAssetId && !assetIds.has(clip.transitionOverlayAssetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionOverlayAssetId`, `Sequence clip "${clip.id}" references missing transition overlay asset "${clip.transitionOverlayAssetId}".`);
+      }
       if (clip.cutId && !cutIds.has(clip.cutId)) {
         pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.cutId`, `Sequence clip "${clip.id}" references missing cut "${clip.cutId}".`);
       }
@@ -1079,7 +1109,25 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
           message: `Sequence clip "${clip.id}" must have a positive duration.`
         });
       }
+      if (clip.transition === 'mask' && clip.transitionDurationMs !== undefined && clip.transitionDurationMs <= 0) {
+        issues.push({
+          code: 'invalid-range',
+          path: `variants.${variant.id}.clips.${clip.id}.transitionDurationMs`,
+          message: `Sequence clip "${clip.id}" must have a positive mask transition duration.`
+        });
+      }
     }
+
+    const orderedClips = [...variant.clips].sort((left, right) => compareNumbers(left.timelineStartMs, right.timelineStartMs) || compareStrings(left.id, right.id));
+    orderedClips.forEach((clip, index) => {
+      if (clip.transition === 'mask' && index === orderedClips.length - 1) {
+        issues.push({
+          code: 'invalid-range',
+          path: `variants.${variant.id}.clips.${clip.id}.transition`,
+          message: `Sequence clip "${clip.id}" cannot use a mask transition without a following clip.`
+        });
+      }
+    });
   }
 
   const filterIds = new Set(project.filterStacks.flatMap((stack) => stack.filters.map((filter) => filter.id)));
@@ -1257,7 +1305,7 @@ export function createEmptyProject(input: {
       {
         id: 'variant-main',
         sequenceId: 'sequence-main',
-        name: 'Assembly A',
+        name: 'Sequence A',
         clips: [],
         markers: [],
         sections: [],

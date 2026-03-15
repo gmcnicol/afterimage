@@ -103,7 +103,7 @@ export function useKeyboardShortcuts(): void {
         setCurrentTab('export');
       }
 
-      if (event.key === ' ') {
+      if (event.key === ' ' && currentTab !== 'cuts') {
         event.preventDefault();
         startTransition(() => {
           setCurrentTab(currentTab === 'sequence' ? 'cuts' : 'sequence');

@@ -762,15 +762,41 @@ function getVariantDuration(variant: Variant): number {
   return variant.clips.reduce((max, clip) => Math.max(max, clip.timelineStartMs + clip.durationMs), 0);
 }
 
-function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): { assetId: string; path: string }[] {
+function getMusicDurationMs(project: NormalizedProjectFile, variant: Variant): number | undefined {
+  const musicAssetId = variant.musicAlignment?.primaryAssetId;
+  if (!musicAssetId) {
+    return undefined;
+  }
+
+  const durationMs = ensureAsset(project, musicAssetId).durationMs;
+  return typeof durationMs === 'number' && durationMs > 0 ? durationMs : undefined;
+}
+
+interface RenderInputDescriptor {
+  assetId: string;
+  path: string;
+  loop?: boolean;
+}
+
+function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): RenderInputDescriptor[] {
   const seen = new Set<string>();
-  const inputs: { assetId: string; path: string }[] = [];
+  const inputs: RenderInputDescriptor[] = [];
 
   for (const clip of variant.clips) {
     if (!seen.has(clip.assetId)) {
       const asset = ensureAsset(project, clip.assetId);
       seen.add(clip.assetId);
       inputs.push({ assetId: clip.assetId, path: asset.path.absolutePath });
+    }
+    if (clip.overlayAssetId && !seen.has(clip.overlayAssetId)) {
+      const asset = ensureAsset(project, clip.overlayAssetId);
+      seen.add(clip.overlayAssetId);
+      inputs.push({ assetId: clip.overlayAssetId, path: asset.path.absolutePath, loop: true });
+    }
+    if (clip.transitionAssetId && !seen.has(clip.transitionAssetId)) {
+      const asset = ensureAsset(project, clip.transitionAssetId);
+      seen.add(clip.transitionAssetId);
+      inputs.push({ assetId: clip.transitionAssetId, path: asset.path.absolutePath });
     }
   }
 
@@ -783,7 +809,134 @@ function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): 
   return inputs;
 }
 
-function buildRenderCommand(
+function usesMaskTransitions(variant: Variant): boolean {
+  return variant.clips.some((clip) => clip.transition === 'mask');
+}
+
+function resolveMaskTransitionDurationMs(clip: SequenceClip, nextClip: SequenceClip | undefined): number {
+  if (clip.transition !== 'mask' || !nextClip) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(clip.transitionDurationMs ?? 250, clip.durationMs, nextClip.durationMs));
+}
+
+function getRenderedVariantDurationMs(variant: Variant): number {
+  let durationMs = variant.clips.reduce((sum, clip) => sum + clip.durationMs, 0);
+
+  for (let index = 0; index < variant.clips.length - 1; index += 1) {
+    durationMs -= resolveMaskTransitionDurationMs(variant.clips[index], variant.clips[index + 1]);
+  }
+
+  return Math.max(0, durationMs);
+}
+
+export function getTargetRenderDurationMs(project: NormalizedProjectFile, variant: Variant): number {
+  return getMusicDurationMs(project, variant)
+    ?? (usesMaskTransitions(variant) ? getRenderedVariantDurationMs(variant) : getVariantDuration(variant));
+}
+
+function getClipFilterExpressionsAtTime(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip, timeMs: number): string[] {
+  return collectAuthoredClipFilters(project, variant, clip)
+    .map((filter) => applyAutomationToFilter(project, filter, timeMs))
+    .filter((filter) => filter.enabled !== false)
+    .map(compileFilterExpression);
+}
+
+function buildVideoChain(
+  inputIndex: number,
+  sourceStartMs: number,
+  durationMs: number,
+  filterExpressions: string[],
+  profile: RenderProfile,
+  outputLabel: string
+): string {
+  const filters = [
+    `trim=start=${formatSeconds(sourceStartMs)}:duration=${formatSeconds(durationMs)}`,
+    'setpts=PTS-STARTPTS',
+    ...filterExpressions,
+    `fps=${formatDecimal(profile.frameRate)}`,
+    `scale=${profile.width}:${profile.height}`,
+    'setsar=1',
+    `format=${profile.pixelFormat}`
+  ];
+
+  return `[${inputIndex}:v]${filters.join(',')}[${outputLabel}]`;
+}
+
+function buildAudioChain(inputIndex: number, sourceStartMs: number, durationMs: number, outputLabel: string): string {
+  return `[${inputIndex}:a]atrim=start=${formatSeconds(sourceStartMs)}:duration=${formatSeconds(durationMs)},asetpts=PTS-STARTPTS[${outputLabel}]`;
+}
+
+function buildMaskAssetChain(inputIndex: number, durationMs: number, profile: RenderProfile, outputLabel: string): string {
+  return `[${inputIndex}:v]trim=start=0:duration=${formatSeconds(durationMs)},setpts=PTS-STARTPTS,fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},setsar=1,format=gray[${outputLabel}]`;
+}
+
+function buildOverlayAssetChain(inputIndex: number, durationMs: number, profile: RenderProfile, outputLabel: string): string {
+  return `[${inputIndex}:v]trim=start=0:duration=${formatSeconds(durationMs)},setpts=PTS-STARTPTS,fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},setsar=1,format=gray,eq=contrast=1.02:brightness=0.01,format=${profile.pixelFormat}[${outputLabel}]`;
+}
+
+function buildFinalVideoChain(
+  inputLabel: string,
+  outputLabel: string,
+  profile: RenderProfile,
+  baseDurationMs: number,
+  targetDurationMs?: number
+): string {
+  const filters: string[] = [];
+
+  if (typeof targetDurationMs === 'number' && targetDurationMs > 0) {
+    const stopPadDurationMs = Math.max(0, targetDurationMs - baseDurationMs);
+    const fadeDurationMs = Math.min(2000, targetDurationMs);
+    const fadeStartMs = Math.max(0, targetDurationMs - fadeDurationMs);
+
+    if (stopPadDurationMs > 0) {
+      filters.push(`tpad=stop_mode=clone:stop_duration=${formatSeconds(stopPadDurationMs)}`);
+    }
+    filters.push(`trim=duration=${formatSeconds(targetDurationMs)}`);
+    filters.push(`fade=t=out:st=${formatSeconds(fadeStartMs)}:d=${formatSeconds(fadeDurationMs)}`);
+  }
+
+  filters.push(`format=${profile.pixelFormat}`);
+
+  return `[${inputLabel}]${filters.join(',')}[${outputLabel}]`;
+}
+
+function appendVideoSegmentWithOptionalOverlay(
+  filterSegments: string[],
+  options: {
+    clipInputIndex: number;
+    overlayInputIndex?: number;
+    sourceStartMs: number;
+    durationMs: number;
+    filterExpressions: string[];
+    profile: RenderProfile;
+    outputLabel: string;
+  }
+): void {
+  const baseLabel = options.overlayInputIndex === undefined ? options.outputLabel : `${options.outputLabel}_base`;
+  filterSegments.push(buildVideoChain(
+    options.clipInputIndex,
+    options.sourceStartMs,
+    options.durationMs,
+    options.filterExpressions,
+    options.profile,
+    baseLabel
+  ));
+
+  if (options.overlayInputIndex === undefined) {
+    return;
+  }
+
+  const overlayLabel = `${options.outputLabel}_overlay`;
+  filterSegments.push(buildOverlayAssetChain(options.overlayInputIndex, options.durationMs, options.profile, overlayLabel));
+  // Apply overlays only to luma so grayscale texture does not contaminate chroma planes.
+  filterSegments.push(
+    `[${baseLabel}][${overlayLabel}]blend=c0_expr='min(255,A+B*0.28)':c1_expr='A':c2_expr='A'[${options.outputLabel}]`
+  );
+}
+
+function buildMaskedRenderCommand(
   project: NormalizedProjectFile,
   variant: Variant,
   sequenceId: string,
@@ -799,28 +952,215 @@ function buildRenderCommand(
   const audioConcatInputs: string[] = [];
   const musicAssetId = variant.musicAlignment?.primaryAssetId;
   const musicInputIndex = musicAssetId ? inputIndexByAssetId.get(musicAssetId) : undefined;
+  const musicDurationMs = getMusicDurationMs(project, variant);
+  const includeClipAudio = musicInputIndex === undefined && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
+
+  let segmentIndex = 0;
+
+  for (let index = 0; index < variant.clips.length; index += 1) {
+    const clip = variant.clips[index];
+    const nextClip = variant.clips[index + 1];
+    const previousClip = variant.clips[index - 1];
+    const clipInputIndex = inputIndexByAssetId.get(clip.assetId);
+    const clipOverlayInputIndex = clip.overlayAssetId ? inputIndexByAssetId.get(clip.overlayAssetId) : undefined;
+    if (clipInputIndex === undefined) {
+      throw new Error(`Missing input index for asset "${clip.assetId}".`);
+    }
+
+    const incomingTransitionMs = previousClip ? resolveMaskTransitionDurationMs(previousClip, clip) : 0;
+    const outgoingTransitionMs = resolveMaskTransitionDurationMs(clip, nextClip);
+    const bodyDurationMs = clip.durationMs - incomingTransitionMs - outgoingTransitionMs;
+
+    if (bodyDurationMs > 0) {
+      const sampleTimeMs = clip.timelineStartMs + incomingTransitionMs + Math.round(bodyDurationMs / 2);
+      const filterExpressions = getClipFilterExpressionsAtTime(project, variant, clip, sampleTimeMs);
+      appendVideoSegmentWithOptionalOverlay(filterSegments, {
+        clipInputIndex,
+        overlayInputIndex: clipOverlayInputIndex,
+        sourceStartMs: clip.sourceStartMs + incomingTransitionMs,
+        durationMs: bodyDurationMs,
+        filterExpressions,
+        profile,
+        outputLabel: `v${segmentIndex}`
+      });
+      videoConcatInputs.push(`[v${segmentIndex}]`);
+
+      if (includeClipAudio) {
+        filterSegments.push(buildAudioChain(
+          clipInputIndex,
+          clip.sourceStartMs + incomingTransitionMs,
+          bodyDurationMs,
+          `a${segmentIndex}`
+        ));
+        audioConcatInputs.push(`[a${segmentIndex}]`);
+      }
+
+      segmentIndex += 1;
+    }
+
+    if (outgoingTransitionMs > 0 && nextClip) {
+      if (!clip.transitionAssetId) {
+        throw new Error(`Clip "${clip.id}" uses a mask transition without transitionAssetId.`);
+      }
+
+      const nextInputIndex = inputIndexByAssetId.get(nextClip.assetId);
+      const nextOverlayInputIndex = nextClip.overlayAssetId ? inputIndexByAssetId.get(nextClip.overlayAssetId) : undefined;
+      const maskInputIndex = inputIndexByAssetId.get(clip.transitionAssetId);
+      if (nextInputIndex === undefined) {
+        throw new Error(`Missing input index for asset "${nextClip.assetId}".`);
+      }
+      if (maskInputIndex === undefined) {
+        throw new Error(`Missing input index for transition asset "${clip.transitionAssetId}".`);
+      }
+
+      const leftLabel = `mtleft${segmentIndex}`;
+      const rightLabel = `mtright${segmentIndex}`;
+      const maskLabel = `mtmask${segmentIndex}`;
+      const mergedLabel = `mtmerge${segmentIndex}`;
+      const transitionOutputLabel = `v${segmentIndex}`;
+
+      appendVideoSegmentWithOptionalOverlay(filterSegments, {
+        clipInputIndex,
+        overlayInputIndex: clipOverlayInputIndex,
+        sourceStartMs: clip.sourceStartMs + clip.durationMs - outgoingTransitionMs,
+        durationMs: outgoingTransitionMs,
+        filterExpressions: getClipFilterExpressionsAtTime(project, variant, clip, clip.timelineStartMs + clip.durationMs - Math.round(outgoingTransitionMs / 2)),
+        profile,
+        outputLabel: leftLabel
+      });
+      appendVideoSegmentWithOptionalOverlay(filterSegments, {
+        clipInputIndex: nextInputIndex,
+        overlayInputIndex: nextOverlayInputIndex,
+        sourceStartMs: nextClip.sourceStartMs,
+        durationMs: outgoingTransitionMs,
+        filterExpressions: getClipFilterExpressionsAtTime(project, variant, nextClip, nextClip.timelineStartMs + Math.round(outgoingTransitionMs / 2)),
+        profile,
+        outputLabel: rightLabel
+      });
+      filterSegments.push(buildMaskAssetChain(maskInputIndex, outgoingTransitionMs, profile, maskLabel));
+      filterSegments.push(`[${leftLabel}][${rightLabel}][${maskLabel}]maskedmerge[${mergedLabel}]`);
+      filterSegments.push(`[${mergedLabel}]null[${transitionOutputLabel}]`);
+
+      videoConcatInputs.push(`[${transitionOutputLabel}]`);
+
+      if (includeClipAudio) {
+        filterSegments.push(buildAudioChain(
+          clipInputIndex,
+          clip.sourceStartMs + clip.durationMs - outgoingTransitionMs,
+          outgoingTransitionMs,
+          `a${segmentIndex}`
+        ));
+        audioConcatInputs.push(`[a${segmentIndex}]`);
+      }
+
+      segmentIndex += 1;
+    }
+  }
+
+  if (segmentIndex === 0) {
+    throw new Error(`Variant "${variant.id}" does not produce any renderable segments.`);
+  }
+
+  if (includeClipAudio) {
+    filterSegments.push(`${videoConcatInputs.join('')}${audioConcatInputs.join('')}concat=n=${segmentIndex}:v=1:a=1[vconcat][aconcat]`);
+  } else {
+    filterSegments.push(`${videoConcatInputs.join('')}concat=n=${segmentIndex}:v=1:a=0[vconcat]`);
+  }
+
+  filterSegments.push(buildFinalVideoChain('vconcat', 'vout', profile, getRenderedVariantDurationMs(variant), musicDurationMs));
+
+  if (musicInputIndex !== undefined) {
+    filterSegments.push(`[${musicInputIndex}:a]atrim=start=0:duration=${formatSeconds(getTargetRenderDurationMs(project, variant))},asetpts=PTS-STARTPTS[amusic]`);
+  }
+
+  const args = [
+    request.overwrite === false ? '-n' : '-y',
+    ...inputs.flatMap((input) => input.loop ? ['-stream_loop', '-1', '-i', input.path] : ['-i', input.path]),
+    '-filter_complex', filterSegments.join(';'),
+    '-map', '[vout]',
+    '-c:v', profile.videoCodec
+  ];
+
+  if (profile.videoCodec === 'libx264') {
+    args.push(
+      '-preset', profile.videoPreset ?? 'medium',
+      '-crf', String(profile.crf ?? 18)
+    );
+  } else if (profile.videoCodec === 'prores_ks') {
+    args.push('-profile:v', profile.videoProfile ?? '3');
+  }
+
+  if (musicInputIndex !== undefined) {
+    args.push('-map', '[amusic]');
+  } else if (includeClipAudio) {
+    args.push('-map', '[aconcat]');
+  }
+
+  if (musicInputIndex !== undefined || includeClipAudio) {
+    args.push('-c:a', profile.audioCodec);
+    if (profile.audioCodec === 'aac') {
+      args.push('-b:a', `${profile.audioBitrateKbps ?? 192}k`);
+    }
+  }
+
+  args.push('-f', profile.container, request.outputPath);
+
+  return {
+    projectId: project.id,
+    sequenceId,
+    variantId: variant.id,
+    outputPath: request.outputPath,
+    command: {
+      label: `render:${project.id}:${variant.id}`,
+      binary: resolvedTools.ffmpeg.path,
+      args,
+      expectedOutputs: [request.outputPath]
+    }
+  };
+}
+
+function buildRenderCommand(
+  project: NormalizedProjectFile,
+  variant: Variant,
+  sequenceId: string,
+  request: RenderRequest | ExportRequest | PreviewRequest,
+  profile: RenderProfile,
+  tools?: ResolvedFfmpegTools
+): RenderPlan | PreviewPlan {
+  if (usesMaskTransitions(variant)) {
+    return buildMaskedRenderCommand(project, variant, sequenceId, request, profile, tools);
+  }
+
+  const resolvedTools = makePlanningTools(tools);
+  const inputs = collectRenderInputs(project, variant);
+  const inputIndexByAssetId = new Map(inputs.map((input, index) => [input.assetId, index]));
+  const filterSegments: string[] = [];
+  const videoConcatInputs: string[] = [];
+  const audioConcatInputs: string[] = [];
+  const musicAssetId = variant.musicAlignment?.primaryAssetId;
+  const musicInputIndex = musicAssetId ? inputIndexByAssetId.get(musicAssetId) : undefined;
+  const musicDurationMs = getMusicDurationMs(project, variant);
   const includeClipAudio = musicInputIndex === undefined && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
 
   let segmentIndex = 0;
 
   variant.clips.forEach((clip) => {
     const inputIndex = inputIndexByAssetId.get(clip.assetId);
+    const overlayInputIndex = clip.overlayAssetId ? inputIndexByAssetId.get(clip.overlayAssetId) : undefined;
     if (inputIndex === undefined) {
       throw new Error(`Missing input index for asset "${clip.assetId}".`);
     }
 
     for (const segment of collectClipRenderSegments(project, variant, clip)) {
-      const videoFilters = [
-        `trim=start=${formatSeconds(segment.sourceStartMs)}:duration=${formatSeconds(segment.durationMs)}`,
-        'setpts=PTS-STARTPTS',
-        ...segment.filterExpressions,
-        `fps=${formatDecimal(profile.frameRate)}`,
-        `scale=${profile.width}:${profile.height}`,
-        'setsar=1',
-        `format=${profile.pixelFormat}`
-      ];
-
-      filterSegments.push(`[${inputIndex}:v]${videoFilters.join(',')}[v${segmentIndex}]`);
+      appendVideoSegmentWithOptionalOverlay(filterSegments, {
+        clipInputIndex: inputIndex,
+        overlayInputIndex,
+        sourceStartMs: segment.sourceStartMs,
+        durationMs: segment.durationMs,
+        filterExpressions: segment.filterExpressions,
+        profile,
+        outputLabel: `v${segmentIndex}`
+      });
       videoConcatInputs.push(`[v${segmentIndex}]`);
 
       if (includeClipAudio) {
@@ -842,15 +1182,15 @@ function buildRenderCommand(
     filterSegments.push(`${videoConcatInputs.join('')}concat=n=${segmentIndex}:v=1:a=0[vconcat]`);
   }
 
-  filterSegments.push(`[vconcat]format=${profile.pixelFormat}[vout]`);
+  filterSegments.push(buildFinalVideoChain('vconcat', 'vout', profile, getVariantDuration(variant), musicDurationMs));
 
   if (musicInputIndex !== undefined) {
-    filterSegments.push(`[${musicInputIndex}:a]atrim=start=0:duration=${formatSeconds(getVariantDuration(variant))},asetpts=PTS-STARTPTS[amusic]`);
+    filterSegments.push(`[${musicInputIndex}:a]atrim=start=0:duration=${formatSeconds(getTargetRenderDurationMs(project, variant))},asetpts=PTS-STARTPTS[amusic]`);
   }
 
   const args = [
     request.overwrite === false ? '-n' : '-y',
-    ...inputs.flatMap((input) => ['-i', input.path]),
+    ...inputs.flatMap((input) => input.loop ? ['-stream_loop', '-1', '-i', input.path] : ['-i', input.path]),
     '-filter_complex', filterSegments.join(';'),
     '-map', '[vout]',
     '-c:v', profile.videoCodec
@@ -1021,7 +1361,14 @@ export async function executeCommandSpec(
   });
 
   if ((options.rejectOnNonZeroExit ?? true) && result.exitCode !== 0) {
-    throw new Error(`Command "${command.label}" failed with exit code ${result.exitCode}.`);
+    const stderrTail = result.stderr
+      .trim()
+      .split('\n')
+      .slice(-12)
+      .join('\n')
+      .trim();
+    const details = stderrTail ? `\n${stderrTail}` : '';
+    throw new Error(`Command "${command.label}" failed with exit code ${result.exitCode}.${details}`);
   }
 
   return result;

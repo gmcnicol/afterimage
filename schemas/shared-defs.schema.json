@@ -26,6 +26,10 @@
       "type": "string",
       "enum": ["video", "image", "audio"]
     },
+    "assetRole": {
+      "type": "string",
+      "enum": ["source", "music", "transition-mask", "transition-overlay"]
+    },
     "importStatus": {
       "type": "string",
       "enum": ["ready", "excluded", "missing"]
@@ -60,7 +64,7 @@
     },
     "transitionStyle": {
       "type": "string",
-      "enum": ["cut", "crossfade"]
+      "enum": ["cut", "crossfade", "mask"]
     },
     "filterStackScope": {
       "type": "string",
@@ -118,6 +122,7 @@
         "id": { "$ref": "#/$defs/idString" },
         "filename": { "type": "string", "minLength": 1 },
         "mediaType": { "$ref": "#/$defs/mediaType" },
+        "assetRole": { "$ref": "#/$defs/assetRole" },
         "path": { "$ref": "#/$defs/pathRef" },
         "label": { "type": "string", "minLength": 1 },
         "durationMs": { "type": "integer", "minimum": 0 },
@@ -494,8 +499,11 @@
         "timelineStartMs": { "type": "integer", "minimum": 0 },
         "sourceStartMs": { "type": "integer", "minimum": 0 },
         "durationMs": { "type": "integer", "minimum": 1 },
+        "overlayAssetId": { "$ref": "#/$defs/idString" },
         "transition": { "$ref": "#/$defs/transitionStyle", "default": "cut" },
         "transitionDurationMs": { "type": "integer", "minimum": 0 },
+        "transitionAssetId": { "$ref": "#/$defs/idString" },
+        "transitionOverlayAssetId": { "$ref": "#/$defs/idString" },
         "presetId": { "$ref": "#/$defs/idString" },
         "stackOverrideId": { "$ref": "#/$defs/idString" },
         "tags": { "$ref": "#/$defs/stringArray" },

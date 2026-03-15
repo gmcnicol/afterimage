@@ -107,23 +107,27 @@ async function handleLocalAssetRequest(request: Request): Promise<Response> {
   const fileStat = await stat(absolutePath);
   const rangeHeader = request.headers.get('range');
   const contentType = getContentType(absolutePath);
+  const buildFullResponse = () => new Response(Readable.toWeb(createReadStream(absolutePath)), {
+    status: 200,
+    headers: {
+      'Accept-Ranges': 'bytes',
+      'Content-Length': String(fileStat.size),
+      'Content-Type': contentType,
+      'Cache-Control': 'no-store'
+    }
+  });
 
   if (rangeHeader) {
     const match = /bytes=(\d*)-(\d*)/.exec(rangeHeader);
     if (!match) {
-      return new Response('Invalid range.', { status: 416 });
+      return buildFullResponse();
     }
 
     const start = match[1] ? Number.parseInt(match[1], 10) : 0;
     const end = match[2] ? Number.parseInt(match[2], 10) : fileStat.size - 1;
 
     if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || end < start || end >= fileStat.size) {
-      return new Response('Invalid range.', {
-        status: 416,
-        headers: {
-          'Content-Range': `bytes */${fileStat.size}`
-        }
-      });
+      return buildFullResponse();
     }
 
     return new Response(Readable.toWeb(createReadStream(absolutePath, { start, end })), {
@@ -138,15 +142,7 @@ async function handleLocalAssetRequest(request: Request): Promise<Response> {
     });
   }
 
-  return new Response(Readable.toWeb(createReadStream(absolutePath)), {
-    status: 200,
-    headers: {
-      'Accept-Ranges': 'bytes',
-      'Content-Length': String(fileStat.size),
-      'Content-Type': contentType,
-      'Cache-Control': 'no-store'
-    }
-  });
+  return buildFullResponse();
 }
 
 function createWindow(): void {
@@ -196,6 +192,8 @@ app.whenReady().then(() => {
   ipcMain.handle('project:loadAnalysis', async (_event: IpcMainInvokeEvent, analysisPath: string) => projectService.loadAnalysis(analysisPath));
   ipcMain.handle('project:importMedia', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importMedia(projectRoot));
   ipcMain.handle('project:importMusic', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importMusic(projectRoot));
+  ipcMain.handle('project:importTransitionMasks', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importTransitionMasks(projectRoot));
+  ipcMain.handle('project:importTransitionOverlays', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importTransitionOverlays(projectRoot));
   ipcMain.handle(
     'project:relinkAsset',
     async (_event: IpcMainInvokeEvent, input: { projectRoot: string; assetId: string; currentPath?: string }) => projectService.relinkAsset(input)

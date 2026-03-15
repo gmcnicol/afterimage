@@ -211,19 +211,23 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "-i",
             "fixtures/audio/score-alpha.wav",
             "-filter_complex",
-            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=2.150,eq=saturation=0.938,fps=30.000,scale=1920:1080,setsar=1,format=yuv422p10le[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]format=yuv422p10le[vout];[1:a]atrim=start=0:duration=2.000,asetpts=PTS-STARTPTS[amusic]",
+            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=2.150,eq=saturation=0.938,fps=30.000,scale=1920:1080,setsar=1,format=yuv420p[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]tpad=stop_mode=clone:stop_duration=3.000,trim=duration=5.000,fade=t=out:st=3.000:d=2.000,format=yuv420p[vout];[1:a]atrim=start=0:duration=5.000,asetpts=PTS-STARTPTS[amusic]",
             "-map",
             "[vout]",
             "-c:v",
-            "prores_ks",
-            "-profile:v",
-            "3",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "18",
             "-map",
             "[amusic]",
             "-c:a",
-            "pcm_s24le",
+            "aac",
+            "-b:a",
+            "256k",
             "-f",
-            "mov",
+            "mp4",
             "exports/studio-fixture.mov",
           ],
           "binary": "ffmpeg",
@@ -388,5 +392,129 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(plan.command.args.join(' ')).toContain('concat=n=2:v=1:a=0[vconcat]');
     expect(plan.command.args.join(' ')).toContain('gblur=sigma=1.800');
     expect(plan.command.args.join(' ')).toContain('gblur=sigma=3.400');
+    expect(plan.command.args.join(' ')).toContain('fade=t=out:st=3.000:d=2.000');
+  });
+
+  it('builds asset-backed mask transitions with optional overlay assets', () => {
+    const plan = buildPreviewPlan(parseProject({
+      ...fixtureProject,
+      assets: [
+        ...fixtureProject.assets,
+        {
+          id: 'asset-beta',
+          filename: 'source-beta.mp4',
+          mediaType: 'video',
+          path: {
+            absolutePath: 'fixtures/clips/source-beta.mp4',
+            relativePath: 'clips/source-beta.mp4'
+          },
+          durationMs: 2000,
+          width: 1920,
+          height: 1080,
+          frameRate: 24,
+          hasAudio: true
+        },
+        {
+          id: 'asset-transition-mask',
+          filename: 'mask-alpha.mp4',
+          mediaType: 'video',
+          path: {
+            absolutePath: 'fixtures/transitions/mask-alpha.mp4',
+            relativePath: 'transitions/mask-alpha.mp4'
+          },
+          durationMs: 750,
+          width: 640,
+          height: 360,
+          frameRate: 15,
+          hasAudio: false
+        },
+        {
+          id: 'asset-transition-overlay',
+          filename: 'overlay-alpha.mp4',
+          mediaType: 'video',
+          path: {
+            absolutePath: 'fixtures/transitions/overlay-alpha.mp4',
+            relativePath: 'transitions/overlay-alpha.mp4'
+          },
+          durationMs: 750,
+          width: 640,
+          height: 360,
+          frameRate: 15,
+          hasAudio: false
+        }
+      ],
+      variants: [
+        {
+          ...fixtureProject.variants[0],
+          clips: [
+            {
+              ...fixtureProject.variants[0].clips[0],
+              transition: 'mask',
+              transitionDurationMs: 500,
+              transitionAssetId: 'asset-transition-mask',
+              transitionOverlayAssetId: 'asset-transition-overlay'
+            },
+            {
+              id: 'clip-second',
+              assetId: 'asset-beta',
+              timelineStartMs: 2000,
+              sourceStartMs: 0,
+              durationMs: 2000,
+              transition: 'cut'
+            }
+          ]
+        }
+      ]
+    }), {
+      outputPath: '.afterimage/preview/variant-mask.mp4'
+    });
+
+    const command = plan.command.args.join(' ');
+    expect(plan.command.args).toContain('fixtures/transitions/mask-alpha.mp4');
+    expect(plan.command.args).not.toContain('fixtures/transitions/overlay-alpha.mp4');
+    expect(command).toContain('maskedmerge');
+    expect(command).toContain('concat=n=3:v=1:a=0[vconcat]');
+    expect(command).toContain('fade=t=out:st=3.000:d=2.000');
+    expect(command).toContain('atrim=start=0:duration=5.000');
+  });
+
+  it('builds standalone clip overlays independently of transitions', () => {
+    const plan = buildPreviewPlan(parseProject({
+      ...fixtureProject,
+      assets: [
+        ...fixtureProject.assets,
+        {
+          id: 'asset-overlay',
+          filename: 'foam-overlay.mp4',
+          mediaType: 'video',
+          assetRole: 'transition-overlay',
+          path: {
+            absolutePath: 'fixtures/overlays/foam-overlay.mp4',
+            relativePath: 'overlays/foam-overlay.mp4'
+          },
+          durationMs: 750,
+          width: 640,
+          height: 360,
+          frameRate: 15,
+          hasAudio: false
+        }
+      ],
+      variants: [
+        {
+          ...fixtureProject.variants[0],
+          clips: fixtureProject.variants[0].clips.map((clip) => ({
+            ...clip,
+            overlayAssetId: 'asset-overlay'
+          }))
+        }
+      ]
+    }), {
+      outputPath: '.afterimage/preview/variant-overlay.mp4'
+    });
+
+    const command = plan.command.args.join(' ');
+    expect(plan.command.args).toContain('-stream_loop');
+    expect(plan.command.args).toContain('fixtures/overlays/foam-overlay.mp4');
+    expect(command).toContain("blend=c0_expr='min(255,A+B*0.28)':c1_expr='A':c2_expr='A'");
   });
 });
