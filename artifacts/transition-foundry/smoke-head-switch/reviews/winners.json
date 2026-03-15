@@ -1,0 +1,46 @@
+{
+  "reviewedAt": "2026-03-14T12:19:04.111Z",
+  "topK": 4,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "head-switch-smear-0002",
+      "recipe": "head-switch-smear",
+      "finalScore": 0.6429847494553377,
+      "mask": "masks/head-switch-smear-0002__seed-548827925.mp4",
+      "maskPreview": "mask-previews/head-switch-smear-0002__seed-548827925.mp4",
+      "overlay": "overlays/head-switch-smear-0002__seed-548827925.mp4",
+      "demo": "demos/head-switch-smear-0002__seed-548827925.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "head-switch-smear-0004",
+      "recipe": "head-switch-smear",
+      "finalScore": 0.5423135925925926,
+      "mask": "masks/head-switch-smear-0004__seed-339983527.mp4",
+      "maskPreview": "mask-previews/head-switch-smear-0004__seed-339983527.mp4",
+      "overlay": "overlays/head-switch-smear-0004__seed-339983527.mp4",
+      "demo": "demos/head-switch-smear-0004__seed-339983527.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "head-switch-smear-0001",
+      "recipe": "head-switch-smear",
+      "finalScore": 0.5422331154684096,
+      "mask": "masks/head-switch-smear-0001__seed-212859974.mp4",
+      "maskPreview": "mask-previews/head-switch-smear-0001__seed-212859974.mp4",
+      "overlay": "overlays/head-switch-smear-0001__seed-212859974.mp4",
+      "demo": "demos/head-switch-smear-0001__seed-212859974.mp4"
+    },
+    {
+      "rank": 4,
+      "id": "head-switch-smear-0003",
+      "recipe": "head-switch-smear",
+      "finalScore": 0.5411546840958605,
+      "mask": "masks/head-switch-smear-0003__seed-574557577.mp4",
+      "maskPreview": "mask-previews/head-switch-smear-0003__seed-574557577.mp4",
+      "overlay": "overlays/head-switch-smear-0003__seed-574557577.mp4",
+      "demo": "demos/head-switch-smear-0003__seed-574557577.mp4"
+    }
+  ]
+}

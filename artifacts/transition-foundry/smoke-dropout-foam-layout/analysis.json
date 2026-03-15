@@ -1,0 +1,163 @@
+{
+  "analyzedAt": "2026-03-14T12:48:54.145Z",
+  "manifestPath": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-dropout-foam-layout/manifest.json",
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-dropout-foam-layout",
+  "candidates": [
+    {
+      "id": "dropout-foam-0001",
+      "recipe": "dropout-foam",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 147196969,
+      "parameters": {
+        "noise": 28.279131336137652,
+        "blobScaleX": 27.582198210060596,
+        "blobScaleY": 24.064268929418176,
+        "shear": 25.456877677701414,
+        "scatterX": 13.004748386330903,
+        "scatterY": 11.641753631643951,
+        "blur": 0.16351750559406353,
+        "contrast": 1.9356699144700542,
+        "threshold": 146.56071319803596
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0001__seed-147196969.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0001__seed-147196969.mp4",
+        "overlay": "overlays/dropout-foam-0001__seed-147196969.mp4",
+        "demo": "demos/dropout-foam-0001__seed-147196969.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7086738562091504,
+        "occupancy": 0.8340124909222949,
+        "structure": 0.04006891503267974,
+        "temporalMotion": 0.7839576194008715,
+        "baseScore": 0.6175800911309005,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111011111111111111001111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 1,
+        "finalScore": 0.6404457737743282
+      }
+    },
+    {
+      "id": "dropout-foam-0002",
+      "recipe": "dropout-foam",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 588379281,
+      "parameters": {
+        "noise": 30.167433315888047,
+        "blobScaleX": 21.4017703672871,
+        "blobScaleY": 10.316679516807199,
+        "shear": 15.50766520993784,
+        "scatterX": 17.548781843390316,
+        "scatterY": 12.582261268049479,
+        "blur": 0.4769376739277504,
+        "contrast": 1.8228957773884757,
+        "threshold": 141.90901230089366
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0002__seed-588379281.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0002__seed-588379281.mp4",
+        "overlay": "overlays/dropout-foam-0002__seed-588379281.mp4",
+        "demo": "demos/dropout-foam-0002__seed-588379281.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7020960784313726,
+        "occupancy": 0.8336984749455337,
+        "structure": 0.038378143790849674,
+        "temporalMotion": 0.7858718530501089,
+        "baseScore": 0.6148194568246187,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0.01171875,
+        "finalScore": 0.5392016041557735
+      }
+    },
+    {
+      "id": "dropout-foam-0004",
+      "recipe": "dropout-foam",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 951280865,
+      "parameters": {
+        "noise": 29.985086526721716,
+        "blobScaleX": 26.380070565268397,
+        "blobScaleY": 15.786122340708971,
+        "shear": 12.492721461225301,
+        "scatterX": 13.997469011228532,
+        "scatterY": 14.79743370320648,
+        "blur": 0.1104473502608016,
+        "contrast": 2.25409780961927,
+        "threshold": 103.0726628024131
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0004__seed-951280865.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0004__seed-951280865.mp4",
+        "overlay": "overlays/dropout-foam-0004__seed-951280865.mp4",
+        "demo": "demos/dropout-foam-0004__seed-951280865.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6620653594771242,
+        "occupancy": 0.8296348583877996,
+        "structure": 0.00810637908496732,
+        "temporalMotion": 0.9146585272331157,
+        "baseScore": 0.6110549132897604,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.2630745098039216,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5364699023965142
+      }
+    },
+    {
+      "id": "dropout-foam-0003",
+      "recipe": "dropout-foam",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 855198266,
+      "parameters": {
+        "noise": 21.28230575658381,
+        "blobScaleX": 28.804509384557605,
+        "blobScaleY": 22.271911936812103,
+        "shear": 20.705466305837035,
+        "scatterX": 19.595879474654794,
+        "scatterY": 10.747873857617378,
+        "blur": 0.2831807494163513,
+        "contrast": 2.220699344074819,
+        "threshold": 139.7969232238829
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0003__seed-855198266.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0003__seed-855198266.mp4",
+        "overlay": "overlays/dropout-foam-0003__seed-855198266.mp4",
+        "demo": "demos/dropout-foam-0003__seed-855198266.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.6981614379084968,
+        "occupancy": 0.8315073347857661,
+        "structure": 0.023718901960784314,
+        "temporalMotion": 0.7983540662091504,
+        "baseScore": 0.6116382991833696,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.06274509803921569,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.5351548605486565
+      }
+    }
+  ]
+}

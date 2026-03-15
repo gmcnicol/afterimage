@@ -1,18 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afterimage.local/schemas/project.schema.json",
-  "title": "Afterimage Project",
+  "title": "Afterimage Project v2",
   "type": "object",
-  "required": ["id", "name", "mode", "version", "sources", "presets", "sequence"],
+  "required": ["id", "name", "mode", "version", "assets", "presets", "sequences", "variants"],
   "properties": {
     "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
     "name": { "type": "string", "minLength": 1 },
     "mode": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/runtimeMode" },
-    "version": { "type": "integer", "minimum": 1 },
+    "version": { "type": "integer", "const": 2 },
     "description": { "type": "string" },
-    "sources": {
+    "metadata": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/metadata" },
+    "assets": {
       "type": "array",
-      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/projectSource" },
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/mediaAsset" },
       "default": []
     },
     "presets": {
@@ -20,19 +21,55 @@
       "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/preset" },
       "default": []
     },
-    "sequence": {
-      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/sequence"
+    "analysisRefs": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/analysisRef" },
+      "default": []
+    },
+    "cutCandidates": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/cutCandidate" },
+      "default": []
+    },
+    "bins": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/bin" },
+      "default": []
+    },
+    "sequences": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/sequence" },
+      "default": []
+    },
+    "variants": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/variant" },
+      "default": []
+    },
+    "filterStacks": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/filterStack" },
+      "default": []
+    },
+    "automationLanes": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/automationLane" },
+      "default": []
     },
     "midiMappings": {
       "type": "array",
       "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/midiMapping" },
       "default": []
     },
-    "analysisRefs": {
+    "exportSelections": {
       "type": "array",
-      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/analysisRef" },
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/exportSelection" },
       "default": []
-    }
+    },
+    "defaultSequenceId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+    "featureFlags": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/featureFlags" },
+    "notes": { "type": "string" },
+    "tags": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" }
   },
   "additionalProperties": false
 }

@@ -1,0 +1,93 @@
+{
+  "createdAt": "2026-03-14T11:51:23.383Z",
+  "generator": "transition-foundry",
+  "config": {
+    "count": 3,
+    "width": 160,
+    "height": 90,
+    "fps": 8,
+    "duration": 0.5,
+    "recipes": [
+      "glitch-bands",
+      "white-burn",
+      "block-decay"
+    ],
+    "seed": 1815073312
+  },
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-shape-distort",
+  "candidates": [
+    {
+      "id": "block-decay-0001",
+      "recipe": "block-decay",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.5,
+      "seed": 235319857,
+      "parameters": {
+        "noise": 29.274282233789563,
+        "blockWidth": 14.03613781183958,
+        "blockHeight": 14.922767075244337,
+        "blur": 1.0923228226602077,
+        "contrast": 1.4492633408168332,
+        "threshold": 99.5565011780709
+      },
+      "paths": {
+        "mask": "masks/block-decay-0001__seed-235319857.mp4",
+        "maskPreview": "mask-previews/block-decay-0001__seed-235319857.mp4",
+        "overlay": "overlays/block-decay-0001__seed-235319857.mp4",
+        "demo": "demos/block-decay-0001__seed-235319857.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0002",
+      "recipe": "block-decay",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.5,
+      "seed": 263976030,
+      "parameters": {
+        "noise": 32.17392997071147,
+        "blockWidth": 23.01962622255087,
+        "blockHeight": 21.887925636023283,
+        "blur": 0.15595940994098784,
+        "contrast": 1.929039057774935,
+        "threshold": 78.93178719095886
+      },
+      "paths": {
+        "mask": "masks/block-decay-0002__seed-263976030.mp4",
+        "maskPreview": "mask-previews/block-decay-0002__seed-263976030.mp4",
+        "overlay": "overlays/block-decay-0002__seed-263976030.mp4",
+        "demo": "demos/block-decay-0002__seed-263976030.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0003",
+      "recipe": "glitch-bands",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.5,
+      "seed": 957853143,
+      "parameters": {
+        "ampA": 128.23277342133224,
+        "ampB": 32.20496199908666,
+        "periodA": 5.34525230852887,
+        "periodB": 13.35004579089582,
+        "speedA": 18.68850843142718,
+        "speedB": 16.211653493111953,
+        "noise": 25.252515533939004,
+        "blur": 0.6984829254448414,
+        "contrast": 2.0120876874309035,
+        "threshold": 127.48486780095845
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0003__seed-957853143.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0003__seed-957853143.mp4",
+        "overlay": "overlays/glitch-bands-0003__seed-957853143.mp4",
+        "demo": "demos/glitch-bands-0003__seed-957853143.mp4"
+      }
+    }
+  ]
+}

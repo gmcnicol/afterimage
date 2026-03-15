@@ -1,9 +1,9 @@
 import type { AnalysisFile, MidiMappingFile, ProjectFile } from '@afterimage/project-model';
-import fixtureProjectJson from './fixtures/projects/core-engine.project.json';
-import fixtureAnalysisJson from './fixtures/analysis/source-alpha.analysis.json';
-import fixtureMidiJson from './fixtures/midi/studio-controls.midi-mapping.json';
-import fixtureFfprobeJson from './fixtures/logs/source-alpha.ffprobe.json';
-import fixtureSceneLog from './fixtures/logs/source-alpha.scene.log.json';
+import fixtureProjectJson from './fixtures/projects/core-engine.project.json' with { type: 'json' };
+import fixtureAnalysisJson from './fixtures/analysis/source-alpha.analysis.json' with { type: 'json' };
+import fixtureMidiJson from './fixtures/midi/studio-controls.midi-mapping.json' with { type: 'json' };
+import fixtureFfprobeJson from './fixtures/logs/source-alpha.ffprobe.json' with { type: 'json' };
+import fixtureSceneLog from './fixtures/logs/source-alpha.scene.log.json' with { type: 'json' };
 
 export const fixtureProject = fixtureProjectJson as ProjectFile;
 export const fixtureAnalysis = fixtureAnalysisJson as AnalysisFile;

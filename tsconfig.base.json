@@ -17,6 +17,7 @@
       "@afterimage/schema-validators": ["packages/schema-validators/src"],
       "@afterimage/ffmpeg-compiler": ["packages/ffmpeg-compiler/src"],
       "@afterimage/media-analysis": ["packages/media-analysis/src"],
+      "@afterimage/export-profiles": ["packages/export-profiles/src"],
       "@afterimage/preset-library": ["packages/preset-library/src"],
       "@afterimage/midi-engine": ["packages/midi-engine/src"],
       "@afterimage/ui": ["packages/ui/src"]

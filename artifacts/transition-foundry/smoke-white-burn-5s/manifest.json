@@ -1,0 +1,40 @@
+{
+  "createdAt": "2026-03-14T11:53:29.085Z",
+  "generator": "transition-foundry",
+  "config": {
+    "count": 1,
+    "width": 160,
+    "height": 90,
+    "fps": 8,
+    "duration": 0.75,
+    "recipes": [
+      "white-burn"
+    ],
+    "seed": 1815199203
+  },
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-burn-5s",
+  "candidates": [
+    {
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 897733046,
+      "parameters": {
+        "noise": 28.711216711904854,
+        "blurA": 0.5499406583141536,
+        "blurB": 0.6799290762748569,
+        "contrast": 2.3397415108047426,
+        "threshold": 103.08353459462523
+      },
+      "paths": {
+        "mask": "masks/white-burn-0001__seed-897733046.mp4",
+        "maskPreview": "mask-previews/white-burn-0001__seed-897733046.mp4",
+        "overlay": "overlays/white-burn-0001__seed-897733046.mp4",
+        "demo": "demos/white-burn-0001__seed-897733046.mp4"
+      }
+    }
+  ]
+}

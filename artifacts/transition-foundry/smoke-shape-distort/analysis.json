@@ -1,0 +1,119 @@
+{
+  "analyzedAt": "2026-03-14T11:51:23.661Z",
+  "manifestPath": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-shape-distort/manifest.json",
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-shape-distort",
+  "candidates": [
+    {
+      "id": "glitch-bands-0003",
+      "recipe": "glitch-bands",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.5,
+      "seed": 957853143,
+      "parameters": {
+        "ampA": 128.23277342133224,
+        "ampB": 32.20496199908666,
+        "periodA": 5.34525230852887,
+        "periodB": 13.35004579089582,
+        "speedA": 18.68850843142718,
+        "speedB": 16.211653493111953,
+        "noise": 25.252515533939004,
+        "blur": 0.6984829254448414,
+        "contrast": 2.0120876874309035,
+        "threshold": 127.48486780095845
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0003__seed-957853143.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0003__seed-957853143.mp4",
+        "overlay": "overlays/glitch-bands-0003__seed-957853143.mp4",
+        "demo": "demos/glitch-bands-0003__seed-957853143.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7657438235294117,
+        "occupancy": 0.8271338235294117,
+        "structure": 0.375413568627451,
+        "temporalMotion": 0.03234640522875798,
+        "baseScore": 0.5930156598039216,
+        "frameHash": "1111111111111111111111111111111110101101001010011010110100101001111111111111111111111111111111111111111111111111111111111111111110101101011010110010010100101001111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000",
+        "frameCount": 4,
+        "startLuma": 0.2376443137254902,
+        "endLuma": 0.913756862745098,
+        "novelty": 1,
+        "finalScore": 0.6133717774509804
+      }
+    },
+    {
+      "id": "block-decay-0001",
+      "recipe": "block-decay",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.5,
+      "seed": 235319857,
+      "parameters": {
+        "noise": 29.274282233789563,
+        "blockWidth": 14.03613781183958,
+        "blockHeight": 14.922767075244337,
+        "blur": 1.0923228226602077,
+        "contrast": 1.4492633408168332,
+        "threshold": 99.5565011780709
+      },
+      "paths": {
+        "mask": "masks/block-decay-0001__seed-235319857.mp4",
+        "maskPreview": "mask-previews/block-decay-0001__seed-235319857.mp4",
+        "overlay": "overlays/block-decay-0001__seed-235319857.mp4",
+        "demo": "demos/block-decay-0001__seed-235319857.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7450980392156863,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.28431372549019607,
+        "baseScore": 0.5573529411764705,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 4,
+        "startLuma": 0.09803921568627451,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0.25,
+        "finalScore": 0.501764705882353
+      }
+    },
+    {
+      "id": "block-decay-0002",
+      "recipe": "block-decay",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.5,
+      "seed": 263976030,
+      "parameters": {
+        "noise": 32.17392997071147,
+        "blockWidth": 23.01962622255087,
+        "blockHeight": 21.887925636023283,
+        "blur": 0.15595940994098784,
+        "contrast": 1.929039057774935,
+        "threshold": 78.93178719095886
+      },
+      "paths": {
+        "mask": "masks/block-decay-0002__seed-263976030.mp4",
+        "maskPreview": "mask-previews/block-decay-0002__seed-263976030.mp4",
+        "overlay": "overlays/block-decay-0002__seed-263976030.mp4",
+        "demo": "demos/block-decay-0002__seed-263976030.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7450980392156863,
+        "occupancy": 0.8666666666666667,
+        "structure": 0,
+        "temporalMotion": 0.28431372549019607,
+        "baseScore": 0.5573529411764705,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 4,
+        "startLuma": 0.09803921568627451,
+        "endLuma": 0.9215686274509803,
+        "novelty": 0,
+        "finalScore": 0.476764705882353
+      }
+    }
+  ]
+}

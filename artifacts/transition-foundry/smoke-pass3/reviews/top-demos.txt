@@ -1,0 +1,4 @@
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-pass3/demos/white-burn-0003__seed-584854189.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-pass3/demos/glitch-bands-0001__seed-876444935.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-pass3/demos/block-decay-0004__seed-252976681.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-pass3/demos/white-burn-0002__seed-751004940.mp4'

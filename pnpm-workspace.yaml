@@ -2,3 +2,7 @@ packages:
   - apps/studio-desktop
   - apps/live-desktop
   - packages/*
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild

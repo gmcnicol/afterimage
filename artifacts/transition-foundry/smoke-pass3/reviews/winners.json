@@ -1,0 +1,46 @@
+{
+  "reviewedAt": "2026-03-14T12:03:14.363Z",
+  "topK": 4,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "white-burn-0003",
+      "recipe": "white-burn",
+      "finalScore": 0.6608061002178649,
+      "mask": "masks/white-burn-0003__seed-584854189.mp4",
+      "maskPreview": "mask-previews/white-burn-0003__seed-584854189.mp4",
+      "overlay": "overlays/white-burn-0003__seed-584854189.mp4",
+      "demo": "demos/white-burn-0003__seed-584854189.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "glitch-bands-0001",
+      "recipe": "glitch-bands",
+      "finalScore": 0.5582200765432098,
+      "mask": "masks/glitch-bands-0001__seed-876444935.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0001__seed-876444935.mp4",
+      "overlay": "overlays/glitch-bands-0001__seed-876444935.mp4",
+      "demo": "demos/glitch-bands-0001__seed-876444935.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "block-decay-0004",
+      "recipe": "block-decay",
+      "finalScore": 0.5461546840958605,
+      "mask": "masks/block-decay-0004__seed-252976681.mp4",
+      "maskPreview": "mask-previews/block-decay-0004__seed-252976681.mp4",
+      "overlay": "overlays/block-decay-0004__seed-252976681.mp4",
+      "demo": "demos/block-decay-0004__seed-252976681.mp4"
+    },
+    {
+      "rank": 4,
+      "id": "white-burn-0002",
+      "recipe": "white-burn",
+      "finalScore": 0.530511982570806,
+      "mask": "masks/white-burn-0002__seed-751004940.mp4",
+      "maskPreview": "mask-previews/white-burn-0002__seed-751004940.mp4",
+      "overlay": "overlays/white-burn-0002__seed-751004940.mp4",
+      "demo": "demos/white-burn-0002__seed-751004940.mp4"
+    }
+  ]
+}

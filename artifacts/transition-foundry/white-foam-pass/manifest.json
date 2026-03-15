@@ -1,0 +1,573 @@
+{
+  "createdAt": "2026-03-14T12:43:07.081Z",
+  "generator": "transition-foundry",
+  "config": {
+    "count": 24,
+    "width": 640,
+    "height": 360,
+    "fps": 15,
+    "duration": 0.75,
+    "recipes": [
+      "white-burn",
+      "dropout-foam"
+    ],
+    "seed": 1818081790
+  },
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/white-foam-pass",
+  "candidates": [
+    {
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 88177144,
+      "parameters": {
+        "noise": 17.82154953479767,
+        "blurA": 0.24266444498207418,
+        "blurB": 0.43679303191602226,
+        "contrast": 1.908495091786608,
+        "threshold": 136.07025430351496
+      },
+      "paths": {
+        "mask": "masks/white-burn-0001__seed-88177144.mp4",
+        "maskPreview": "mask-previews/white-burn-0001__seed-88177144.mp4",
+        "overlay": "overlays/white-burn-0001__seed-88177144.mp4",
+        "demo": "demos/white-burn-0001__seed-88177144.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0002",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 780850579,
+      "parameters": {
+        "noise": 39.89058581739664,
+        "blobScaleX": 19.33563989214599,
+        "blobScaleY": 13.251574824564159,
+        "shear": 15.77759873541072,
+        "blur": 0.30680131287081164,
+        "contrast": 2.258955424593296,
+        "threshold": 134.24476617015898
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0002__seed-780850579.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0002__seed-780850579.mp4",
+        "overlay": "overlays/dropout-foam-0002__seed-780850579.mp4",
+        "demo": "demos/dropout-foam-0002__seed-780850579.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0003",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 670069165,
+      "parameters": {
+        "noise": 25.645345287397504,
+        "blurA": 0.1541387897566892,
+        "blurB": 0.30771014371421185,
+        "contrast": 1.9770326139871028,
+        "threshold": 119.44621856370941
+      },
+      "paths": {
+        "mask": "masks/white-burn-0003__seed-670069165.mp4",
+        "maskPreview": "mask-previews/white-burn-0003__seed-670069165.mp4",
+        "overlay": "overlays/white-burn-0003__seed-670069165.mp4",
+        "demo": "demos/white-burn-0003__seed-670069165.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0004",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 160624087,
+      "parameters": {
+        "noise": 25.094408569857478,
+        "blurA": 0.5091029977425933,
+        "blurB": 0.5265941705089062,
+        "contrast": 1.9093561090994626,
+        "threshold": 149.75666557019576
+      },
+      "paths": {
+        "mask": "masks/white-burn-0004__seed-160624087.mp4",
+        "maskPreview": "mask-previews/white-burn-0004__seed-160624087.mp4",
+        "overlay": "overlays/white-burn-0004__seed-160624087.mp4",
+        "demo": "demos/white-burn-0004__seed-160624087.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0005",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 600006449,
+      "parameters": {
+        "noise": 30.058481691405177,
+        "blurA": 0.4884550679475069,
+        "blurB": 0.6426573359873146,
+        "contrast": 2.062917478242889,
+        "threshold": 94.76843995554373
+      },
+      "paths": {
+        "mask": "masks/white-burn-0005__seed-600006449.mp4",
+        "maskPreview": "mask-previews/white-burn-0005__seed-600006449.mp4",
+        "overlay": "overlays/white-burn-0005__seed-600006449.mp4",
+        "demo": "demos/white-burn-0005__seed-600006449.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0006",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 988013760,
+      "parameters": {
+        "noise": 36.836490171030164,
+        "blobScaleX": 17.424574164673686,
+        "blobScaleY": 16.963878206908703,
+        "shear": 9.27378244837746,
+        "blur": 0.48355112363351505,
+        "contrast": 2.338999732513912,
+        "threshold": 97.14762377738953
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0006__seed-988013760.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0006__seed-988013760.mp4",
+        "overlay": "overlays/dropout-foam-0006__seed-988013760.mp4",
+        "demo": "demos/dropout-foam-0006__seed-988013760.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0007",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 834674851,
+      "parameters": {
+        "noise": 32.236061403527856,
+        "blobScaleX": 18.375070361420512,
+        "blobScaleY": 14.708826308138669,
+        "shear": 13.539040079340339,
+        "blur": 0.6352799299056642,
+        "contrast": 2.5134176332852802,
+        "threshold": 103.89718193374574
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0007__seed-834674851.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0007__seed-834674851.mp4",
+        "overlay": "overlays/dropout-foam-0007__seed-834674851.mp4",
+        "demo": "demos/dropout-foam-0007__seed-834674851.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0008",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 352580494,
+      "parameters": {
+        "noise": 22.813677221536636,
+        "blurA": 0.410067338636145,
+        "blurB": 0.9540128049440681,
+        "contrast": 1.9939529250841588,
+        "threshold": 122.92472235672176
+      },
+      "paths": {
+        "mask": "masks/white-burn-0008__seed-352580494.mp4",
+        "maskPreview": "mask-previews/white-burn-0008__seed-352580494.mp4",
+        "overlay": "overlays/white-burn-0008__seed-352580494.mp4",
+        "demo": "demos/white-burn-0008__seed-352580494.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0009",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 266176451,
+      "parameters": {
+        "noise": 31.659551655873656,
+        "blobScaleX": 14.278401630930603,
+        "blobScaleY": 17.353832631371915,
+        "shear": 11.850500681437552,
+        "blur": 0.203062157263048,
+        "contrast": 2.9469431692850776,
+        "threshold": 123.71722478419542
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0009__seed-266176451.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0009__seed-266176451.mp4",
+        "overlay": "overlays/dropout-foam-0009__seed-266176451.mp4",
+        "demo": "demos/dropout-foam-0009__seed-266176451.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0010",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 771134830,
+      "parameters": {
+        "noise": 19.930381689220667,
+        "blurA": 0.24301624249201267,
+        "blurB": 0.4319747539702803,
+        "contrast": 2.5420791131444274,
+        "threshold": 123.18548860307783
+      },
+      "paths": {
+        "mask": "masks/white-burn-0010__seed-771134830.mp4",
+        "maskPreview": "mask-previews/white-burn-0010__seed-771134830.mp4",
+        "overlay": "overlays/white-burn-0010__seed-771134830.mp4",
+        "demo": "demos/white-burn-0010__seed-771134830.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0011",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 756092094,
+      "parameters": {
+        "noise": 31.344311272725463,
+        "blobScaleX": 17.3140485920012,
+        "blobScaleY": 27.887767012231052,
+        "shear": 13.760174654889852,
+        "blur": 0.44613344570389013,
+        "contrast": 2.928843665239401,
+        "threshold": 102.3339764047414
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0011__seed-756092094.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0011__seed-756092094.mp4",
+        "overlay": "overlays/dropout-foam-0011__seed-756092094.mp4",
+        "demo": "demos/dropout-foam-0011__seed-756092094.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0012",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 367860205,
+      "parameters": {
+        "noise": 20.34694154933095,
+        "blobScaleX": 23.032689910382032,
+        "blobScaleY": 26.942651694174856,
+        "shear": 16.501909838058054,
+        "blur": 0.39517112838802854,
+        "contrast": 1.7519211126375012,
+        "threshold": 130.75591650605202
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0012__seed-367860205.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0012__seed-367860205.mp4",
+        "overlay": "overlays/dropout-foam-0012__seed-367860205.mp4",
+        "demo": "demos/dropout-foam-0012__seed-367860205.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0013",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 52081407,
+      "parameters": {
+        "noise": 27.93488998711109,
+        "blobScaleX": 31.9212131164968,
+        "blobScaleY": 18.879494186956435,
+        "shear": 9.767646278720349,
+        "blur": 0.13729070030385626,
+        "contrast": 1.695360809133854,
+        "threshold": 106.0618627090007
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0013__seed-52081407.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0013__seed-52081407.mp4",
+        "overlay": "overlays/dropout-foam-0013__seed-52081407.mp4",
+        "demo": "demos/dropout-foam-0013__seed-52081407.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0014",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 88313739,
+      "parameters": {
+        "noise": 34.39101403020322,
+        "blobScaleX": 14.233945329673588,
+        "blobScaleY": 22.812991145066917,
+        "shear": 16.332341636065394,
+        "blur": 0.14621621428523213,
+        "contrast": 1.7316862976877019,
+        "threshold": 124.89627783372998
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0014__seed-88313739.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0014__seed-88313739.mp4",
+        "overlay": "overlays/dropout-foam-0014__seed-88313739.mp4",
+        "demo": "demos/dropout-foam-0014__seed-88313739.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0015",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 323274835,
+      "parameters": {
+        "noise": 37.585197960957885,
+        "blobScaleX": 32.53218179196119,
+        "blobScaleY": 19.630846369545907,
+        "shear": 21.0566444452852,
+        "blur": 0.3965116516803391,
+        "contrast": 2.1456935605150647,
+        "threshold": 85.58523423597217
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0015__seed-323274835.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0015__seed-323274835.mp4",
+        "overlay": "overlays/dropout-foam-0015__seed-323274835.mp4",
+        "demo": "demos/dropout-foam-0015__seed-323274835.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0016",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 382017833,
+      "parameters": {
+        "noise": 22.507925191894174,
+        "blurA": 0.2046887289499864,
+        "blurB": 0.48646013662219045,
+        "contrast": 1.7740713702980428,
+        "threshold": 113.69168771244586
+      },
+      "paths": {
+        "mask": "masks/white-burn-0016__seed-382017833.mp4",
+        "maskPreview": "mask-previews/white-burn-0016__seed-382017833.mp4",
+        "overlay": "overlays/white-burn-0016__seed-382017833.mp4",
+        "demo": "demos/white-burn-0016__seed-382017833.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0017",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 826496488,
+      "parameters": {
+        "noise": 23.381724888458848,
+        "blobScaleX": 31.50173700042069,
+        "blobScaleY": 13.63898679567501,
+        "shear": 19.190159937832505,
+        "blur": 0.17379743829369543,
+        "contrast": 1.696280921320431,
+        "threshold": 145.10202899575233
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0017__seed-826496488.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0017__seed-826496488.mp4",
+        "overlay": "overlays/dropout-foam-0017__seed-826496488.mp4",
+        "demo": "demos/dropout-foam-0017__seed-826496488.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0018",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 326464972,
+      "parameters": {
+        "noise": 29.949186949059367,
+        "blurA": 0.7863303166115657,
+        "blurB": 0.4967622455907985,
+        "contrast": 2.4604809729848056,
+        "threshold": 119.8088938514702
+      },
+      "paths": {
+        "mask": "masks/white-burn-0018__seed-326464972.mp4",
+        "maskPreview": "mask-previews/white-burn-0018__seed-326464972.mp4",
+        "overlay": "overlays/white-burn-0018__seed-326464972.mp4",
+        "demo": "demos/white-burn-0018__seed-326464972.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0019",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 2906144,
+      "parameters": {
+        "noise": 35.59167614206672,
+        "blurA": 0.6520883015589789,
+        "blurB": 0.5983188483165577,
+        "contrast": 1.783175122644752,
+        "threshold": 129.64344001188874
+      },
+      "paths": {
+        "mask": "masks/white-burn-0019__seed-2906144.mp4",
+        "maskPreview": "mask-previews/white-burn-0019__seed-2906144.mp4",
+        "overlay": "overlays/white-burn-0019__seed-2906144.mp4",
+        "demo": "demos/white-burn-0019__seed-2906144.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0020",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 943197770,
+      "parameters": {
+        "noise": 15.534755924716592,
+        "blurA": 0.4097506335237995,
+        "blurB": 1.1630365416873245,
+        "contrast": 2.5868503330741075,
+        "threshold": 143.96087061893195
+      },
+      "paths": {
+        "mask": "masks/white-burn-0020__seed-943197770.mp4",
+        "maskPreview": "mask-previews/white-burn-0020__seed-943197770.mp4",
+        "overlay": "overlays/white-burn-0020__seed-943197770.mp4",
+        "demo": "demos/white-burn-0020__seed-943197770.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0021",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 224310793,
+      "parameters": {
+        "noise": 39.411533642560244,
+        "blobScaleX": 27.200768558308482,
+        "blobScaleY": 27.66078389249742,
+        "shear": 14.335574345197529,
+        "blur": 0.3000111825880594,
+        "contrast": 2.4487233599997125,
+        "threshold": 96.6475272309035
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0021__seed-224310793.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0021__seed-224310793.mp4",
+        "overlay": "overlays/dropout-foam-0021__seed-224310793.mp4",
+        "demo": "demos/dropout-foam-0021__seed-224310793.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0022",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 638071510,
+      "parameters": {
+        "noise": 30.39320700801909,
+        "blobScaleX": 31.271199710667133,
+        "blobScaleY": 19.01563388388604,
+        "shear": 15.253397901542485,
+        "blur": 0.3598560338024981,
+        "contrast": 2.3743925277143716,
+        "threshold": 145.35329508408904
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0022__seed-638071510.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0022__seed-638071510.mp4",
+        "overlay": "overlays/dropout-foam-0022__seed-638071510.mp4",
+        "demo": "demos/dropout-foam-0022__seed-638071510.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0023",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 622562395,
+      "parameters": {
+        "noise": 24.295250104740262,
+        "blurA": 0.6834488958818838,
+        "blurB": 1.0036006457637994,
+        "contrast": 2.092505215201527,
+        "threshold": 128.76837177481502
+      },
+      "paths": {
+        "mask": "masks/white-burn-0023__seed-622562395.mp4",
+        "maskPreview": "mask-previews/white-burn-0023__seed-622562395.mp4",
+        "overlay": "overlays/white-burn-0023__seed-622562395.mp4",
+        "demo": "demos/white-burn-0023__seed-622562395.mp4"
+      }
+    },
+    {
+      "id": "dropout-foam-0024",
+      "recipe": "dropout-foam",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 439540489,
+      "parameters": {
+        "noise": 27.24320719577372,
+        "blobScaleX": 23.83488625381142,
+        "blobScaleY": 17.895441370550543,
+        "shear": 22.89559009252116,
+        "blur": 0.38167421903926874,
+        "contrast": 1.8691701704869046,
+        "threshold": 96.27435237914324
+      },
+      "paths": {
+        "mask": "masks/dropout-foam-0024__seed-439540489.mp4",
+        "maskPreview": "mask-previews/dropout-foam-0024__seed-439540489.mp4",
+        "overlay": "overlays/dropout-foam-0024__seed-439540489.mp4",
+        "demo": "demos/dropout-foam-0024__seed-439540489.mp4"
+      }
+    }
+  ]
+}

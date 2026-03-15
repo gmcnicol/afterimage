@@ -1,0 +1,4 @@
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-block-texture/demos/white-burn-0001__seed-447958702.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-block-texture/demos/white-burn-0003__seed-849337009.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-block-texture/demos/white-burn-0002__seed-273412610.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-block-texture/demos/white-burn-0004__seed-515672858.mp4'
