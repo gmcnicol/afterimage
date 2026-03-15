@@ -13,8 +13,91 @@ import {
   type TransitionStyle
 } from '@afterimage/project-model';
 
-function toSequenceName(name: string): string {
-  return name.replace(/\bAssembly\b/g, 'Sequence');
+function formatSequenceOrdinal(ordinal: number): string {
+  return `Sequence ${String(Math.max(1, ordinal)).padStart(3, '0')}`;
+}
+
+function parseSequenceOrdinal(name?: string): number | undefined {
+  if (!name) {
+    return undefined;
+  }
+
+  const match = name.match(/\bSequence\s+(\d{1,3})\b/i);
+  return match ? Number.parseInt(match[1], 10) : undefined;
+}
+
+function getNextSequenceOrdinal(project: NormalizedProjectFile): number {
+  const explicitOrdinals = project.variants
+    .map((variant) => parseSequenceOrdinal(variant.name))
+    .filter((ordinal): ordinal is number => typeof ordinal === 'number' && Number.isFinite(ordinal));
+  const currentMax = explicitOrdinals.length > 0 ? Math.max(...explicitOrdinals) : project.variants.length;
+  return currentMax + 1;
+}
+
+function getNextSequenceName(project: NormalizedProjectFile): string {
+  return formatSequenceOrdinal(getNextSequenceOrdinal(project));
+}
+
+function getNextBuildSeed(variant: ReturnType<typeof getVariantById>): number {
+  const currentSeed = variant?.assistedGeneration?.seed;
+  return typeof currentSeed === 'number' && Number.isFinite(currentSeed)
+    ? currentSeed + 1
+    : 1;
+}
+
+function createMulberry32(seed: number) {
+  let value = seed >>> 0;
+
+  return () => {
+    value = (value + 0x6D2B79F5) >>> 0;
+    let next = Math.imul(value ^ (value >>> 15), value | 1);
+    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
+    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function rankItemsByBlueNoise<T>(items: T[], seed: number): T[] {
+  if (items.length <= 1) {
+    return items;
+  }
+
+  const random = createMulberry32(seed);
+  const availableIndices = Array.from({ length: items.length }, (_, index) => index);
+  const chosenPositions: number[] = [];
+  const rankedIndices: number[] = [];
+  const normalizeIndex = (index: number) => items.length === 1 ? 0.5 : index / (items.length - 1);
+
+  while (availableIndices.length > 0) {
+    let chosenAvailableIndex = 0;
+
+    if (chosenPositions.length === 0) {
+      chosenAvailableIndex = Math.floor(random() * availableIndices.length);
+    } else {
+      const candidateAttempts = Math.min(48, Math.max(8, availableIndices.length * 2));
+      let bestDistance = -1;
+
+      for (let attempt = 0; attempt < candidateAttempts; attempt += 1) {
+        const candidateAvailableIndex = Math.floor(random() * availableIndices.length);
+        const candidateIndex = availableIndices[candidateAvailableIndex];
+        const candidatePosition = normalizeIndex(candidateIndex);
+        const nearestDistance = chosenPositions.reduce(
+          (closest, position) => Math.min(closest, Math.abs(candidatePosition - position)),
+          1
+        );
+
+        if (nearestDistance > bestDistance) {
+          bestDistance = nearestDistance;
+          chosenAvailableIndex = candidateAvailableIndex;
+        }
+      }
+    }
+
+    const [chosenIndex] = availableIndices.splice(chosenAvailableIndex, 1);
+    rankedIndices.push(chosenIndex);
+    chosenPositions.push(normalizeIndex(chosenIndex));
+  }
+
+  return rankedIndices.map((index) => items[index]);
 }
 
 export type SequenceBuildMode = 'balanced' | 'tight' | 'longer';
@@ -205,8 +288,9 @@ function composeBuildSelection(
 function selectReviewedCutsForBuild(project: NormalizedProjectFile, variant: ReturnType<typeof getVariantById>, mode: SequenceBuildMode) {
   const reviewedCuts = getReviewedCuts(project, mode);
   const { targetClipCount, targetDurationMs } = getBuildTargets(project, variant, mode);
-  const favoriteCuts = reviewedCuts.filter((cut) => isFavoriteCut(cut));
-  const supportingCuts = reviewedCuts.filter((cut) => !isFavoriteCut(cut));
+  const buildSeed = getNextBuildSeed(variant);
+  const favoriteCuts = rankItemsByBlueNoise(reviewedCuts.filter((cut) => isFavoriteCut(cut)), buildSeed * 17 + 3);
+  const supportingCuts = rankItemsByBlueNoise(reviewedCuts.filter((cut) => !isFavoriteCut(cut)), buildSeed * 31 + 7);
   const selectedCuts = composeBuildSelection(favoriteCuts, supportingCuts, targetClipCount);
 
   if (!targetDurationMs) {
@@ -238,11 +322,43 @@ function selectReviewedCutsForBuild(project: NormalizedProjectFile, variant: Ret
   return durationMatchedCuts.length > 0 ? durationMatchedCuts : selectedCuts;
 }
 
+function clampClipsToDuration(clips: SequenceClip[], maxDurationMs?: number) {
+  if (!maxDurationMs || maxDurationMs <= 0) {
+    return clips;
+  }
+
+  const boundedClips: SequenceClip[] = [];
+
+  for (const clip of clips) {
+    if (clip.timelineStartMs >= maxDurationMs) {
+      break;
+    }
+
+    const availableDurationMs = maxDurationMs - clip.timelineStartMs;
+    const nextDurationMs = Math.min(clip.durationMs, availableDurationMs);
+
+    if (nextDurationMs <= 0) {
+      break;
+    }
+
+    boundedClips.push(nextDurationMs === clip.durationMs ? clip : {
+      ...clip,
+      durationMs: nextDurationMs
+    });
+
+    if (clip.timelineStartMs + nextDurationMs >= maxDurationMs) {
+      break;
+    }
+  }
+
+  return boundedClips;
+}
+
 function buildClipsFromReviewedCuts(project: NormalizedProjectFile, variant: ReturnType<typeof getVariantById>, mode: SequenceBuildMode) {
   const reviewedCuts = selectReviewedCutsForBuild(project, variant, mode);
+  const musicDurationMs = getMusicDurationMs(project, variant);
   let timelineStartMs = 0;
-
-  return reviewedCuts.map((cut) => {
+  const clips = reviewedCuts.map((cut) => {
     const clip: SequenceClip = {
       id: `clip-${cut.id}`,
       assetId: cut.assetId,
@@ -256,6 +372,8 @@ function buildClipsFromReviewedCuts(project: NormalizedProjectFile, variant: Ret
     timelineStartMs += cut.durationMs;
     return clip;
   });
+
+  return clampClipsToDuration(clips, musicDurationMs);
 }
 
 export function buildVariantFromReviewedCuts(project: NormalizedProjectFile, variantId: string, mode: SequenceBuildMode = 'balanced'): NormalizedProjectFile {
@@ -266,6 +384,7 @@ export function buildVariantFromReviewedCuts(project: NormalizedProjectFile, var
 
   const clips = buildClipsFromReviewedCuts(project, variant, mode);
   const musicDurationMs = getMusicDurationMs(project, variant);
+  const nextBuildSeed = getNextBuildSeed(variant);
 
   return normalizeProject({
     ...project,
@@ -277,6 +396,7 @@ export function buildVariantFromReviewedCuts(project: NormalizedProjectFile, var
       assistedGeneration: {
         ...candidate.assistedGeneration,
         strategy: 'manual',
+        seed: nextBuildSeed,
         sourcePoolIds: clips.map((clip) => clip.cutId ?? clip.id),
         durationTargetMs: musicDurationMs ?? clips.reduce((total, clip) => total + clip.durationMs, 0)
       }
@@ -293,10 +413,11 @@ export function buildNewVariantFromReviewedCuts(project: NormalizedProjectFile, 
   const duplicateId = `${variant.id}-build-${Date.now()}`;
   const clips = buildClipsFromReviewedCuts(project, variant, mode);
   const musicDurationMs = getMusicDurationMs(project, variant);
+  const nextBuildSeed = getNextBuildSeed(variant);
   const duplicate = {
     ...variant,
     id: duplicateId,
-    name: `${toSequenceName(variant.name)} Build`,
+    name: getNextSequenceName(project),
     favorite: false,
     clips,
     markers: [],
@@ -304,6 +425,7 @@ export function buildNewVariantFromReviewedCuts(project: NormalizedProjectFile, 
     assistedGeneration: {
       ...variant.assistedGeneration,
       strategy: 'manual' as const,
+      seed: nextBuildSeed,
       sourcePoolIds: clips.map((clip) => clip.cutId ?? clip.id),
       durationTargetMs: musicDurationMs ?? clips.reduce((total, clip) => total + clip.durationMs, 0)
     }
@@ -614,7 +736,7 @@ export function duplicateVariant(project: NormalizedProjectFile, variantId: stri
   const duplicate = {
     ...variant,
     id: duplicateId,
-    name: `${toSequenceName(variant.name)} Copy`,
+    name: getNextSequenceName(project),
     favorite: false,
     clips: variant.clips.map((clip) => ({
       ...clip,

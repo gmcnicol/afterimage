@@ -40,8 +40,17 @@ function getAnalysisSummaryByAsset(project: NormalizedProjectFile, assetId: stri
   return project.analysisRefs.find((ref) => ref.assetId === assetId)?.summary;
 }
 
-function formatSequenceName(name: string): string {
-  return name.replace(/\bAssembly\b/g, 'Sequence');
+function formatSequenceName(name: string, index?: number): string {
+  const normalized = name.replace(/\bAssembly\b/g, 'Sequence');
+  if (/^Sequence\s+\d{3}$/i.test(normalized.trim())) {
+    return normalized;
+  }
+
+  if (typeof index === 'number') {
+    return `Sequence ${String(index + 1).padStart(3, '0')}`;
+  }
+
+  return normalized;
 }
 
 function useAnalysisFile(analysisPath?: string): AnalysisFile | null {
@@ -1239,7 +1248,7 @@ export function SequenceView() {
         <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {project.variants.map((candidate) => (
+              {project.variants.map((candidate, index) => (
                 <button
                   key={candidate.id}
                   type="button"
@@ -1253,7 +1262,7 @@ export function SequenceView() {
                     fontWeight: 700
                   }}
                 >
-                  {formatSequenceName(candidate.name)}
+                  {formatSequenceName(candidate.name, index)}
                 </button>
               ))}
             </div>
@@ -1278,10 +1287,10 @@ export function SequenceView() {
             </ToolbarButton>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'tight')}>Build Tight</ToolbarButton>
-            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'balanced')}>Build</ToolbarButton>
-            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'longer')}>Build Longer</ToolbarButton>
-            <ToolbarButton onClick={() => variant && buildNewVariantFromReviewedCutsAction(variant.id, 'balanced')}>Build New</ToolbarButton>
+            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'tight')}>Rebuild Tight</ToolbarButton>
+            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'balanced')}>Rebuild</ToolbarButton>
+            <ToolbarButton onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'longer')}>Rebuild Longer</ToolbarButton>
+            <ToolbarButton onClick={() => variant && buildNewVariantFromReviewedCutsAction(variant.id, 'balanced')}>New Sequence</ToolbarButton>
             <ToolbarButton onClick={() => variant && duplicateVariantAction(variant.id)}>Duplicate Sequence</ToolbarButton>
             <ToolbarButton disabled={!canDeleteSequence} onClick={() => variant && deleteVariantAction(variant.id)}>Delete Sequence</ToolbarButton>
             <ToolbarButton disabled={!canRandomizeFoundry} onClick={() => variant && randomizeFoundryTransitionsAction(variant.id)}>Shuffle Masks</ToolbarButton>
@@ -1455,9 +1464,9 @@ export function MusicView() {
   return (
     <Panel title="Music Sync">
       <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        {project.variants.map((candidate) => (
+        {project.variants.map((candidate, index) => (
           <ToolbarButton key={candidate.id} primary={candidate.id === variant?.id} onClick={() => selectVariant(candidate.id)}>
-            {candidate.name}
+            {formatSequenceName(candidate.name, index)}
           </ToolbarButton>
         ))}
       </div>
@@ -1822,12 +1831,23 @@ export function ExportView() {
   const project = useProjectSessionStore((state) => state.project);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot) ?? '.';
   const toggleProfile = useProjectSessionStore((state) => state.toggleExportProfile);
+  const selectedVariantId = useUiStore((state) => state.selectedVariantId);
+  const selectVariant = useUiStore((state) => state.selectVariant);
   const allJobs = useJobsStore((state) => state.jobs);
+  const variant = useMemo(() => getCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
   const exportJobs = useMemo(() => allJobs.filter((job) => job.type === 'export'), [allJobs]);
+  const enabledProfileIds = useMemo(() => getEnabledExportProfileIds(project.exportSelections), [project.exportSelections]);
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <Panel title="Export Profiles">
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+          {project.variants.map((candidate, index) => (
+            <ToolbarButton key={candidate.id} primary={candidate.id === variant?.id} onClick={() => selectVariant(candidate.id)}>
+              {formatSequenceName(candidate.name, index)}
+            </ToolbarButton>
+          ))}
+        </div>
         <div style={{ display: 'grid', gap: 10 }}>
           {exportProfiles.map((profile) => {
             const selection = project.exportSelections.find((item) => item.profileId === profile.id);
@@ -1847,13 +1867,21 @@ export function ExportView() {
           })}
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <ToolbarButton primary onClick={() => void api.jobs.runExport({
-            project,
-            projectRoot,
-            outputPath: `${projectRoot}/exports/${project.id}`,
-            profileIds: getEnabledExportProfileIds(project.exportSelections),
-            selections: project.exportSelections
-          })}>Export Enabled Profiles</ToolbarButton>
+          <ToolbarButton primary disabled={!variant || enabledProfileIds.length === 0} onClick={() => {
+            if (!variant) {
+              return;
+            }
+
+            void api.jobs.runExport({
+              project,
+              projectRoot,
+              outputPath: `${projectRoot}/exports/${project.id}-${variant.id}`,
+              profileIds: enabledProfileIds,
+              selections: project.exportSelections,
+              sequenceId: variant.sequenceId,
+              variantId: variant.id
+            });
+          }}>Export Selected Sequence</ToolbarButton>
         </div>
       </Panel>
       <Panel title="Render Queue">

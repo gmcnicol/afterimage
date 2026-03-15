@@ -89,6 +89,7 @@ describe('@afterimage/studio-desktop operations', () => {
 
     expect(nextProject.variants[0].clips[0].id).toBe('clip-cut-alpha');
     expect(duplicated.variants.map((variant) => variant.id)).toContain('variant-main-copy');
+    expect(duplicated.variants.find((variant) => variant.id === 'variant-main-copy')?.name).toBe('Sequence 002');
   });
 
   it('authors mask transitions with mask and overlay assets', () => {
@@ -535,7 +536,7 @@ describe('@afterimage/studio-desktop operations', () => {
       .filter((index) => index >= 0);
 
     expect(favoritePositions).toEqual([0, selectedCutIds.length - 1]);
-    expect(selectedCutIds[1]).toBe('cut-kept-a');
+    expect(selectedCutIds.slice(1, -1).every((cutId) => cutId?.startsWith('cut-kept'))).toBe(true);
   });
 
   it('supports tight and longer build modes with different pacing', () => {
@@ -687,8 +688,91 @@ describe('@afterimage/studio-desktop operations', () => {
 
     const totalDurationMs = built.variants[0].clips.reduce((total, clip) => total + clip.durationMs, 0);
 
-    expect(totalDurationMs).toBeGreaterThanOrEqual(10000);
+    expect(totalDurationMs).toBe(10000);
     expect(built.variants[0].assistedGeneration?.durationTargetMs).toBe(10000);
+  });
+
+  it('prunes clips scheduled beyond the music duration and trims the final overlap', () => {
+    const project = mergeImportedAssets(makeProject(), [
+      {
+        id: 'asset-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video',
+        path: {
+          absolutePath: '/media/alpha.mp4'
+        },
+        hasAudio: true
+      },
+      {
+        id: 'asset-music',
+        filename: 'music.wav',
+        mediaType: 'audio',
+        path: {
+          absolutePath: '/media/music.wav'
+        },
+        durationMs: 4500,
+        hasAudio: true
+      }
+    ]);
+
+    const built = buildVariantFromReviewedCuts({
+      ...project,
+      variants: project.variants.map((variant) => variant.id === 'variant-main' ? {
+        ...variant,
+        musicAlignment: {
+          ...variant.musicAlignment,
+          primaryAssetId: 'asset-music'
+        }
+      } : variant),
+      cutCandidates: [
+        { id: 'cut-1', assetId: 'asset-alpha', startMs: 0, endMs: 2000, durationMs: 2000, status: 'favorite', favorite: true, sceneScore: 0.9 },
+        { id: 'cut-2', assetId: 'asset-alpha', startMs: 2000, endMs: 4000, durationMs: 2000, status: 'kept', favorite: false, sceneScore: 0.8 },
+        { id: 'cut-3', assetId: 'asset-alpha', startMs: 4000, endMs: 6000, durationMs: 2000, status: 'kept', favorite: false, sceneScore: 0.7 },
+        { id: 'cut-4', assetId: 'asset-alpha', startMs: 6000, endMs: 8000, durationMs: 2000, status: 'favorite', favorite: true, sceneScore: 0.6 }
+      ]
+    }, 'variant-main', 'balanced');
+
+    const clips = built.variants[0].clips;
+    const totalDurationMs = clips.reduce((total, clip) => total + clip.durationMs, 0);
+    const lastClip = clips.at(-1);
+
+    expect(totalDurationMs).toBe(4500);
+    expect(clips.every((clip) => clip.timelineStartMs < 4500)).toBe(true);
+    expect(lastClip?.timelineStartMs + lastClip!.durationMs).toBe(4500);
+    expect(lastClip?.durationMs).toBeLessThan(2000);
+  });
+
+  it('rebuilds the current sequence into a new cut arrangement when enough reviewed material exists', () => {
+    const project = mergeImportedAssets(makeProject(), [
+      {
+        id: 'asset-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video',
+        path: {
+          absolutePath: '/media/alpha.mp4'
+        },
+        hasAudio: true
+      }
+    ]);
+
+    const source = {
+      ...project,
+      cutCandidates: [
+        { id: 'fav-1', assetId: 'asset-alpha', startMs: 0, endMs: 1500, durationMs: 1500, status: 'favorite', favorite: true, sceneScore: 0.95 },
+        { id: 'fav-2', assetId: 'asset-alpha', startMs: 1500, endMs: 3000, durationMs: 1500, status: 'favorite', favorite: true, sceneScore: 0.9 },
+        { id: 'fav-3', assetId: 'asset-alpha', startMs: 3000, endMs: 4500, durationMs: 1500, status: 'favorite', favorite: true, sceneScore: 0.85 },
+        { id: 'keep-1', assetId: 'asset-alpha', startMs: 4500, endMs: 6000, durationMs: 1500, status: 'kept', favorite: false, sceneScore: 0.8 },
+        { id: 'keep-2', assetId: 'asset-alpha', startMs: 6000, endMs: 7500, durationMs: 1500, status: 'kept', favorite: false, sceneScore: 0.75 },
+        { id: 'keep-3', assetId: 'asset-alpha', startMs: 7500, endMs: 9000, durationMs: 1500, status: 'kept', favorite: false, sceneScore: 0.7 },
+        { id: 'keep-4', assetId: 'asset-alpha', startMs: 9000, endMs: 10500, durationMs: 1500, status: 'kept', favorite: false, sceneScore: 0.65 },
+        { id: 'keep-5', assetId: 'asset-alpha', startMs: 10500, endMs: 12000, durationMs: 1500, status: 'kept', favorite: false, sceneScore: 0.6 }
+      ]
+    };
+
+    const firstBuild = buildVariantFromReviewedCuts(source, 'variant-main', 'balanced');
+    const secondBuild = buildVariantFromReviewedCuts(firstBuild, 'variant-main', 'balanced');
+
+    expect(secondBuild.variants[0].clips.map((clip) => clip.cutId)).not.toEqual(firstBuild.variants[0].clips.map((clip) => clip.cutId));
   });
 
   it('builds a new sibling variant from reviewed cuts', () => {
@@ -722,6 +806,7 @@ describe('@afterimage/studio-desktop operations', () => {
     expect(built.variants).toHaveLength(2);
     expect(built.variants[1].clips.map((clip) => clip.cutId)).toEqual(['cut-kept']);
     expect(built.sequences[0].variantIds).toContain(built.variants[1].id);
+    expect(built.variants[1].name).toBe('Sequence 002');
   });
 
   it('deletes a sequence variant and keeps the sequence default valid', () => {
