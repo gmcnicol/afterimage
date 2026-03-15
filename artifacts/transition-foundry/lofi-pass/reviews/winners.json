@@ -1,0 +1,166 @@
+{
+  "reviewedAt": "2026-03-14T11:36:58.210Z",
+  "topK": 16,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "plasma-0017",
+      "recipe": "plasma",
+      "finalScore": 0.8466944071816582,
+      "mask": "masks/plasma-0017__seed-379050353.mp4",
+      "maskPreview": "mask-previews/plasma-0017__seed-379050353.mp4",
+      "overlay": "overlays/plasma-0017__seed-379050353.mp4",
+      "demo": "demos/plasma-0017__seed-379050353.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "plasma-0036",
+      "recipe": "plasma",
+      "finalScore": 0.8024400882621657,
+      "mask": "masks/plasma-0036__seed-852553484.mp4",
+      "maskPreview": "mask-previews/plasma-0036__seed-852553484.mp4",
+      "overlay": "overlays/plasma-0036__seed-852553484.mp4",
+      "demo": "demos/plasma-0036__seed-852553484.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "plasma-0005",
+      "recipe": "plasma",
+      "finalScore": 0.7837773981039533,
+      "mask": "masks/plasma-0005__seed-278348619.mp4",
+      "maskPreview": "mask-previews/plasma-0005__seed-278348619.mp4",
+      "overlay": "overlays/plasma-0005__seed-278348619.mp4",
+      "demo": "demos/plasma-0005__seed-278348619.mp4"
+    },
+    {
+      "rank": 4,
+      "id": "plasma-0042",
+      "recipe": "plasma",
+      "finalScore": 0.7458251510472848,
+      "mask": "masks/plasma-0042__seed-276969404.mp4",
+      "maskPreview": "mask-previews/plasma-0042__seed-276969404.mp4",
+      "overlay": "overlays/plasma-0042__seed-276969404.mp4",
+      "demo": "demos/plasma-0042__seed-276969404.mp4"
+    },
+    {
+      "rank": 5,
+      "id": "plasma-0024",
+      "recipe": "plasma",
+      "finalScore": 0.7030028001939805,
+      "mask": "masks/plasma-0024__seed-259715775.mp4",
+      "maskPreview": "mask-previews/plasma-0024__seed-259715775.mp4",
+      "overlay": "overlays/plasma-0024__seed-259715775.mp4",
+      "demo": "demos/plasma-0024__seed-259715775.mp4"
+    },
+    {
+      "rank": 6,
+      "id": "plasma-0043",
+      "recipe": "plasma",
+      "finalScore": 0.682317543930364,
+      "mask": "masks/plasma-0043__seed-78350163.mp4",
+      "maskPreview": "mask-previews/plasma-0043__seed-78350163.mp4",
+      "overlay": "overlays/plasma-0043__seed-78350163.mp4",
+      "demo": "demos/plasma-0043__seed-78350163.mp4"
+    },
+    {
+      "rank": 7,
+      "id": "plasma-0022",
+      "recipe": "plasma",
+      "finalScore": 0.6457413035853321,
+      "mask": "masks/plasma-0022__seed-183602209.mp4",
+      "maskPreview": "mask-previews/plasma-0022__seed-183602209.mp4",
+      "overlay": "overlays/plasma-0022__seed-183602209.mp4",
+      "demo": "demos/plasma-0022__seed-183602209.mp4"
+    },
+    {
+      "rank": 8,
+      "id": "plasma-0026",
+      "recipe": "plasma",
+      "finalScore": 0.6451256208511272,
+      "mask": "masks/plasma-0026__seed-955104538.mp4",
+      "maskPreview": "mask-previews/plasma-0026__seed-955104538.mp4",
+      "overlay": "overlays/plasma-0026__seed-955104538.mp4",
+      "demo": "demos/plasma-0026__seed-955104538.mp4"
+    },
+    {
+      "rank": 9,
+      "id": "plasma-0034",
+      "recipe": "plasma",
+      "finalScore": 0.6416612022781426,
+      "mask": "masks/plasma-0034__seed-158412529.mp4",
+      "maskPreview": "mask-previews/plasma-0034__seed-158412529.mp4",
+      "overlay": "overlays/plasma-0034__seed-158412529.mp4",
+      "demo": "demos/plasma-0034__seed-158412529.mp4"
+    },
+    {
+      "rank": 10,
+      "id": "plasma-0047",
+      "recipe": "plasma",
+      "finalScore": 0.632278901410393,
+      "mask": "masks/plasma-0047__seed-908796052.mp4",
+      "maskPreview": "mask-previews/plasma-0047__seed-908796052.mp4",
+      "overlay": "overlays/plasma-0047__seed-908796052.mp4",
+      "demo": "demos/plasma-0047__seed-908796052.mp4"
+    },
+    {
+      "rank": 11,
+      "id": "plasma-0048",
+      "recipe": "plasma",
+      "finalScore": 0.6236772375904155,
+      "mask": "masks/plasma-0048__seed-72897206.mp4",
+      "maskPreview": "mask-previews/plasma-0048__seed-72897206.mp4",
+      "overlay": "overlays/plasma-0048__seed-72897206.mp4",
+      "demo": "demos/plasma-0048__seed-72897206.mp4"
+    },
+    {
+      "rank": 12,
+      "id": "plasma-0015",
+      "recipe": "plasma",
+      "finalScore": 0.6219890720130735,
+      "mask": "masks/plasma-0015__seed-430220145.mp4",
+      "maskPreview": "mask-previews/plasma-0015__seed-430220145.mp4",
+      "overlay": "overlays/plasma-0015__seed-430220145.mp4",
+      "demo": "demos/plasma-0015__seed-430220145.mp4"
+    },
+    {
+      "rank": 13,
+      "id": "plasma-0035",
+      "recipe": "plasma",
+      "finalScore": 0.6086951153719036,
+      "mask": "masks/plasma-0035__seed-524173877.mp4",
+      "maskPreview": "mask-previews/plasma-0035__seed-524173877.mp4",
+      "overlay": "overlays/plasma-0035__seed-524173877.mp4",
+      "demo": "demos/plasma-0035__seed-524173877.mp4"
+    },
+    {
+      "rank": 14,
+      "id": "glitch-bands-0014",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6060071763159057,
+      "mask": "masks/glitch-bands-0014__seed-357888631.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0014__seed-357888631.mp4",
+      "overlay": "overlays/glitch-bands-0014__seed-357888631.mp4",
+      "demo": "demos/glitch-bands-0014__seed-357888631.mp4"
+    },
+    {
+      "rank": 15,
+      "id": "glitch-bands-0016",
+      "recipe": "glitch-bands",
+      "finalScore": 0.600151809634794,
+      "mask": "masks/glitch-bands-0016__seed-237521418.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0016__seed-237521418.mp4",
+      "overlay": "overlays/glitch-bands-0016__seed-237521418.mp4",
+      "demo": "demos/glitch-bands-0016__seed-237521418.mp4"
+    },
+    {
+      "rank": 16,
+      "id": "glitch-bands-0020",
+      "recipe": "glitch-bands",
+      "finalScore": 0.5873554600523684,
+      "mask": "masks/glitch-bands-0020__seed-991969653.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0020__seed-991969653.mp4",
+      "overlay": "overlays/glitch-bands-0020__seed-991969653.mp4",
+      "demo": "demos/glitch-bands-0020__seed-991969653.mp4"
+    }
+  ]
+}

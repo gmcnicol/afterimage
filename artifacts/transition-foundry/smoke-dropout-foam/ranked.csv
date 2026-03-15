@@ -1,0 +1,5 @@
+rank,id,recipe,final_score,ramp_fit,occupancy,structure,temporal_motion,novelty,start_luma,end_luma,mask,mask_preview,demo
+1,dropout-foam-0004,dropout-foam,0.6464,0.6885,0.8316,0.0297,0.8878,1.0000,0.1224,0.9216,masks/dropout-foam-0004__seed-168191550.mp4,mask-previews/dropout-foam-0004__seed-168191550.mp4,demos/dropout-foam-0004__seed-168191550.mp4
+2,dropout-foam-0002,dropout-foam,0.5357,0.6619,0.8297,0.0055,0.9132,0.0000,0.2642,0.9216,masks/dropout-foam-0002__seed-360265967.mp4,mask-previews/dropout-foam-0002__seed-360265967.mp4,demos/dropout-foam-0002__seed-360265967.mp4
+3,dropout-foam-0003,dropout-foam,0.5349,0.6617,0.8296,0.0033,0.9114,0.0000,0.2654,0.9216,masks/dropout-foam-0003__seed-835252633.mp4,mask-previews/dropout-foam-0003__seed-835252633.mp4,demos/dropout-foam-0003__seed-835252633.mp4
+4,dropout-foam-0001,dropout-foam,0.5339,0.6615,0.8296,0.0000,0.9098,0.0000,0.2665,0.9216,masks/dropout-foam-0001__seed-88706002.mp4,mask-previews/dropout-foam-0001__seed-88706002.mp4,demos/dropout-foam-0001__seed-88706002.mp4

@@ -1,16 +1,48 @@
 {
   "id": "project-core-engine-fixture",
-  "name": "Core Engine Fixture",
+  "name": "Studio Fixture",
   "mode": "studio",
-  "version": 1,
-  "description": "Tiny deterministic fixture project for Phase 1.",
-  "sources": [
+  "version": 2,
+  "description": "Tiny deterministic fixture project for Phase 2.",
+  "metadata": {
+    "createdAt": "2026-03-08T10:00:00.000Z",
+    "updatedAt": "2026-03-08T10:05:00.000Z",
+    "projectFileName": "studio-fixture.afterimage.json",
+    "currentProfileSet": "default"
+  },
+  "assets": [
     {
-      "id": "source-alpha",
-      "path": "fixtures/clips/source-alpha.mp4",
+      "id": "asset-alpha",
+      "filename": "source-alpha.mp4",
+      "mediaType": "video",
+      "path": {
+        "absolutePath": "fixtures/clips/source-alpha.mp4",
+        "relativePath": "clips/source-alpha.mp4"
+      },
       "label": "Source Alpha",
-      "hasVideo": true,
-      "hasAudio": true
+      "durationMs": 5000,
+      "width": 1280,
+      "height": 720,
+      "frameRate": 30,
+      "hasAudio": true,
+      "importStatus": "ready",
+      "analysisStatus": "completed",
+      "tags": ["intro"]
+    },
+    {
+      "id": "asset-music",
+      "filename": "score-alpha.wav",
+      "mediaType": "audio",
+      "path": {
+        "absolutePath": "fixtures/audio/score-alpha.wav",
+        "relativePath": "audio/score-alpha.wav"
+      },
+      "label": "Score Alpha",
+      "durationMs": 5000,
+      "hasAudio": true,
+      "importStatus": "ready",
+      "analysisStatus": "completed",
+      "tags": ["music"]
     }
   ],
   "presets": [
@@ -19,25 +51,172 @@
       "name": "Rental Tape",
       "family": "vhs",
       "filters": [
-        { "type": "tracking-wobble", "amount": 0.35, "mix": 1 },
+        { "type": "blur", "amount": 0.35, "mix": 1 },
         { "type": "chroma-bleed", "amount": 0.25, "mix": 1 }
       ]
     }
   ],
-  "sequence": {
-    "id": "sequence-main",
-    "name": "Main Sequence",
-    "items": [
-      {
-        "id": "segment-intro",
-        "sourceId": "source-alpha",
-        "timelineStartMs": 0,
-        "sourceStartMs": 500,
-        "durationMs": 2500,
-        "presetId": "preset-vhs-rental-tape"
+  "analysisRefs": [
+    {
+      "id": "analysis-asset-alpha",
+      "assetId": "asset-alpha",
+      "path": "fixtures/analysis/source-alpha.analysis.json",
+      "thumbnailManifestPath": "fixtures/analysis/source-alpha.thumbnails.json",
+      "summary": {
+        "sceneCount": 2,
+        "durationMs": 5000,
+        "thumbnailCount": 2,
+        "waveformGenerated": true,
+        "lumaAverage": 0.614,
+        "motionAverage": 0.69
       }
-    ]
-  },
+    }
+  ],
+  "cutCandidates": [
+    {
+      "id": "cut-intro",
+      "assetId": "asset-alpha",
+      "analysisRefId": "analysis-asset-alpha",
+      "startMs": 500,
+      "endMs": 2500,
+      "durationMs": 2000,
+      "sceneScore": 0.61,
+      "thumbnailPath": "fixtures/thumbnails/source-alpha-1.jpg",
+      "tags": ["intro"],
+      "status": "kept",
+      "favorite": true,
+      "binIds": ["bin-favorites"]
+    },
+    {
+      "id": "cut-push",
+      "assetId": "asset-alpha",
+      "analysisRefId": "analysis-asset-alpha",
+      "startMs": 2500,
+      "endMs": 4500,
+      "durationMs": 2000,
+      "sceneScore": 0.77,
+      "thumbnailPath": "fixtures/thumbnails/source-alpha-2.jpg",
+      "tags": ["punchy"],
+      "status": "new",
+      "favorite": false,
+      "binIds": []
+    }
+  ],
+  "bins": [
+    {
+      "id": "bin-favorites",
+      "name": "Favorites",
+      "cutIds": ["cut-intro"]
+    }
+  ],
+  "sequences": [
+    {
+      "id": "sequence-main",
+      "name": "Main Sequence",
+      "variantIds": ["variant-main"],
+      "defaultVariantId": "variant-main",
+      "favorite": true
+    }
+  ],
+  "variants": [
+    {
+      "id": "variant-main",
+      "sequenceId": "sequence-main",
+      "name": "Assembly A",
+      "clips": [
+        {
+          "id": "clip-intro",
+          "assetId": "asset-alpha",
+          "cutId": "cut-intro",
+          "timelineStartMs": 0,
+          "sourceStartMs": 500,
+          "durationMs": 2000,
+          "presetId": "preset-vhs-rental-tape",
+          "transition": "cut",
+          "tags": ["intro"]
+        }
+      ],
+      "markers": [
+        {
+          "id": "marker-downbeat",
+          "timeMs": 0,
+          "label": "Downbeat",
+          "kind": "beat"
+        }
+      ],
+      "sections": [
+        {
+          "id": "section-a",
+          "startMs": 0,
+          "endMs": 2000,
+          "label": "Section A"
+        }
+      ],
+      "stackId": "stack-sequence-main",
+      "favorite": true,
+      "assistedGeneration": {
+        "strategy": "manual"
+      },
+      "musicAlignment": {
+        "primaryAssetId": "asset-music",
+        "beatMarkers": [
+          {
+            "id": "beat-1",
+            "timeMs": 0,
+            "label": "Beat 1",
+            "kind": "beat"
+          }
+        ],
+        "chapterPoints": [0],
+        "snapToBeatGrid": true
+      }
+    }
+  ],
+  "filterStacks": [
+    {
+      "id": "stack-sequence-main",
+      "name": "Sequence Stack",
+      "scope": "sequence",
+      "family": "vhs",
+      "filters": [
+        {
+          "id": "filter-main-bloom",
+          "type": "bloom-soft",
+          "enabled": true,
+          "orderIndex": 0,
+          "parameters": {
+            "strength": 0.24
+          },
+          "mix": 0.9,
+          "automationLaneIds": ["lane-bloom-mix"]
+        }
+      ]
+    }
+  ],
+  "automationLanes": [
+    {
+      "id": "lane-bloom-mix",
+      "name": "Bloom Mix",
+      "target": {
+        "filterId": "filter-main-bloom",
+        "property": "mix"
+      },
+      "enabled": true,
+      "keyframes": [
+        {
+          "id": "keyframe-1",
+          "timeMs": 0,
+          "value": 0.5
+        },
+        {
+          "id": "keyframe-2",
+          "timeMs": 2000,
+          "value": 0.9
+        }
+      ],
+      "sectionValues": []
+    }
+  ],
   "midiMappings": [
     {
       "id": "midi-main",
@@ -46,21 +225,33 @@
         {
           "id": "binding-cut-trigger",
           "source": "cc:1:10",
-          "target": "sequence-main.segment-intro",
+          "target": "lane-bloom-mix",
           "mode": "trigger"
         }
       ]
     }
   ],
-  "analysisRefs": [
+  "exportSelections": [
     {
-      "id": "analysis-source-alpha",
-      "sourceId": "source-alpha",
-      "path": "fixtures/analysis/source-alpha.analysis.json",
-      "summary": {
-        "sceneCount": 2,
-        "durationMs": 5000
-      }
+      "profileId": "landscape-master",
+      "enabled": true,
+      "overwriteExisting": true,
+      "lastOutputDirectory": "exports"
+    },
+    {
+      "profileId": "portrait-short-form",
+      "enabled": true,
+      "overwriteExisting": true,
+      "lastOutputDirectory": "exports"
     }
-  ]
+  ],
+  "defaultSequenceId": "sequence-main",
+  "featureFlags": {
+    "recordedMidiAutomation": false,
+    "advancedBeatDetection": false,
+    "proxyGeneration": false,
+    "advancedAssistedSequencing": false,
+    "complexTransitions": false
+  },
+  "tags": ["fixture"]
 }

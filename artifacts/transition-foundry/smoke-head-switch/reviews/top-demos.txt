@@ -1,0 +1,4 @@
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-head-switch/demos/head-switch-smear-0002__seed-548827925.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-head-switch/demos/head-switch-smear-0004__seed-339983527.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-head-switch/demos/head-switch-smear-0001__seed-212859974.mp4'
+file '/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-head-switch/demos/head-switch-smear-0003__seed-574557577.mp4'

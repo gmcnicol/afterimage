@@ -1,0 +1,5 @@
+rank,id,recipe,final_score,ramp_fit,occupancy,structure,temporal_motion,novelty,start_luma,end_luma,mask,mask_preview,demo
+1,white-burn-0003,white-burn,0.6608,0.7451,0.9037,0.0000,0.7952,1.0000,0.3490,0.9216,masks/white-burn-0003__seed-584854189.mp4,mask-previews/white-burn-0003__seed-584854189.mp4,demos/white-burn-0003__seed-584854189.mp4
+2,glitch-bands-0001,glitch-bands,0.5582,0.7133,0.7782,0.2110,0.6705,0.1016,0.2292,0.9120,masks/glitch-bands-0001__seed-876444935.mp4,mask-previews/glitch-bands-0001__seed-876444935.mp4,demos/glitch-bands-0001__seed-876444935.mp4
+3,block-decay-0004,block-decay,0.5462,0.7124,0.8296,0.0000,0.8725,0.0000,0.1098,0.9216,masks/block-decay-0004__seed-252976681.mp4,mask-previews/block-decay-0004__seed-252976681.mp4,demos/block-decay-0004__seed-252976681.mp4
+4,white-burn-0002,white-burn,0.5305,0.7052,0.9037,0.0000,0.6863,0.0000,0.4275,0.9216,masks/white-burn-0002__seed-751004940.mp4,mask-previews/white-burn-0002__seed-751004940.mp4,demos/white-burn-0002__seed-751004940.mp4

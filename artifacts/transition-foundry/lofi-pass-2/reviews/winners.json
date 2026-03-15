@@ -1,0 +1,166 @@
+{
+  "reviewedAt": "2026-03-14T11:55:45.312Z",
+  "topK": 16,
+  "winners": [
+    {
+      "rank": 1,
+      "id": "plasma-0003",
+      "recipe": "plasma",
+      "finalScore": 0.8563177982876625,
+      "mask": "masks/plasma-0003__seed-97465648.mp4",
+      "maskPreview": "mask-previews/plasma-0003__seed-97465648.mp4",
+      "overlay": "overlays/plasma-0003__seed-97465648.mp4",
+      "demo": "demos/plasma-0003__seed-97465648.mp4"
+    },
+    {
+      "rank": 2,
+      "id": "plasma-0044",
+      "recipe": "plasma",
+      "finalScore": 0.7404817776230953,
+      "mask": "masks/plasma-0044__seed-943493240.mp4",
+      "maskPreview": "mask-previews/plasma-0044__seed-943493240.mp4",
+      "overlay": "overlays/plasma-0044__seed-943493240.mp4",
+      "demo": "demos/plasma-0044__seed-943493240.mp4"
+    },
+    {
+      "rank": 3,
+      "id": "plasma-0045",
+      "recipe": "plasma",
+      "finalScore": 0.7245428826195432,
+      "mask": "masks/plasma-0045__seed-829333363.mp4",
+      "maskPreview": "mask-previews/plasma-0045__seed-829333363.mp4",
+      "overlay": "overlays/plasma-0045__seed-829333363.mp4",
+      "demo": "demos/plasma-0045__seed-829333363.mp4"
+    },
+    {
+      "rank": 4,
+      "id": "plasma-0001",
+      "recipe": "plasma",
+      "finalScore": 0.7197324578155427,
+      "mask": "masks/plasma-0001__seed-845565580.mp4",
+      "maskPreview": "mask-previews/plasma-0001__seed-845565580.mp4",
+      "overlay": "overlays/plasma-0001__seed-845565580.mp4",
+      "demo": "demos/plasma-0001__seed-845565580.mp4"
+    },
+    {
+      "rank": 5,
+      "id": "plasma-0002",
+      "recipe": "plasma",
+      "finalScore": 0.7112915583057388,
+      "mask": "masks/plasma-0002__seed-161672567.mp4",
+      "maskPreview": "mask-previews/plasma-0002__seed-161672567.mp4",
+      "overlay": "overlays/plasma-0002__seed-161672567.mp4",
+      "demo": "demos/plasma-0002__seed-161672567.mp4"
+    },
+    {
+      "rank": 6,
+      "id": "plasma-0010",
+      "recipe": "plasma",
+      "finalScore": 0.6954762635526522,
+      "mask": "masks/plasma-0010__seed-704750917.mp4",
+      "maskPreview": "mask-previews/plasma-0010__seed-704750917.mp4",
+      "overlay": "overlays/plasma-0010__seed-704750917.mp4",
+      "demo": "demos/plasma-0010__seed-704750917.mp4"
+    },
+    {
+      "rank": 7,
+      "id": "plasma-0030",
+      "recipe": "plasma",
+      "finalScore": 0.681587568621722,
+      "mask": "masks/plasma-0030__seed-430385880.mp4",
+      "maskPreview": "mask-previews/plasma-0030__seed-430385880.mp4",
+      "overlay": "overlays/plasma-0030__seed-430385880.mp4",
+      "demo": "demos/plasma-0030__seed-430385880.mp4"
+    },
+    {
+      "rank": 8,
+      "id": "plasma-0017",
+      "recipe": "plasma",
+      "finalScore": 0.660345429369725,
+      "mask": "masks/plasma-0017__seed-583839300.mp4",
+      "maskPreview": "mask-previews/plasma-0017__seed-583839300.mp4",
+      "overlay": "overlays/plasma-0017__seed-583839300.mp4",
+      "demo": "demos/plasma-0017__seed-583839300.mp4"
+    },
+    {
+      "rank": 9,
+      "id": "glitch-bands-0035",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6446601988512822,
+      "mask": "masks/glitch-bands-0035__seed-454314500.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0035__seed-454314500.mp4",
+      "overlay": "overlays/glitch-bands-0035__seed-454314500.mp4",
+      "demo": "demos/glitch-bands-0035__seed-454314500.mp4"
+    },
+    {
+      "rank": 10,
+      "id": "plasma-0046",
+      "recipe": "plasma",
+      "finalScore": 0.6437032472709595,
+      "mask": "masks/plasma-0046__seed-693790076.mp4",
+      "maskPreview": "mask-previews/plasma-0046__seed-693790076.mp4",
+      "overlay": "overlays/plasma-0046__seed-693790076.mp4",
+      "demo": "demos/plasma-0046__seed-693790076.mp4"
+    },
+    {
+      "rank": 11,
+      "id": "plasma-0015",
+      "recipe": "plasma",
+      "finalScore": 0.6329102641880917,
+      "mask": "masks/plasma-0015__seed-636788125.mp4",
+      "maskPreview": "mask-previews/plasma-0015__seed-636788125.mp4",
+      "overlay": "overlays/plasma-0015__seed-636788125.mp4",
+      "demo": "demos/plasma-0015__seed-636788125.mp4"
+    },
+    {
+      "rank": 12,
+      "id": "glitch-bands-0034",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6234735268396628,
+      "mask": "masks/glitch-bands-0034__seed-430202099.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0034__seed-430202099.mp4",
+      "overlay": "overlays/glitch-bands-0034__seed-430202099.mp4",
+      "demo": "demos/glitch-bands-0034__seed-430202099.mp4"
+    },
+    {
+      "rank": 13,
+      "id": "glitch-bands-0021",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6081387079904539,
+      "mask": "masks/glitch-bands-0021__seed-585495538.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0021__seed-585495538.mp4",
+      "overlay": "overlays/glitch-bands-0021__seed-585495538.mp4",
+      "demo": "demos/glitch-bands-0021__seed-585495538.mp4"
+    },
+    {
+      "rank": 14,
+      "id": "white-burn-0025",
+      "recipe": "white-burn",
+      "finalScore": 0.6079661691456781,
+      "mask": "masks/white-burn-0025__seed-738757819.mp4",
+      "maskPreview": "mask-previews/white-burn-0025__seed-738757819.mp4",
+      "overlay": "overlays/white-burn-0025__seed-738757819.mp4",
+      "demo": "demos/white-burn-0025__seed-738757819.mp4"
+    },
+    {
+      "rank": 15,
+      "id": "glitch-bands-0023",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6061009302383558,
+      "mask": "masks/glitch-bands-0023__seed-939498810.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0023__seed-939498810.mp4",
+      "overlay": "overlays/glitch-bands-0023__seed-939498810.mp4",
+      "demo": "demos/glitch-bands-0023__seed-939498810.mp4"
+    },
+    {
+      "rank": 16,
+      "id": "glitch-bands-0036",
+      "recipe": "glitch-bands",
+      "finalScore": 0.6045174399297136,
+      "mask": "masks/glitch-bands-0036__seed-245907210.mp4",
+      "maskPreview": "mask-previews/glitch-bands-0036__seed-245907210.mp4",
+      "overlay": "overlays/glitch-bands-0036__seed-245907210.mp4",
+      "demo": "demos/glitch-bands-0036__seed-245907210.mp4"
+    }
+  ]
+}

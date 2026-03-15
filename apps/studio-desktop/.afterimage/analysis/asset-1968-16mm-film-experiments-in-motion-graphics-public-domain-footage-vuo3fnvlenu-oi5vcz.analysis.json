@@ -1,0 +1,143 @@
+{
+  "id": "analysis-asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz",
+  "assetId": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz",
+  "probe": {
+    "formatName": "mov,mp4,m4a,3gp,3g2,mj2",
+    "durationMs": 714223,
+    "bitRate": 653399,
+    "streams": [
+      {
+        "codecType": "video",
+        "codecName": "h264",
+        "width": 640,
+        "height": 360,
+        "avgFrameRate": "24/1"
+      },
+      {
+        "codecType": "audio",
+        "codecName": "aac",
+        "sampleRate": 44100,
+        "channels": 2,
+        "avgFrameRate": "0/0"
+      }
+    ]
+  },
+  "sceneCuts": [
+    {
+      "timeMs": 16667,
+      "score": 0.402348
+    },
+    {
+      "timeMs": 45875,
+      "score": 0.404729
+    },
+    {
+      "timeMs": 72250,
+      "score": 0.526311
+    },
+    {
+      "timeMs": 76417,
+      "score": 0.537665
+    },
+    {
+      "timeMs": 80500,
+      "score": 0.461115
+    },
+    {
+      "timeMs": 568208,
+      "score": 0.424467
+    },
+    {
+      "timeMs": 584875,
+      "score": 0.436083
+    },
+    {
+      "timeMs": 591792,
+      "score": 0.46045
+    },
+    {
+      "timeMs": 676833,
+      "score": 0.425323
+    },
+    {
+      "timeMs": 708667,
+      "score": 1
+    },
+    {
+      "timeMs": 709500,
+      "score": 0.63612
+    },
+    {
+      "timeMs": 713000,
+      "score": 0.687321
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-1",
+      "timeMs": 16667,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-001.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-2",
+      "timeMs": 45875,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-002.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-3",
+      "timeMs": 72250,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-003.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-4",
+      "timeMs": 76417,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-004.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-5",
+      "timeMs": 80500,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-005.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-6",
+      "timeMs": 568208,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-006.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-7",
+      "timeMs": 584875,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-007.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-8",
+      "timeMs": 591792,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-008.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-9",
+      "timeMs": 676833,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-009.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-10",
+      "timeMs": 708667,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-010.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-11",
+      "timeMs": 709500,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-011.jpg"
+    },
+    {
+      "id": "asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-thumbnail-12",
+      "timeMs": 713000,
+      "path": ".afterimage/thumbnails/asset-1968-16mm-film-experiments-in-motion-graphics-public-domain-footage-vuo3fnvlenu-oi5vcz-012.jpg"
+    }
+  ],
+  "summary": {
+    "sceneCount": 12,
+    "durationMs": 714223,
+    "thumbnailCount": 12,
+    "waveformGenerated": false
+  }
+}

@@ -10,7 +10,12 @@
     "typecheck": "turbo run typecheck",
     "dev:studio": "pnpm --dir apps/studio-desktop dev",
     "dev:live": "pnpm --dir apps/live-desktop dev",
-    "dev:appliance": "cd apps/live-appliance && go run ./cmd/afterimage-appliance"
+    "dev:appliance": "cd apps/live-appliance && go run ./cmd/afterimage-appliance",
+    "foundry:run": "node scripts/transition-foundry.mjs run",
+    "foundry:generate": "node scripts/transition-foundry.mjs generate",
+    "foundry:analyze": "node scripts/transition-foundry.mjs analyze",
+    "foundry:review": "node scripts/transition-foundry.mjs review",
+    "foundry:curate": "node scripts/transition-foundry.mjs curate"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",

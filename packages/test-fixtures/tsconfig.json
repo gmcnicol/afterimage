@@ -7,5 +7,5 @@
     "outDir": "dist"
   },
   "include": ["src/**/*", "src/**/*.json"],
-  "references": [{ "path": "../project-model" }]
+  "references": [{ "path": "../project-model" }, { "path": "../export-profiles" }]
 }

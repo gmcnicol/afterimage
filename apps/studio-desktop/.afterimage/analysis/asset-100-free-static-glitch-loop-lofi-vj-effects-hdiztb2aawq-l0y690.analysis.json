@@ -1,0 +1,1178 @@
+{
+  "id": "analysis-asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690",
+  "assetId": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690",
+  "probe": {
+    "formatName": "matroska,webm",
+    "durationMs": 1010888,
+    "bitRate": 2317444,
+    "streams": [
+      {
+        "codecType": "video",
+        "codecName": "h264",
+        "width": 1280,
+        "height": 720,
+        "avgFrameRate": "20/1"
+      },
+      {
+        "codecType": "audio",
+        "codecName": "opus",
+        "sampleRate": 48000,
+        "channels": 2,
+        "avgFrameRate": "0/0"
+      }
+    ]
+  },
+  "sceneCuts": [
+    {
+      "timeMs": 12800,
+      "score": 0.44476
+    },
+    {
+      "timeMs": 12950,
+      "score": 0.426447
+    },
+    {
+      "timeMs": 44000,
+      "score": 0.430051
+    },
+    {
+      "timeMs": 64800,
+      "score": 0.461304
+    },
+    {
+      "timeMs": 64950,
+      "score": 0.421731
+    },
+    {
+      "timeMs": 70000,
+      "score": 0.433802
+    },
+    {
+      "timeMs": 70200,
+      "score": 0.409947
+    },
+    {
+      "timeMs": 75400,
+      "score": 0.436545
+    },
+    {
+      "timeMs": 90800,
+      "score": 0.563705
+    },
+    {
+      "timeMs": 90950,
+      "score": 0.463786
+    },
+    {
+      "timeMs": 96000,
+      "score": 0.419638
+    },
+    {
+      "timeMs": 96200,
+      "score": 0.413588
+    },
+    {
+      "timeMs": 116800,
+      "score": 0.431001
+    },
+    {
+      "timeMs": 116950,
+      "score": 0.458771
+    },
+    {
+      "timeMs": 122200,
+      "score": 0.400007
+    },
+    {
+      "timeMs": 137850,
+      "score": 0.449244
+    },
+    {
+      "timeMs": 142800,
+      "score": 0.461044
+    },
+    {
+      "timeMs": 142950,
+      "score": 0.456202
+    },
+    {
+      "timeMs": 148000,
+      "score": 0.430866
+    },
+    {
+      "timeMs": 148200,
+      "score": 0.419531
+    },
+    {
+      "timeMs": 168800,
+      "score": 0.411751
+    },
+    {
+      "timeMs": 168950,
+      "score": 0.428461
+    },
+    {
+      "timeMs": 174000,
+      "score": 0.458778
+    },
+    {
+      "timeMs": 174200,
+      "score": 0.413265
+    },
+    {
+      "timeMs": 194800,
+      "score": 0.405676
+    },
+    {
+      "timeMs": 200000,
+      "score": 0.407851
+    },
+    {
+      "timeMs": 220800,
+      "score": 0.447021
+    },
+    {
+      "timeMs": 220950,
+      "score": 0.427199
+    },
+    {
+      "timeMs": 226000,
+      "score": 0.503018
+    },
+    {
+      "timeMs": 246950,
+      "score": 0.402852
+    },
+    {
+      "timeMs": 252000,
+      "score": 0.448471
+    },
+    {
+      "timeMs": 252200,
+      "score": 0.621243
+    },
+    {
+      "timeMs": 272800,
+      "score": 0.503467
+    },
+    {
+      "timeMs": 272950,
+      "score": 0.450254
+    },
+    {
+      "timeMs": 278000,
+      "score": 0.41329
+    },
+    {
+      "timeMs": 278200,
+      "score": 0.430308
+    },
+    {
+      "timeMs": 298800,
+      "score": 0.430833
+    },
+    {
+      "timeMs": 298950,
+      "score": 0.441779
+    },
+    {
+      "timeMs": 304000,
+      "score": 0.447931
+    },
+    {
+      "timeMs": 304200,
+      "score": 0.441456
+    },
+    {
+      "timeMs": 324800,
+      "score": 0.448323
+    },
+    {
+      "timeMs": 324950,
+      "score": 0.438736
+    },
+    {
+      "timeMs": 330200,
+      "score": 0.410026
+    },
+    {
+      "timeMs": 350800,
+      "score": 0.422909
+    },
+    {
+      "timeMs": 350950,
+      "score": 0.44368
+    },
+    {
+      "timeMs": 376800,
+      "score": 0.441759
+    },
+    {
+      "timeMs": 376950,
+      "score": 0.44728
+    },
+    {
+      "timeMs": 382200,
+      "score": 0.471584
+    },
+    {
+      "timeMs": 387250,
+      "score": 0.428199
+    },
+    {
+      "timeMs": 400000,
+      "score": 0.407567
+    },
+    {
+      "timeMs": 402800,
+      "score": 0.409988
+    },
+    {
+      "timeMs": 402950,
+      "score": 0.422623
+    },
+    {
+      "timeMs": 408000,
+      "score": 0.407715
+    },
+    {
+      "timeMs": 413400,
+      "score": 0.595838
+    },
+    {
+      "timeMs": 434000,
+      "score": 0.441937
+    },
+    {
+      "timeMs": 454800,
+      "score": 0.427877
+    },
+    {
+      "timeMs": 454950,
+      "score": 0.416934
+    },
+    {
+      "timeMs": 460000,
+      "score": 0.419016
+    },
+    {
+      "timeMs": 460200,
+      "score": 0.420561
+    },
+    {
+      "timeMs": 465250,
+      "score": 0.401877
+    },
+    {
+      "timeMs": 465400,
+      "score": 0.43362
+    },
+    {
+      "timeMs": 480800,
+      "score": 0.419081
+    },
+    {
+      "timeMs": 480950,
+      "score": 0.428011
+    },
+    {
+      "timeMs": 506800,
+      "score": 0.438934
+    },
+    {
+      "timeMs": 506950,
+      "score": 0.430135
+    },
+    {
+      "timeMs": 527600,
+      "score": 0.436545
+    },
+    {
+      "timeMs": 532800,
+      "score": 0.422661
+    },
+    {
+      "timeMs": 532950,
+      "score": 0.427823
+    },
+    {
+      "timeMs": 538200,
+      "score": 0.438419
+    },
+    {
+      "timeMs": 543400,
+      "score": 0.412549
+    },
+    {
+      "timeMs": 558800,
+      "score": 0.405988
+    },
+    {
+      "timeMs": 558950,
+      "score": 0.408446
+    },
+    {
+      "timeMs": 564000,
+      "score": 0.423616
+    },
+    {
+      "timeMs": 574650,
+      "score": 0.456207
+    },
+    {
+      "timeMs": 584950,
+      "score": 0.43032
+    },
+    {
+      "timeMs": 590050,
+      "score": 0.443334
+    },
+    {
+      "timeMs": 610800,
+      "score": 0.464285
+    },
+    {
+      "timeMs": 610950,
+      "score": 0.438508
+    },
+    {
+      "timeMs": 616000,
+      "score": 0.4586
+    },
+    {
+      "timeMs": 636800,
+      "score": 0.403759
+    },
+    {
+      "timeMs": 636950,
+      "score": 0.402989
+    },
+    {
+      "timeMs": 642000,
+      "score": 0.426533
+    },
+    {
+      "timeMs": 662800,
+      "score": 0.522514
+    },
+    {
+      "timeMs": 662950,
+      "score": 0.436257
+    },
+    {
+      "timeMs": 668000,
+      "score": 0.43162
+    },
+    {
+      "timeMs": 668200,
+      "score": 0.412695
+    },
+    {
+      "timeMs": 688800,
+      "score": 0.45526
+    },
+    {
+      "timeMs": 688950,
+      "score": 0.662524
+    },
+    {
+      "timeMs": 694000,
+      "score": 0.449893
+    },
+    {
+      "timeMs": 714800,
+      "score": 0.42198
+    },
+    {
+      "timeMs": 714950,
+      "score": 0.441241
+    },
+    {
+      "timeMs": 720000,
+      "score": 0.40697
+    },
+    {
+      "timeMs": 720200,
+      "score": 0.41563
+    },
+    {
+      "timeMs": 740800,
+      "score": 0.452033
+    },
+    {
+      "timeMs": 740950,
+      "score": 0.475476
+    },
+    {
+      "timeMs": 746200,
+      "score": 0.406623
+    },
+    {
+      "timeMs": 766800,
+      "score": 0.426057
+    },
+    {
+      "timeMs": 766950,
+      "score": 0.440524
+    },
+    {
+      "timeMs": 803200,
+      "score": 0.405678
+    },
+    {
+      "timeMs": 824000,
+      "score": 0.5091
+    },
+    {
+      "timeMs": 836800,
+      "score": 0.41105
+    },
+    {
+      "timeMs": 844800,
+      "score": 0.404321
+    },
+    {
+      "timeMs": 844950,
+      "score": 0.405621
+    },
+    {
+      "timeMs": 850000,
+      "score": 0.440605
+    },
+    {
+      "timeMs": 850200,
+      "score": 0.629446
+    },
+    {
+      "timeMs": 870800,
+      "score": 0.498797
+    },
+    {
+      "timeMs": 870950,
+      "score": 0.452289
+    },
+    {
+      "timeMs": 876000,
+      "score": 0.426658
+    },
+    {
+      "timeMs": 876200,
+      "score": 0.426244
+    },
+    {
+      "timeMs": 896800,
+      "score": 0.430251
+    },
+    {
+      "timeMs": 896950,
+      "score": 0.430372
+    },
+    {
+      "timeMs": 902000,
+      "score": 0.421999
+    },
+    {
+      "timeMs": 902200,
+      "score": 0.46743
+    },
+    {
+      "timeMs": 922800,
+      "score": 0.42304
+    },
+    {
+      "timeMs": 922950,
+      "score": 0.454086
+    },
+    {
+      "timeMs": 928000,
+      "score": 0.449349
+    },
+    {
+      "timeMs": 928200,
+      "score": 0.409917
+    },
+    {
+      "timeMs": 933250,
+      "score": 0.428727
+    },
+    {
+      "timeMs": 948800,
+      "score": 0.425931
+    },
+    {
+      "timeMs": 948950,
+      "score": 0.429582
+    },
+    {
+      "timeMs": 954000,
+      "score": 0.411507
+    },
+    {
+      "timeMs": 964500,
+      "score": 0.409976
+    },
+    {
+      "timeMs": 974950,
+      "score": 0.425527
+    },
+    {
+      "timeMs": 998000,
+      "score": 0.409457
+    },
+    {
+      "timeMs": 1000800,
+      "score": 0.412578
+    },
+    {
+      "timeMs": 1000950,
+      "score": 0.408809
+    },
+    {
+      "timeMs": 1006000,
+      "score": 0.413585
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-1",
+      "timeMs": 12800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-001.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-2",
+      "timeMs": 12950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-002.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-3",
+      "timeMs": 44000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-003.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-4",
+      "timeMs": 64800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-004.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-5",
+      "timeMs": 64950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-005.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-6",
+      "timeMs": 70000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-006.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-7",
+      "timeMs": 70200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-007.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-8",
+      "timeMs": 75400,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-008.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-9",
+      "timeMs": 90800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-009.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-10",
+      "timeMs": 90950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-010.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-11",
+      "timeMs": 96000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-011.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-12",
+      "timeMs": 96200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-012.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-13",
+      "timeMs": 116800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-013.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-14",
+      "timeMs": 116950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-014.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-15",
+      "timeMs": 122200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-015.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-16",
+      "timeMs": 137850,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-016.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-17",
+      "timeMs": 142800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-017.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-18",
+      "timeMs": 142950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-018.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-19",
+      "timeMs": 148000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-019.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-20",
+      "timeMs": 148200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-020.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-21",
+      "timeMs": 168800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-021.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-22",
+      "timeMs": 168950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-022.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-23",
+      "timeMs": 174000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-023.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-24",
+      "timeMs": 174200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-024.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-25",
+      "timeMs": 194800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-025.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-26",
+      "timeMs": 200000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-026.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-27",
+      "timeMs": 220800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-027.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-28",
+      "timeMs": 220950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-028.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-29",
+      "timeMs": 226000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-029.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-30",
+      "timeMs": 246950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-030.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-31",
+      "timeMs": 252000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-031.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-32",
+      "timeMs": 252200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-032.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-33",
+      "timeMs": 272800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-033.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-34",
+      "timeMs": 272950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-034.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-35",
+      "timeMs": 278000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-035.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-36",
+      "timeMs": 278200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-036.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-37",
+      "timeMs": 298800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-037.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-38",
+      "timeMs": 298950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-038.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-39",
+      "timeMs": 304000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-039.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-40",
+      "timeMs": 304200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-040.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-41",
+      "timeMs": 324800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-041.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-42",
+      "timeMs": 324950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-042.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-43",
+      "timeMs": 330200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-043.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-44",
+      "timeMs": 350800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-044.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-45",
+      "timeMs": 350950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-045.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-46",
+      "timeMs": 376800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-046.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-47",
+      "timeMs": 376950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-047.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-48",
+      "timeMs": 382200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-048.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-49",
+      "timeMs": 387250,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-049.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-50",
+      "timeMs": 400000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-050.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-51",
+      "timeMs": 402800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-051.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-52",
+      "timeMs": 402950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-052.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-53",
+      "timeMs": 408000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-053.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-54",
+      "timeMs": 413400,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-054.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-55",
+      "timeMs": 434000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-055.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-56",
+      "timeMs": 454800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-056.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-57",
+      "timeMs": 454950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-057.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-58",
+      "timeMs": 460000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-058.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-59",
+      "timeMs": 460200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-059.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-60",
+      "timeMs": 465250,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-060.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-61",
+      "timeMs": 465400,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-061.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-62",
+      "timeMs": 480800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-062.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-63",
+      "timeMs": 480950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-063.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-64",
+      "timeMs": 506800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-064.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-65",
+      "timeMs": 506950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-065.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-66",
+      "timeMs": 527600,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-066.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-67",
+      "timeMs": 532800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-067.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-68",
+      "timeMs": 532950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-068.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-69",
+      "timeMs": 538200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-069.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-70",
+      "timeMs": 543400,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-070.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-71",
+      "timeMs": 558800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-071.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-72",
+      "timeMs": 558950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-072.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-73",
+      "timeMs": 564000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-073.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-74",
+      "timeMs": 574650,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-074.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-75",
+      "timeMs": 584950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-075.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-76",
+      "timeMs": 590050,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-076.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-77",
+      "timeMs": 610800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-077.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-78",
+      "timeMs": 610950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-078.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-79",
+      "timeMs": 616000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-079.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-80",
+      "timeMs": 636800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-080.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-81",
+      "timeMs": 636950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-081.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-82",
+      "timeMs": 642000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-082.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-83",
+      "timeMs": 662800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-083.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-84",
+      "timeMs": 662950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-084.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-85",
+      "timeMs": 668000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-085.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-86",
+      "timeMs": 668200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-086.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-87",
+      "timeMs": 688800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-087.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-88",
+      "timeMs": 688950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-088.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-89",
+      "timeMs": 694000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-089.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-90",
+      "timeMs": 714800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-090.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-91",
+      "timeMs": 714950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-091.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-92",
+      "timeMs": 720000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-092.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-93",
+      "timeMs": 720200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-093.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-94",
+      "timeMs": 740800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-094.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-95",
+      "timeMs": 740950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-095.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-96",
+      "timeMs": 746200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-096.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-97",
+      "timeMs": 766800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-097.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-98",
+      "timeMs": 766950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-098.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-99",
+      "timeMs": 803200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-099.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-100",
+      "timeMs": 824000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-100.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-101",
+      "timeMs": 836800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-101.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-102",
+      "timeMs": 844800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-102.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-103",
+      "timeMs": 844950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-103.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-104",
+      "timeMs": 850000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-104.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-105",
+      "timeMs": 850200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-105.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-106",
+      "timeMs": 870800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-106.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-107",
+      "timeMs": 870950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-107.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-108",
+      "timeMs": 876000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-108.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-109",
+      "timeMs": 876200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-109.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-110",
+      "timeMs": 896800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-110.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-111",
+      "timeMs": 896950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-111.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-112",
+      "timeMs": 902000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-112.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-113",
+      "timeMs": 902200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-113.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-114",
+      "timeMs": 922800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-114.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-115",
+      "timeMs": 922950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-115.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-116",
+      "timeMs": 928000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-116.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-117",
+      "timeMs": 928200,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-117.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-118",
+      "timeMs": 933250,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-118.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-119",
+      "timeMs": 948800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-119.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-120",
+      "timeMs": 948950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-120.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-121",
+      "timeMs": 954000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-121.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-122",
+      "timeMs": 964500,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-122.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-123",
+      "timeMs": 974950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-123.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-124",
+      "timeMs": 998000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-124.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-125",
+      "timeMs": 1000800,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-125.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-126",
+      "timeMs": 1000950,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-126.jpg"
+    },
+    {
+      "id": "asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-thumbnail-127",
+      "timeMs": 1006000,
+      "path": ".afterimage/thumbnails/asset-100-free-static-glitch-loop-lofi-vj-effects-hdiztb2aawq-l0y690-127.jpg"
+    }
+  ],
+  "summary": {
+    "sceneCount": 127,
+    "durationMs": 1010888,
+    "thumbnailCount": 127,
+    "waveformGenerated": false
+  }
+}

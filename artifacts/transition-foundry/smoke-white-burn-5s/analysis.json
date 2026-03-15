@@ -1,0 +1,42 @@
+{
+  "analyzedAt": "2026-03-14T11:53:29.196Z",
+  "manifestPath": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-burn-5s/manifest.json",
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/smoke-white-burn-5s",
+  "candidates": [
+    {
+      "id": "white-burn-0001",
+      "recipe": "white-burn",
+      "width": 160,
+      "height": 90,
+      "fps": 8,
+      "duration": 0.75,
+      "seed": 897733046,
+      "parameters": {
+        "noise": 28.711216711904854,
+        "blurA": 0.5499406583141536,
+        "blurB": 0.6799290762748569,
+        "contrast": 2.3397415108047426,
+        "threshold": 103.08353459462523
+      },
+      "paths": {
+        "mask": "masks/white-burn-0001__seed-897733046.mp4",
+        "maskPreview": "mask-previews/white-burn-0001__seed-897733046.mp4",
+        "overlay": "overlays/white-burn-0001__seed-897733046.mp4",
+        "demo": "demos/white-burn-0001__seed-897733046.mp4"
+      },
+      "metrics": {
+        "rampFit": 0.7065359477124182,
+        "occupancy": 0.9037037037037037,
+        "structure": 0,
+        "temporalMotion": 0.6481481481481481,
+        "baseScore": 0.6057625272331154,
+        "frameHash": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+        "frameCount": 6,
+        "startLuma": 0.4549019607843137,
+        "endLuma": 0.9215686274509803,
+        "novelty": 1,
+        "finalScore": 0.6252505446623093
+      }
+    }
+  ]
+}

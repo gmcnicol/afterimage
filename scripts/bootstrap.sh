@@ -24,16 +24,19 @@ pnpm add -Dw turbo typescript @types/node vitest
 
 log "installing Studio Desktop dependencies"
 pnpm --dir "$ROOT_DIR/apps/studio-desktop" add react react-dom \
+  @afterimage/export-profiles@workspace:* \
   @afterimage/project-model@workspace:* \
   @afterimage/schema-validators@workspace:* \
   @afterimage/ffmpeg-compiler@workspace:* \
   @afterimage/media-analysis@workspace:* \
   @afterimage/preset-library@workspace:* \
   @afterimage/midi-engine@workspace:* \
-  @afterimage/ui@workspace:*
+  @afterimage/ui@workspace:* \
+  zustand @tanstack/react-virtual
 pnpm --dir "$ROOT_DIR/apps/studio-desktop" add -D \
   electron vite @vitejs/plugin-react \
   @types/react @types/react-dom \
+  @playwright/test \
   concurrently wait-on
 
 log "installing Live Desktop dependencies"
@@ -55,8 +58,9 @@ pnpm --dir "$ROOT_DIR/packages/ui" add -D @types/react @types/react-dom
 pnpm --dir "$ROOT_DIR/packages/schema-validators" add ajv @afterimage/project-model@workspace:*
 pnpm --dir "$ROOT_DIR/packages/preset-library" add @afterimage/project-model@workspace:* @afterimage/schema-validators@workspace:*
 pnpm --dir "$ROOT_DIR/packages/media-analysis" add @afterimage/project-model@workspace:*
-pnpm --dir "$ROOT_DIR/packages/ffmpeg-compiler" add @afterimage/project-model@workspace:*
-pnpm --dir "$ROOT_DIR/packages/test-fixtures" add @afterimage/project-model@workspace:*
+pnpm --dir "$ROOT_DIR/packages/ffmpeg-compiler" add @afterimage/project-model@workspace:* @afterimage/export-profiles@workspace:*
+pnpm --dir "$ROOT_DIR/packages/test-fixtures" add @afterimage/project-model@workspace:* @afterimage/export-profiles@workspace:*
+pnpm --dir "$ROOT_DIR/packages/export-profiles" add @afterimage/project-model@workspace:*
 
 log "tidying Go module"
 (

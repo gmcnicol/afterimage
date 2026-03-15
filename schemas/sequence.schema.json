@@ -1,10 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afterimage.local/schemas/sequence.schema.json",
-  "title": "Sequence",
-  "allOf": [
-    {
-      "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/sequence"
-    }
-  ]
+  "title": "Afterimage Sequence",
+  "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/sequence"
 }

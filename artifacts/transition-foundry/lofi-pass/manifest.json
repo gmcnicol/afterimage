@@ -1,0 +1,1213 @@
+{
+  "createdAt": "2026-03-14T11:36:52.439Z",
+  "generator": "transition-foundry",
+  "config": {
+    "count": 48,
+    "width": 640,
+    "height": 360,
+    "fps": 15,
+    "duration": 0.75,
+    "recipes": [
+      "white-burn",
+      "glitch-bands",
+      "plasma",
+      "block-decay"
+    ],
+    "seed": 1814173837
+  },
+  "runDir": "/Users/gareth/src/afterimage/artifacts/transition-foundry/lofi-pass",
+  "candidates": [
+    {
+      "id": "block-decay-0001",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 985595662,
+      "parameters": {
+        "noise": 17.9415062405169,
+        "blockWidth": 21.99160787463188,
+        "blockHeight": 24.73531562136486,
+        "blur": 0.2527729706373065,
+        "contrast": 2.215706872136798,
+        "threshold": 90.16074246168137
+      },
+      "paths": {
+        "mask": "masks/block-decay-0001__seed-985595662.mp4",
+        "maskPreview": "mask-previews/block-decay-0001__seed-985595662.mp4",
+        "overlay": "overlays/block-decay-0001__seed-985595662.mp4",
+        "demo": "demos/block-decay-0001__seed-985595662.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0002",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 761559523,
+      "parameters": {
+        "ampA": 84.92918552248739,
+        "ampB": 77.69552991725504,
+        "periodA": 11.701497494708747,
+        "periodB": 38.17571672424674,
+        "speedA": 28.501129374839365,
+        "speedB": 12.96097382856533,
+        "noise": 15.928163132630289,
+        "blur": 0.5853244736790657,
+        "contrast": 2.527061930554919,
+        "threshold": 133.17730438616127
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0002__seed-761559523.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0002__seed-761559523.mp4",
+        "overlay": "overlays/glitch-bands-0002__seed-761559523.mp4",
+        "demo": "demos/glitch-bands-0002__seed-761559523.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0003",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 774071882,
+      "parameters": {
+        "noise": 20.94289464922622,
+        "blurA": 0.865731239086017,
+        "blurB": 1.2448022603057325,
+        "contrast": 2.776680510398,
+        "threshold": 91.69589809514582
+      },
+      "paths": {
+        "mask": "masks/white-burn-0003__seed-774071882.mp4",
+        "maskPreview": "mask-previews/white-burn-0003__seed-774071882.mp4",
+        "overlay": "overlays/white-burn-0003__seed-774071882.mp4",
+        "demo": "demos/white-burn-0003__seed-774071882.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0004",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 811832876,
+      "parameters": {
+        "noise": 16.492630686610937,
+        "blockWidth": 22.375750690698624,
+        "blockHeight": 12.35865676542744,
+        "blur": 0.4175321186427027,
+        "contrast": 1.9018916665459984,
+        "threshold": 146.2044625505805
+      },
+      "paths": {
+        "mask": "masks/block-decay-0004__seed-811832876.mp4",
+        "maskPreview": "mask-previews/block-decay-0004__seed-811832876.mp4",
+        "overlay": "overlays/block-decay-0004__seed-811832876.mp4",
+        "demo": "demos/block-decay-0004__seed-811832876.mp4"
+      }
+    },
+    {
+      "id": "plasma-0005",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 278348619,
+      "parameters": {
+        "ampX": 91.59202105482109,
+        "ampY": 75.20787012646906,
+        "periodX": 10.508634440600872,
+        "periodY": 26.835567771457136,
+        "speedA": 8.503348127705976,
+        "speedB": 8.234886505641043,
+        "noise": 19.37279987335205,
+        "blur": 0.5312218082603068,
+        "contrast": 1.2892183716641739,
+        "threshold": 83.81142554571852
+      },
+      "paths": {
+        "mask": "masks/plasma-0005__seed-278348619.mp4",
+        "maskPreview": "mask-previews/plasma-0005__seed-278348619.mp4",
+        "overlay": "overlays/plasma-0005__seed-278348619.mp4",
+        "demo": "demos/plasma-0005__seed-278348619.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0006",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 31724155,
+      "parameters": {
+        "noise": 22.862525064498186,
+        "blurA": 0.9535319361137227,
+        "blurB": 0.5039806125685573,
+        "contrast": 2.4998985606245694,
+        "threshold": 117.86326514743268
+      },
+      "paths": {
+        "mask": "masks/white-burn-0006__seed-31724155.mp4",
+        "maskPreview": "mask-previews/white-burn-0006__seed-31724155.mp4",
+        "overlay": "overlays/white-burn-0006__seed-31724155.mp4",
+        "demo": "demos/white-burn-0006__seed-31724155.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0007",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 145272428,
+      "parameters": {
+        "ampA": 125.43876773444936,
+        "ampB": 93.72418835526332,
+        "periodA": 4.219531166367233,
+        "periodB": 37.852477757725865,
+        "speedA": 24.110605834051967,
+        "speedB": 16.772222695173696,
+        "noise": 19.14042321499437,
+        "blur": 0.36988289766013627,
+        "contrast": 1.5042916238191537,
+        "threshold": 114.30551647767425
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0007__seed-145272428.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0007__seed-145272428.mp4",
+        "overlay": "overlays/glitch-bands-0007__seed-145272428.mp4",
+        "demo": "demos/glitch-bands-0007__seed-145272428.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0008",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 851196064,
+      "parameters": {
+        "noise": 26.253426264971495,
+        "blockWidth": 13.501645341515541,
+        "blockHeight": 16.434536358341575,
+        "blur": 0.578212543670088,
+        "contrast": 2.5929260782664643,
+        "threshold": 148.55681177414954
+      },
+      "paths": {
+        "mask": "masks/block-decay-0008__seed-851196064.mp4",
+        "maskPreview": "mask-previews/block-decay-0008__seed-851196064.mp4",
+        "overlay": "overlays/block-decay-0008__seed-851196064.mp4",
+        "demo": "demos/block-decay-0008__seed-851196064.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0009",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 565779667,
+      "parameters": {
+        "noise": 32.13268277607858,
+        "blockWidth": 18.622076600790024,
+        "blockHeight": 25.101077961735427,
+        "blur": 1.0749578222865237,
+        "contrast": 2.3885317262262107,
+        "threshold": 101.21319614164531
+      },
+      "paths": {
+        "mask": "masks/block-decay-0009__seed-565779667.mp4",
+        "maskPreview": "mask-previews/block-decay-0009__seed-565779667.mp4",
+        "overlay": "overlays/block-decay-0009__seed-565779667.mp4",
+        "demo": "demos/block-decay-0009__seed-565779667.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0010",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 500742532,
+      "parameters": {
+        "ampA": 126.68823385494761,
+        "ampB": 72.58627812494524,
+        "periodA": 5.8462814460508525,
+        "periodB": 19.41140147438273,
+        "speedA": 20.072452971711755,
+        "speedB": 18.78648098767735,
+        "noise": 10.729092420078814,
+        "blur": 0.5240811845287681,
+        "contrast": 2.4616800593095833,
+        "threshold": 120.16177959181368
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0010__seed-500742532.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0010__seed-500742532.mp4",
+        "overlay": "overlays/glitch-bands-0010__seed-500742532.mp4",
+        "demo": "demos/glitch-bands-0010__seed-500742532.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0011",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 621030872,
+      "parameters": {
+        "ampA": 108.24335753452033,
+        "ampB": 84.82464731554501,
+        "periodA": 6.953672937583178,
+        "periodB": 30.898056778125465,
+        "speedA": 26.28430928196758,
+        "speedB": 14.608696694020182,
+        "noise": 14.050094671547413,
+        "blur": 0.7213541764765978,
+        "contrast": 1.8993532760534435,
+        "threshold": 142.76909901760519
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0011__seed-621030872.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0011__seed-621030872.mp4",
+        "overlay": "overlays/glitch-bands-0011__seed-621030872.mp4",
+        "demo": "demos/glitch-bands-0011__seed-621030872.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0012",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 370337493,
+      "parameters": {
+        "noise": 11.016218876000494,
+        "blurA": 0.6965092880651356,
+        "blurB": 1.0183737364131957,
+        "contrast": 1.996082152891904,
+        "threshold": 94.12030229903758
+      },
+      "paths": {
+        "mask": "masks/white-burn-0012__seed-370337493.mp4",
+        "maskPreview": "mask-previews/white-burn-0012__seed-370337493.mp4",
+        "overlay": "overlays/white-burn-0012__seed-370337493.mp4",
+        "demo": "demos/white-burn-0012__seed-370337493.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0013",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 393142518,
+      "parameters": {
+        "ampA": 109.47515161707997,
+        "ampB": 45.222285740310326,
+        "periodA": 5.0179706662893295,
+        "periodB": 20.97712592035532,
+        "speedA": 20.723068384453654,
+        "speedB": 8.2907912931405,
+        "noise": 27.221615319140255,
+        "blur": 0.6303495487198234,
+        "contrast": 1.5168628097628243,
+        "threshold": 129.75822590105236
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0013__seed-393142518.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0013__seed-393142518.mp4",
+        "overlay": "overlays/glitch-bands-0013__seed-393142518.mp4",
+        "demo": "demos/glitch-bands-0013__seed-393142518.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0014",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 357888631,
+      "parameters": {
+        "ampA": 87.02775771263987,
+        "ampB": 60.32062172656879,
+        "periodA": 8.40262045012787,
+        "periodB": 17.99946333328262,
+        "speedA": 18.19076907914132,
+        "speedB": 10.926684036152437,
+        "noise": 25.238648024387658,
+        "blur": 0.3025642283260822,
+        "contrast": 2.4113830523449,
+        "threshold": 133.08566517103463
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0014__seed-357888631.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0014__seed-357888631.mp4",
+        "overlay": "overlays/glitch-bands-0014__seed-357888631.mp4",
+        "demo": "demos/glitch-bands-0014__seed-357888631.mp4"
+      }
+    },
+    {
+      "id": "plasma-0015",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 430220145,
+      "parameters": {
+        "ampX": 95.45668058446608,
+        "ampY": 73.86341100675054,
+        "periodX": 8.559456244111061,
+        "periodY": 23.8167954813689,
+        "speedA": 15.812513063894585,
+        "speedB": 7.923343104543164,
+        "noise": 22.65359189361334,
+        "blur": 0.28733120923861866,
+        "contrast": 1.9942329427227377,
+        "threshold": 116.13313526613638
+      },
+      "paths": {
+        "mask": "masks/plasma-0015__seed-430220145.mp4",
+        "maskPreview": "mask-previews/plasma-0015__seed-430220145.mp4",
+        "overlay": "overlays/plasma-0015__seed-430220145.mp4",
+        "demo": "demos/plasma-0015__seed-430220145.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0016",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 237521418,
+      "parameters": {
+        "ampA": 97.7464700920973,
+        "ampB": 69.22278837766498,
+        "periodA": 7.409611030947417,
+        "periodB": 24.990603174548596,
+        "speedA": 32.965207147412,
+        "speedB": 19.7135607607197,
+        "noise": 13.011019905097783,
+        "blur": 0.7184629516676069,
+        "contrast": 2.2161384117091076,
+        "threshold": 107.9273800747469
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0016__seed-237521418.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0016__seed-237521418.mp4",
+        "overlay": "overlays/glitch-bands-0016__seed-237521418.mp4",
+        "demo": "demos/glitch-bands-0016__seed-237521418.mp4"
+      }
+    },
+    {
+      "id": "plasma-0017",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 379050353,
+      "parameters": {
+        "ampX": 46.57876024604775,
+        "ampY": 65.5148107430432,
+        "periodX": 10.262825533747673,
+        "periodY": 20.200885112397373,
+        "speedA": 9.534524825401604,
+        "speedB": 6.338757663965225,
+        "noise": 8.885525245219469,
+        "blur": 1.0585640845121818,
+        "contrast": 1.588997203519102,
+        "threshold": 90.2211532369256
+      },
+      "paths": {
+        "mask": "masks/plasma-0017__seed-379050353.mp4",
+        "maskPreview": "mask-previews/plasma-0017__seed-379050353.mp4",
+        "overlay": "overlays/plasma-0017__seed-379050353.mp4",
+        "demo": "demos/plasma-0017__seed-379050353.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0018",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 970130074,
+      "parameters": {
+        "noise": 14.625006520189345,
+        "blurA": 0.39489162210375073,
+        "blurB": 1.4004809367936106,
+        "contrast": 1.5582521092612296,
+        "threshold": 93.50588698685169
+      },
+      "paths": {
+        "mask": "masks/white-burn-0018__seed-970130074.mp4",
+        "maskPreview": "mask-previews/white-burn-0018__seed-970130074.mp4",
+        "overlay": "overlays/white-burn-0018__seed-970130074.mp4",
+        "demo": "demos/white-burn-0018__seed-970130074.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0019",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 761768011,
+      "parameters": {
+        "noise": 11.111812672112137,
+        "blurA": 0.5680051889270545,
+        "blurB": 1.399837646400556,
+        "contrast": 2.2010988938622176,
+        "threshold": 113.42169688642025
+      },
+      "paths": {
+        "mask": "masks/white-burn-0019__seed-761768011.mp4",
+        "maskPreview": "mask-previews/white-burn-0019__seed-761768011.mp4",
+        "overlay": "overlays/white-burn-0019__seed-761768011.mp4",
+        "demo": "demos/white-burn-0019__seed-761768011.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0020",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 991969653,
+      "parameters": {
+        "ampA": 109.99559121439233,
+        "ampB": 69.4199858198408,
+        "periodA": 12.965284789446741,
+        "periodB": 22.105494533199817,
+        "speedA": 25.643924601376057,
+        "speedB": 9.026841131271794,
+        "noise": 16.681066169403493,
+        "blur": 0.21369114946573975,
+        "contrast": 2.070124628476333,
+        "threshold": 100.76864188723266
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0020__seed-991969653.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0020__seed-991969653.mp4",
+        "overlay": "overlays/glitch-bands-0020__seed-991969653.mp4",
+        "demo": "demos/glitch-bands-0020__seed-991969653.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0021",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 208014176,
+      "parameters": {
+        "noise": 31.08056864561513,
+        "blurA": 0.2641349177109078,
+        "blurB": 1.2827015704475344,
+        "contrast": 2.272951363911852,
+        "threshold": 89.09772726520896
+      },
+      "paths": {
+        "mask": "masks/white-burn-0021__seed-208014176.mp4",
+        "maskPreview": "mask-previews/white-burn-0021__seed-208014176.mp4",
+        "overlay": "overlays/white-burn-0021__seed-208014176.mp4",
+        "demo": "demos/white-burn-0021__seed-208014176.mp4"
+      }
+    },
+    {
+      "id": "plasma-0022",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 183602209,
+      "parameters": {
+        "ampX": 87.638050270034,
+        "ampY": 89.67895317357033,
+        "periodX": 18.208796605467796,
+        "periodY": 20.751660938374698,
+        "speedA": 8.204468463081867,
+        "speedB": 12.650661395862699,
+        "noise": 21.522406257689,
+        "blur": 0.3030516295693815,
+        "contrast": 2.012556493631564,
+        "threshold": 123.88271199772134
+      },
+      "paths": {
+        "mask": "masks/plasma-0022__seed-183602209.mp4",
+        "maskPreview": "mask-previews/plasma-0022__seed-183602209.mp4",
+        "overlay": "overlays/plasma-0022__seed-183602209.mp4",
+        "demo": "demos/plasma-0022__seed-183602209.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0023",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 542961929,
+      "parameters": {
+        "noise": 30.71634432161227,
+        "blurA": 0.48947815182618803,
+        "blurB": 1.5174499127548189,
+        "contrast": 1.4206909524742513,
+        "threshold": 149.17275924049318
+      },
+      "paths": {
+        "mask": "masks/white-burn-0023__seed-542961929.mp4",
+        "maskPreview": "mask-previews/white-burn-0023__seed-542961929.mp4",
+        "overlay": "overlays/white-burn-0023__seed-542961929.mp4",
+        "demo": "demos/white-burn-0023__seed-542961929.mp4"
+      }
+    },
+    {
+      "id": "plasma-0024",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 259715775,
+      "parameters": {
+        "ampX": 83.12453986378387,
+        "ampY": 74.45698876865208,
+        "periodX": 10.356910713016987,
+        "periodY": 11.866109289228916,
+        "speedA": 5.043085356010124,
+        "speedB": 13.786232821643353,
+        "noise": 20.389166086912155,
+        "blur": 0.2887082574423403,
+        "contrast": 2.1973721100017425,
+        "threshold": 95.36713097477332
+      },
+      "paths": {
+        "mask": "masks/plasma-0024__seed-259715775.mp4",
+        "maskPreview": "mask-previews/plasma-0024__seed-259715775.mp4",
+        "overlay": "overlays/plasma-0024__seed-259715775.mp4",
+        "demo": "demos/plasma-0024__seed-259715775.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0025",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 330405407,
+      "parameters": {
+        "noise": 19.421291331294924,
+        "blurA": 0.37463278761133556,
+        "blurB": 0.7057652243878693,
+        "contrast": 1.4682415703777223,
+        "threshold": 110.70351758785546
+      },
+      "paths": {
+        "mask": "masks/white-burn-0025__seed-330405407.mp4",
+        "maskPreview": "mask-previews/white-burn-0025__seed-330405407.mp4",
+        "overlay": "overlays/white-burn-0025__seed-330405407.mp4",
+        "demo": "demos/white-burn-0025__seed-330405407.mp4"
+      }
+    },
+    {
+      "id": "plasma-0026",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 955104538,
+      "parameters": {
+        "ampX": 66.63585564005189,
+        "ampY": 84.02964866138063,
+        "periodX": 17.459345404058695,
+        "periodY": 13.547558879479766,
+        "speedA": 8.408573839114979,
+        "speedB": 15.899711477570236,
+        "noise": 19.833212066441774,
+        "blur": 1.057212640088983,
+        "contrast": 2.117258958867751,
+        "threshold": 128.36093201301992
+      },
+      "paths": {
+        "mask": "masks/plasma-0026__seed-955104538.mp4",
+        "maskPreview": "mask-previews/plasma-0026__seed-955104538.mp4",
+        "overlay": "overlays/plasma-0026__seed-955104538.mp4",
+        "demo": "demos/plasma-0026__seed-955104538.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0027",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 537089575,
+      "parameters": {
+        "noise": 28.312262943014503,
+        "blockWidth": 36.596222050487995,
+        "blockHeight": 30.959169776644558,
+        "blur": 1.1212161387549713,
+        "contrast": 1.4633539725560696,
+        "threshold": 101.16968346945941
+      },
+      "paths": {
+        "mask": "masks/block-decay-0027__seed-537089575.mp4",
+        "maskPreview": "mask-previews/block-decay-0027__seed-537089575.mp4",
+        "overlay": "overlays/block-decay-0027__seed-537089575.mp4",
+        "demo": "demos/block-decay-0027__seed-537089575.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0028",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 266165920,
+      "parameters": {
+        "noise": 19.293768329545856,
+        "blockWidth": 43.69331692159176,
+        "blockHeight": 30.76678893622011,
+        "blur": 0.7749638443114235,
+        "contrast": 2.510548508632928,
+        "threshold": 99.01776863448322
+      },
+      "paths": {
+        "mask": "masks/block-decay-0028__seed-266165920.mp4",
+        "maskPreview": "mask-previews/block-decay-0028__seed-266165920.mp4",
+        "overlay": "overlays/block-decay-0028__seed-266165920.mp4",
+        "demo": "demos/block-decay-0028__seed-266165920.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0029",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 159348931,
+      "parameters": {
+        "noise": 19.48265398852527,
+        "blurA": 0.39673544717952614,
+        "blurB": 1.6136195164173839,
+        "contrast": 2.492795174149796,
+        "threshold": 141.69250004179776
+      },
+      "paths": {
+        "mask": "masks/white-burn-0029__seed-159348931.mp4",
+        "maskPreview": "mask-previews/white-burn-0029__seed-159348931.mp4",
+        "overlay": "overlays/white-burn-0029__seed-159348931.mp4",
+        "demo": "demos/white-burn-0029__seed-159348931.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0030",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 852751865,
+      "parameters": {
+        "noise": 33.39696559868753,
+        "blockWidth": 26.129884637892246,
+        "blockHeight": 31.883875232189894,
+        "blur": 1.1469768320443108,
+        "contrast": 1.64362058499828,
+        "threshold": 112.66352907568216
+      },
+      "paths": {
+        "mask": "masks/block-decay-0030__seed-852751865.mp4",
+        "maskPreview": "mask-previews/block-decay-0030__seed-852751865.mp4",
+        "overlay": "overlays/block-decay-0030__seed-852751865.mp4",
+        "demo": "demos/block-decay-0030__seed-852751865.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0031",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 956362752,
+      "parameters": {
+        "ampA": 81.16471613640897,
+        "ampB": 62.57056282716803,
+        "periodA": 4.193929350934923,
+        "periodB": 17.63447579042986,
+        "speedA": 24.662429691292346,
+        "speedB": 14.256509952945635,
+        "noise": 21.964773843064904,
+        "blur": 0.4876861874014139,
+        "contrast": 2.114665339572821,
+        "threshold": 120.70538886915892
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0031__seed-956362752.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0031__seed-956362752.mp4",
+        "overlay": "overlays/glitch-bands-0031__seed-956362752.mp4",
+        "demo": "demos/glitch-bands-0031__seed-956362752.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0032",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 365136126,
+      "parameters": {
+        "noise": 18.914948729798198,
+        "blockWidth": 30.779208324849606,
+        "blockHeight": 26.756548250559717,
+        "blur": 0.8956442050402983,
+        "contrast": 1.742885036126245,
+        "threshold": 89.26437695883214
+      },
+      "paths": {
+        "mask": "masks/block-decay-0032__seed-365136126.mp4",
+        "maskPreview": "mask-previews/block-decay-0032__seed-365136126.mp4",
+        "overlay": "overlays/block-decay-0032__seed-365136126.mp4",
+        "demo": "demos/block-decay-0032__seed-365136126.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0033",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 125928791,
+      "parameters": {
+        "noise": 15.230792494025081,
+        "blurA": 0.2412941555026919,
+        "blurB": 0.5431933136191219,
+        "contrast": 1.7464593613054602,
+        "threshold": 122.96735869906843
+      },
+      "paths": {
+        "mask": "masks/white-burn-0033__seed-125928791.mp4",
+        "maskPreview": "mask-previews/white-burn-0033__seed-125928791.mp4",
+        "overlay": "overlays/white-burn-0033__seed-125928791.mp4",
+        "demo": "demos/white-burn-0033__seed-125928791.mp4"
+      }
+    },
+    {
+      "id": "plasma-0034",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 158412529,
+      "parameters": {
+        "ampX": 93.24638226418756,
+        "ampY": 84.06768685556017,
+        "periodX": 8.49058798328042,
+        "periodY": 11.372382004745305,
+        "speedA": 13.73880906496197,
+        "speedB": 15.702126756543294,
+        "noise": 10.79126599803567,
+        "blur": 0.2329136081039906,
+        "contrast": 1.4534072190406733,
+        "threshold": 122.09492917172611
+      },
+      "paths": {
+        "mask": "masks/plasma-0034__seed-158412529.mp4",
+        "maskPreview": "mask-previews/plasma-0034__seed-158412529.mp4",
+        "overlay": "overlays/plasma-0034__seed-158412529.mp4",
+        "demo": "demos/plasma-0034__seed-158412529.mp4"
+      }
+    },
+    {
+      "id": "plasma-0035",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 524173877,
+      "parameters": {
+        "ampX": 94.75301464670338,
+        "ampY": 61.14373872871511,
+        "periodX": 21.669919047504663,
+        "periodY": 27.558434360660613,
+        "speedA": 11.232019802788273,
+        "speedB": 11.703410487622023,
+        "noise": 17.846348125487566,
+        "blur": 1.0432720052078368,
+        "contrast": 2.126313994103111,
+        "threshold": 90.09429838508368
+      },
+      "paths": {
+        "mask": "masks/plasma-0035__seed-524173877.mp4",
+        "maskPreview": "mask-previews/plasma-0035__seed-524173877.mp4",
+        "overlay": "overlays/plasma-0035__seed-524173877.mp4",
+        "demo": "demos/plasma-0035__seed-524173877.mp4"
+      }
+    },
+    {
+      "id": "plasma-0036",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 852553484,
+      "parameters": {
+        "ampX": 82.76440166286193,
+        "ampY": 117.86195564665832,
+        "periodX": 17.461506448686123,
+        "periodY": 10.494779429398477,
+        "speedA": 7.923882642062381,
+        "speedB": 5.791744208429009,
+        "noise": 8.213189095258713,
+        "blur": 0.5993115461431444,
+        "contrast": 1.4850282653118483,
+        "threshold": 134.04069494456053
+      },
+      "paths": {
+        "mask": "masks/plasma-0036__seed-852553484.mp4",
+        "maskPreview": "mask-previews/plasma-0036__seed-852553484.mp4",
+        "overlay": "overlays/plasma-0036__seed-852553484.mp4",
+        "demo": "demos/plasma-0036__seed-852553484.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0037",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 282981231,
+      "parameters": {
+        "noise": 12.597289947792888,
+        "blurA": 0.8250062336679549,
+        "blurB": 0.41755031882785265,
+        "contrast": 2.494305118732154,
+        "threshold": 132.2209126446396
+      },
+      "paths": {
+        "mask": "masks/white-burn-0037__seed-282981231.mp4",
+        "maskPreview": "mask-previews/white-burn-0037__seed-282981231.mp4",
+        "overlay": "overlays/white-burn-0037__seed-282981231.mp4",
+        "demo": "demos/white-burn-0037__seed-282981231.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0038",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 491447633,
+      "parameters": {
+        "ampA": 85.9703501034528,
+        "ampB": 87.5733600964304,
+        "periodA": 13.45179951377213,
+        "periodB": 36.23272030195221,
+        "speedA": 26.65822522342205,
+        "speedB": 10.008042217232287,
+        "noise": 12.725968449376523,
+        "blur": 0.8959037197753787,
+        "contrast": 2.516672770830337,
+        "threshold": 156.2654742533341
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0038__seed-491447633.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0038__seed-491447633.mp4",
+        "overlay": "overlays/glitch-bands-0038__seed-491447633.mp4",
+        "demo": "demos/glitch-bands-0038__seed-491447633.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0039",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 457265716,
+      "parameters": {
+        "ampA": 128.00264397403225,
+        "ampB": 76.86130870715715,
+        "periodA": 4.499211770948023,
+        "periodB": 28.71837642788887,
+        "speedA": 32.30360510852188,
+        "speedB": 16.84199749538675,
+        "noise": 23.263632906600833,
+        "blur": 0.4524050377309322,
+        "contrast": 2.2205857598921286,
+        "threshold": 113.73231508769095
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0039__seed-457265716.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0039__seed-457265716.mp4",
+        "overlay": "overlays/glitch-bands-0039__seed-457265716.mp4",
+        "demo": "demos/glitch-bands-0039__seed-457265716.mp4"
+      }
+    },
+    {
+      "id": "glitch-bands-0040",
+      "recipe": "glitch-bands",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 745255042,
+      "parameters": {
+        "ampA": 95.06860152352601,
+        "ampB": 75.49308078130707,
+        "periodA": 7.110515335574746,
+        "periodB": 23.5774131892249,
+        "speedA": 33.16126274038106,
+        "speedB": 8.648136915406212,
+        "noise": 29.638593597337604,
+        "blur": 0.4101666336879134,
+        "contrast": 1.8862360047525726,
+        "threshold": 101.49057502951473
+      },
+      "paths": {
+        "mask": "masks/glitch-bands-0040__seed-745255042.mp4",
+        "maskPreview": "mask-previews/glitch-bands-0040__seed-745255042.mp4",
+        "overlay": "overlays/glitch-bands-0040__seed-745255042.mp4",
+        "demo": "demos/glitch-bands-0040__seed-745255042.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0041",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 6221868,
+      "parameters": {
+        "noise": 17.17029539309442,
+        "blockWidth": 36.81366044282913,
+        "blockHeight": 27.10165640898049,
+        "blur": 0.4577993968734517,
+        "contrast": 2.013962913386058,
+        "threshold": 129.66845623590052
+      },
+      "paths": {
+        "mask": "masks/block-decay-0041__seed-6221868.mp4",
+        "maskPreview": "mask-previews/block-decay-0041__seed-6221868.mp4",
+        "overlay": "overlays/block-decay-0041__seed-6221868.mp4",
+        "demo": "demos/block-decay-0041__seed-6221868.mp4"
+      }
+    },
+    {
+      "id": "plasma-0042",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 276969404,
+      "parameters": {
+        "ampX": 45.25590516277589,
+        "ampY": 49.7471918631345,
+        "periodX": 14.199781265109777,
+        "periodY": 14.139081455767155,
+        "speedA": 8.887346378993243,
+        "speedB": 9.153866641921923,
+        "noise": 18.284017734229565,
+        "blur": 0.8729604373686017,
+        "contrast": 1.9770250200526789,
+        "threshold": 133.2114301342517
+      },
+      "paths": {
+        "mask": "masks/plasma-0042__seed-276969404.mp4",
+        "maskPreview": "mask-previews/plasma-0042__seed-276969404.mp4",
+        "overlay": "overlays/plasma-0042__seed-276969404.mp4",
+        "demo": "demos/plasma-0042__seed-276969404.mp4"
+      }
+    },
+    {
+      "id": "plasma-0043",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 78350163,
+      "parameters": {
+        "ampX": 64.73938394687138,
+        "ampY": 66.26094246050343,
+        "periodX": 14.637723930180073,
+        "periodY": 19.767628784291446,
+        "speedA": 8.840154191013426,
+        "speedB": 12.916185345500708,
+        "noise": 10.934120245277882,
+        "blur": 0.8928993494948374,
+        "contrast": 2.0154621659661642,
+        "threshold": 107.40261533064768
+      },
+      "paths": {
+        "mask": "masks/plasma-0043__seed-78350163.mp4",
+        "maskPreview": "mask-previews/plasma-0043__seed-78350163.mp4",
+        "overlay": "overlays/plasma-0043__seed-78350163.mp4",
+        "demo": "demos/plasma-0043__seed-78350163.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0044",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 522338596,
+      "parameters": {
+        "noise": 23.984971694648266,
+        "blockWidth": 42.137030869722366,
+        "blockHeight": 27.196568488143384,
+        "blur": 0.7208090527914464,
+        "contrast": 2.5767661423538812,
+        "threshold": 97.48816233314574
+      },
+      "paths": {
+        "mask": "masks/block-decay-0044__seed-522338596.mp4",
+        "maskPreview": "mask-previews/block-decay-0044__seed-522338596.mp4",
+        "overlay": "overlays/block-decay-0044__seed-522338596.mp4",
+        "demo": "demos/block-decay-0044__seed-522338596.mp4"
+      }
+    },
+    {
+      "id": "white-burn-0045",
+      "recipe": "white-burn",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 687435659,
+      "parameters": {
+        "noise": 10.383474578149617,
+        "blurA": 0.24414935756940398,
+        "blurB": 1.2851711129769683,
+        "contrast": 1.6658117974177002,
+        "threshold": 116.66410226933658
+      },
+      "paths": {
+        "mask": "masks/white-burn-0045__seed-687435659.mp4",
+        "maskPreview": "mask-previews/white-burn-0045__seed-687435659.mp4",
+        "overlay": "overlays/white-burn-0045__seed-687435659.mp4",
+        "demo": "demos/white-burn-0045__seed-687435659.mp4"
+      }
+    },
+    {
+      "id": "block-decay-0046",
+      "recipe": "block-decay",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 523261654,
+      "parameters": {
+        "noise": 21.583293272182345,
+        "blockWidth": 41.69880482554436,
+        "blockHeight": 18.94598500756547,
+        "blur": 0.8964006811846047,
+        "contrast": 1.462637093407102,
+        "threshold": 89.04229176230729
+      },
+      "paths": {
+        "mask": "masks/block-decay-0046__seed-523261654.mp4",
+        "maskPreview": "mask-previews/block-decay-0046__seed-523261654.mp4",
+        "overlay": "overlays/block-decay-0046__seed-523261654.mp4",
+        "demo": "demos/block-decay-0046__seed-523261654.mp4"
+      }
+    },
+    {
+      "id": "plasma-0047",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 908796052,
+      "parameters": {
+        "ampX": 67.99371923319995,
+        "ampY": 70.85975878173485,
+        "periodX": 21.899735257029533,
+        "periodY": 23.410547112114727,
+        "speedA": 10.402893022634089,
+        "speedB": 9.730106184491888,
+        "noise": 14.25431414693594,
+        "blur": 0.5510660283500329,
+        "contrast": 1.8108246590360066,
+        "threshold": 98.57174435863271
+      },
+      "paths": {
+        "mask": "masks/plasma-0047__seed-908796052.mp4",
+        "maskPreview": "mask-previews/plasma-0047__seed-908796052.mp4",
+        "overlay": "overlays/plasma-0047__seed-908796052.mp4",
+        "demo": "demos/plasma-0047__seed-908796052.mp4"
+      }
+    },
+    {
+      "id": "plasma-0048",
+      "recipe": "plasma",
+      "width": 640,
+      "height": 360,
+      "fps": 15,
+      "duration": 0.75,
+      "seed": 72897206,
+      "parameters": {
+        "ampX": 67.16766526340507,
+        "ampY": 108.64131176378578,
+        "periodX": 18.366431187838316,
+        "periodY": 17.893418541178107,
+        "speedA": 10.832980784820393,
+        "speedB": 12.538764510303736,
+        "noise": 16.0458348877728,
+        "blur": 0.7200305202044548,
+        "contrast": 2.2508912959718144,
+        "threshold": 107.9541286197491
+      },
+      "paths": {
+        "mask": "masks/plasma-0048__seed-72897206.mp4",
+        "maskPreview": "mask-previews/plasma-0048__seed-72897206.mp4",
+        "overlay": "overlays/plasma-0048__seed-72897206.mp4",
+        "demo": "demos/plasma-0048__seed-72897206.mp4"
+      }
+    }
+  ]
+}
