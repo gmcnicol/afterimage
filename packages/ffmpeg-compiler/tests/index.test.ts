@@ -474,6 +474,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(plan.command.args).not.toContain('fixtures/transitions/overlay-alpha.mp4');
     expect(command).toContain('maskedmerge');
     expect(command).toContain('concat=n=3:v=1:a=0[vconcat]');
+    expect(command).toContain('tpad=stop_mode=clone:stop_duration=1.500');
     expect(command).toContain('fade=t=out:st=3.000:d=2.000');
     expect(command).toContain('atrim=start=0:duration=5.000');
   });
