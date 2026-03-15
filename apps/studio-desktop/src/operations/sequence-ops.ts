@@ -13,6 +13,19 @@ import {
   type TransitionStyle
 } from '@afterimage/project-model';
 
+type ReviewedCutCandidate = NormalizedProjectFile['cutCandidates'][number];
+
+interface BuildCut {
+  buildId: string;
+  cutId: string;
+  assetId: string;
+  sourceStartMs: number;
+  durationMs: number;
+  favorite: boolean;
+  sceneScore?: number;
+  tags: string[];
+}
+
 function formatSequenceOrdinal(ordinal: number): string {
   return `Sequence ${String(Math.max(1, ordinal)).padStart(3, '0')}`;
 }
@@ -114,6 +127,10 @@ const TARGET_AVERAGE_CLIP_DURATION_MS: Record<SequenceBuildMode, number> = {
   longer: 4200
 };
 
+const MAX_BUILD_CLIP_DURATION_MS: Partial<Record<SequenceBuildMode, number>> = {
+  tight: 1600
+};
+
 export function addCutToSequence(
   project: NormalizedProjectFile,
   cutId: string,
@@ -157,6 +174,39 @@ function getMusicDurationMs(project: NormalizedProjectFile, variant: ReturnType<
   return typeof durationMs === 'number' && durationMs > 0 ? durationMs : undefined;
 }
 
+function createBuildCut(cut: ReviewedCutCandidate, sourceStartMs: number, durationMs: number, sliceIndex = 0): BuildCut {
+  return {
+    buildId: sliceIndex > 0 ? `${cut.id}#slice-${sliceIndex}` : cut.id,
+    cutId: cut.id,
+    assetId: cut.assetId,
+    sourceStartMs,
+    durationMs,
+    favorite: Boolean(cut.favorite || cut.status === 'favorite'),
+    sceneScore: cut.sceneScore,
+    tags: [...(cut.tags ?? [])]
+  };
+}
+
+function splitCutForBuild(cut: ReviewedCutCandidate, mode: SequenceBuildMode): BuildCut[] {
+  const maxDurationMs = MAX_BUILD_CLIP_DURATION_MS[mode];
+  if (!maxDurationMs || cut.durationMs <= maxDurationMs) {
+    return [createBuildCut(cut, cut.startMs, cut.durationMs)];
+  }
+
+  const segmentCount = Math.max(2, Math.ceil(cut.durationMs / maxDurationMs));
+  const baseDurationMs = Math.floor(cut.durationMs / segmentCount);
+  let remainderMs = cut.durationMs - (baseDurationMs * segmentCount);
+  let sourceStartMs = cut.startMs;
+
+  return Array.from({ length: segmentCount }, (_, index) => {
+    const durationMs = baseDurationMs + (remainderMs > 0 ? 1 : 0);
+    remainderMs = Math.max(0, remainderMs - 1);
+    const nextCut = createBuildCut(cut, sourceStartMs, durationMs, index);
+    sourceStartMs += durationMs;
+    return nextCut;
+  });
+}
+
 function getReviewedCuts(project: NormalizedProjectFile, mode: SequenceBuildMode = 'balanced') {
   const reviewedCuts = project.cutCandidates
     .filter((cut) => cut.status === 'kept' || cut.status === 'favorite' || cut.favorite);
@@ -167,8 +217,9 @@ function getReviewedCuts(project: NormalizedProjectFile, mode: SequenceBuildMode
     : reviewedCuts.filter((cut) => cut.durationMs >= Math.max(500, Math.round(minimumDurationMs * 0.75)));
 
   return buildableCuts
+    .flatMap((cut) => splitCutForBuild(cut, mode))
     .sort((left, right) => {
-      const favoriteDelta = Number(Boolean(right.favorite || right.status === 'favorite')) - Number(Boolean(left.favorite || left.status === 'favorite'));
+      const favoriteDelta = Number(right.favorite) - Number(left.favorite);
       if (favoriteDelta !== 0) {
         return favoriteDelta;
       }
@@ -176,18 +227,18 @@ function getReviewedCuts(project: NormalizedProjectFile, mode: SequenceBuildMode
       if (mode === 'tight') {
         return left.durationMs - right.durationMs
           || (right.sceneScore ?? 0) - (left.sceneScore ?? 0)
-          || left.id.localeCompare(right.id);
+          || left.buildId.localeCompare(right.buildId);
       }
 
       if (mode === 'longer') {
         return right.durationMs - left.durationMs
           || (right.sceneScore ?? 0) - (left.sceneScore ?? 0)
-          || left.id.localeCompare(right.id);
+          || left.buildId.localeCompare(right.buildId);
       }
 
       return (right.sceneScore ?? 0) - (left.sceneScore ?? 0)
         || right.durationMs - left.durationMs
-        || left.id.localeCompare(right.id);
+        || left.buildId.localeCompare(right.buildId);
     });
 }
 
@@ -226,8 +277,8 @@ function getBuildTargets(project: NormalizedProjectFile, variant: ReturnType<typ
   };
 }
 
-function isFavoriteCut(cut: NormalizedProjectFile['cutCandidates'][number]) {
-  return Boolean(cut.favorite || cut.status === 'favorite');
+function isFavoriteCut(cut: { favorite: boolean }) {
+  return cut.favorite;
 }
 
 function getDistributedIndices(count: number, slots: number): number[] {
@@ -245,25 +296,39 @@ function getDistributedIndices(count: number, slots: number): number[] {
 function composeBuildSelection(
   favorites: ReturnType<typeof getReviewedCuts>,
   supportingCuts: ReturnType<typeof getReviewedCuts>,
-  targetClipCount: number
+  targetClipCount: number,
+  allowFavoriteReuse: boolean
 ) {
-  const totalCount = Math.max(0, Math.min(targetClipCount, favorites.length + supportingCuts.length));
+  const uniqueCount = favorites.length + supportingCuts.length;
+  const totalCount = allowFavoriteReuse
+    ? Math.max(0, targetClipCount)
+    : Math.max(0, Math.min(targetClipCount, uniqueCount));
   if (totalCount === 0) {
     return [];
   }
 
-  const favoriteQuota = supportingCuts.length === 0
-    ? Math.min(favorites.length, totalCount)
-    : Math.min(favorites.length, Math.max(1, Math.ceil(totalCount * 0.45)));
+  const desiredFavoriteQuota = favorites.length === 0
+    ? 0
+    : supportingCuts.length === 0
+      ? totalCount
+      : Math.min(totalCount, Math.max(1, Math.ceil(totalCount * 0.45)));
+  const favoriteQuota = allowFavoriteReuse
+    ? desiredFavoriteQuota
+    : Math.min(favorites.length, desiredFavoriteQuota);
   const favoriteSlots = new Set(getDistributedIndices(totalCount, favoriteQuota));
-  const favoriteQueue = favorites.slice(0, favoriteQuota);
+  const favoriteQueue = [...favorites];
   const supportQueue = [...supportingCuts];
-  const fallbackQueue = favorites.slice(favoriteQuota);
   const selection: ReturnType<typeof getReviewedCuts> = [];
+  let favoriteCursor = 0;
 
   for (let index = 0; index < totalCount; index += 1) {
     if (favoriteSlots.has(index) && favoriteQueue.length > 0) {
-      selection.push(favoriteQueue.shift()!);
+      if (allowFavoriteReuse) {
+        selection.push(favoriteQueue[favoriteCursor % favoriteQueue.length]);
+        favoriteCursor += 1;
+      } else {
+        selection.push(favoriteQueue.shift()!);
+      }
       continue;
     }
 
@@ -273,12 +338,13 @@ function composeBuildSelection(
     }
 
     if (favoriteQueue.length > 0) {
-      selection.push(favoriteQueue.shift()!);
+      if (allowFavoriteReuse) {
+        selection.push(favoriteQueue[favoriteCursor % favoriteQueue.length]);
+        favoriteCursor += 1;
+      } else {
+        selection.push(favoriteQueue.shift()!);
+      }
       continue;
-    }
-
-    if (fallbackQueue.length > 0) {
-      selection.push(fallbackQueue.shift()!);
     }
   }
 
@@ -289,20 +355,29 @@ function selectReviewedCutsForBuild(project: NormalizedProjectFile, variant: Ret
   const reviewedCuts = getReviewedCuts(project, mode);
   const { targetClipCount, targetDurationMs } = getBuildTargets(project, variant, mode);
   const buildSeed = getNextBuildSeed(variant);
+  const musicDurationMs = getMusicDurationMs(project, variant);
   const favoriteCuts = rankItemsByBlueNoise(reviewedCuts.filter((cut) => isFavoriteCut(cut)), buildSeed * 17 + 3);
   const supportingCuts = rankItemsByBlueNoise(reviewedCuts.filter((cut) => !isFavoriteCut(cut)), buildSeed * 31 + 7);
-  const selectedCuts = composeBuildSelection(favoriteCuts, supportingCuts, targetClipCount);
+  const totalUniqueDurationMs = reviewedCuts.reduce((total, cut) => total + cut.durationMs, 0);
+  const averageCutDurationMs = reviewedCuts.length > 0
+    ? reviewedCuts.reduce((total, cut) => total + cut.durationMs, 0) / reviewedCuts.length
+    : TARGET_AVERAGE_CLIP_DURATION_MS[mode];
+  const needsFavoriteReuse = Boolean(musicDurationMs && musicDurationMs > totalUniqueDurationMs && favoriteCuts.length > 0);
+  const expandedTargetClipCount = needsFavoriteReuse
+    ? Math.max(targetClipCount, Math.ceil(musicDurationMs! / Math.max(1, averageCutDurationMs)))
+    : targetClipCount;
+  const selectedCuts = composeBuildSelection(favoriteCuts, supportingCuts, expandedTargetClipCount, needsFavoriteReuse);
 
   if (!targetDurationMs) {
     return selectedCuts;
   }
 
-  const selectedCutIds = new Set(selectedCuts.map((cut) => cut.id));
+  const selectedCutIds = new Set(selectedCuts.map((cut) => cut.buildId));
   const orderedCuts = [
     ...selectedCuts,
-    ...reviewedCuts.filter((cut) => !selectedCutIds.has(cut.id))
+    ...reviewedCuts.filter((cut) => !selectedCutIds.has(cut.buildId))
   ];
-  const anchorFavoriteIds = new Set(selectedCuts.filter((cut) => isFavoriteCut(cut)).map((cut) => cut.id));
+  const anchorFavoriteIds = new Set(selectedCuts.filter((cut) => isFavoriteCut(cut)).map((cut) => cut.buildId));
   let accumulatedDurationMs = 0;
   const durationMatchedCuts: typeof reviewedCuts = [];
   let remainingAnchorFavorites = anchorFavoriteIds.size;
@@ -310,7 +385,7 @@ function selectReviewedCutsForBuild(project: NormalizedProjectFile, variant: Ret
   for (const cut of orderedCuts) {
     durationMatchedCuts.push(cut);
     accumulatedDurationMs += cut.durationMs;
-    if (anchorFavoriteIds.has(cut.id)) {
+    if (anchorFavoriteIds.has(cut.buildId)) {
       remainingAnchorFavorites -= 1;
     }
 
@@ -320,6 +395,58 @@ function selectReviewedCutsForBuild(project: NormalizedProjectFile, variant: Ret
   }
 
   return durationMatchedCuts.length > 0 ? durationMatchedCuts : selectedCuts;
+}
+
+function expandCutsForDuration(cuts: ReturnType<typeof getReviewedCuts>, targetDurationMs: number | undefined, buildSeed: number) {
+  if (!targetDurationMs || targetDurationMs <= 0 || cuts.length === 0) {
+    return cuts;
+  }
+
+  let accumulatedDurationMs = cuts.reduce((total, cut) => total + cut.durationMs, 0);
+  if (accumulatedDurationMs >= targetDurationMs) {
+    return cuts;
+  }
+
+  const favoriteReusePool = rankItemsByBlueNoise(cuts.filter((cut) => isFavoriteCut(cut)), buildSeed * 47 + 11);
+  const generalReusePool = rankItemsByBlueNoise(cuts, buildSeed * 53 + 13);
+  const reusePool = favoriteReusePool.length > 0 ? favoriteReusePool : generalReusePool;
+
+  if (reusePool.length === 0) {
+    return cuts;
+  }
+
+  const expandedCuts = [...cuts];
+  let reuseCursor = 0;
+
+  while (accumulatedDurationMs < targetDurationMs) {
+    let nextCut = reusePool[reuseCursor % reusePool.length];
+    const previousCutId = expandedCuts.at(-1)?.buildId;
+
+    if (reusePool.length > 1 && previousCutId === nextCut.buildId) {
+      reuseCursor += 1;
+      nextCut = reusePool[reuseCursor % reusePool.length];
+    }
+
+    expandedCuts.push(nextCut);
+    accumulatedDurationMs += nextCut.durationMs;
+    reuseCursor += 1;
+  }
+
+  return expandedCuts;
+}
+
+function assignCutReuseIndices(cuts: ReturnType<typeof getReviewedCuts>) {
+  const reuseCounts = new Map<string, number>();
+
+  return cuts.map((cut) => {
+    const seenCount = reuseCounts.get(cut.buildId) ?? 0;
+    reuseCounts.set(cut.buildId, seenCount + 1);
+
+    return {
+      cut,
+      reuseIndex: seenCount
+    };
+  });
 }
 
 function clampClipsToDuration(clips: SequenceClip[], maxDurationMs?: number) {
@@ -354,20 +481,115 @@ function clampClipsToDuration(clips: SequenceClip[], maxDurationMs?: number) {
   return boundedClips;
 }
 
+function getRenderedClipSequenceDurationMs(clips: SequenceClip[]) {
+  let durationMs = clips.reduce((sum, clip) => sum + clip.durationMs, 0);
+
+  for (let index = 0; index < clips.length - 1; index += 1) {
+    const clip = clips[index];
+    const nextClip = clips[index + 1];
+
+    if (clip.transition !== 'mask' || !nextClip) {
+      continue;
+    }
+
+    durationMs -= Math.max(0, Math.min(clip.transitionDurationMs ?? 250, clip.durationMs, nextClip.durationMs));
+  }
+
+  return Math.max(0, durationMs);
+}
+
+function resequenceClips(clips: SequenceClip[]): SequenceClip[] {
+  let timelineStartMs = 0;
+
+  return clips.map((clip, index, allClips) => {
+    const isLastClip = index === allClips.length - 1;
+    const nextClip: SequenceClip = {
+      ...clip,
+      timelineStartMs
+    };
+
+    timelineStartMs += clip.durationMs;
+
+    if (!isLastClip || clip.transition !== 'mask') {
+      return nextClip;
+    }
+
+    return {
+      ...nextClip,
+      transition: 'cut' as const,
+      transitionDurationMs: undefined,
+      transitionAssetId: undefined,
+      transitionOverlayAssetId: undefined
+    };
+  });
+}
+
+function extendClipsToMusicDuration(
+  project: NormalizedProjectFile,
+  variant: NonNullable<ReturnType<typeof getVariantById>>,
+  clips: SequenceClip[]
+): SequenceClip[] {
+  const musicDurationMs = getMusicDurationMs(project, variant);
+  if (!musicDurationMs || getRenderedClipSequenceDurationMs(clips) >= musicDurationMs || clips.length === 0) {
+    return clips;
+  }
+
+  const favoriteCutIds = new Set(
+    project.cutCandidates
+      .filter((cut) => isFavoriteCut({
+        favorite: Boolean(cut.favorite || cut.status === 'favorite')
+      }))
+      .map((cut) => cut.id)
+  );
+  const reusePool = clips.filter((clip) => clip.cutId && favoriteCutIds.has(clip.cutId));
+  const fallbackPool = reusePool.length > 0 ? reusePool : clips;
+  const cloneCounts = new Map<string, number>();
+  const expandedClips = [...clips];
+  let poolCursor = 0;
+
+  while (getRenderedClipSequenceDurationMs(expandedClips) < musicDurationMs && fallbackPool.length > 0) {
+    let template = fallbackPool[poolCursor % fallbackPool.length];
+
+    if (fallbackPool.length > 1 && expandedClips.at(-1)?.id === template.id) {
+      poolCursor += 1;
+      template = fallbackPool[poolCursor % fallbackPool.length];
+    }
+
+    const cloneIndex = (cloneCounts.get(template.id) ?? 0) + 1;
+    cloneCounts.set(template.id, cloneIndex);
+    expandedClips.push({
+      ...template,
+      id: `${template.id}-tail-${cloneIndex}`,
+      transition: 'cut' as const,
+      transitionDurationMs: undefined,
+      transitionAssetId: undefined,
+      transitionOverlayAssetId: undefined
+    });
+    poolCursor += 1;
+  }
+
+  return resequenceClips(expandedClips);
+}
+
 function buildClipsFromReviewedCuts(project: NormalizedProjectFile, variant: ReturnType<typeof getVariantById>, mode: SequenceBuildMode) {
   const reviewedCuts = selectReviewedCutsForBuild(project, variant, mode);
   const musicDurationMs = getMusicDurationMs(project, variant);
+  const buildSeed = getNextBuildSeed(variant);
+  const durationExpandedCuts = expandCutsForDuration(reviewedCuts, musicDurationMs, buildSeed);
+  const assignedCuts = assignCutReuseIndices(durationExpandedCuts);
   let timelineStartMs = 0;
-  const clips = reviewedCuts.map((cut) => {
+  const clips = assignedCuts.map(({ cut, reuseIndex }) => {
     const clip: SequenceClip = {
-      id: `clip-${cut.id}`,
+      id: reuseIndex > 0
+        ? `clip-${cut.buildId}-reuse-${reuseIndex}`
+        : `clip-${cut.buildId}`,
       assetId: cut.assetId,
-      cutId: cut.id,
+      cutId: cut.cutId,
       timelineStartMs,
-      sourceStartMs: cut.startMs,
+      sourceStartMs: cut.sourceStartMs,
       durationMs: cut.durationMs,
       transition: 'cut',
-      tags: [...(cut.tags ?? [])]
+      tags: [...cut.tags]
     };
     timelineStartMs += cut.durationMs;
     return clip;
@@ -647,6 +869,38 @@ function getFoundryTransitionAssets(assets: MediaAsset[], kind: 'mask' | 'overla
   return matches;
 }
 
+function pickRandomSubset<T>(items: T[], count: number, rng: () => number): T[] {
+  if (items.length <= count) {
+    return [...items];
+  }
+
+  const available = [...items];
+  const selection: T[] = [];
+
+  while (selection.length < count && available.length > 0) {
+    const index = Math.min(available.length - 1, Math.floor(rng() * available.length));
+    selection.push(...available.splice(index, 1));
+  }
+
+  return selection;
+}
+
+function pickRandomIndices(count: number, selectedCount: number, rng: () => number): Set<number> {
+  if (selectedCount >= count) {
+    return new Set(Array.from({ length: count }, (_, index) => index));
+  }
+
+  const available = Array.from({ length: count }, (_, index) => index);
+  const chosen: number[] = [];
+
+  while (chosen.length < selectedCount && available.length > 0) {
+    const index = Math.min(available.length - 1, Math.floor(rng() * available.length));
+    chosen.push(...available.splice(index, 1));
+  }
+
+  return new Set(chosen);
+}
+
 export function randomizeFoundryTransitions(
   project: NormalizedProjectFile,
   variantId: string,
@@ -662,7 +916,14 @@ export function randomizeFoundryTransitions(
     return project;
   }
 
-  return normalizeProject({
+  const candidateTransitionCount = variant.clips.length - 1;
+  const desiredMaskCount = candidateTransitionCount <= 12
+    ? candidateTransitionCount
+    : Math.min(candidateTransitionCount, 24, Math.max(8, Math.round(candidateTransitionCount * 0.35)));
+  const activeTransitionSlots = pickRandomIndices(candidateTransitionCount, desiredMaskCount, rng);
+  const activeMaskAssets = pickRandomSubset(maskAssets, Math.min(maskAssets.length, 8), rng);
+
+  const nextProject = normalizeProject({
     ...project,
     variants: project.variants.map((candidate) => candidate.id === variantId ? {
       ...candidate,
@@ -677,8 +938,18 @@ export function randomizeFoundryTransitions(
           };
         }
 
+        if (!activeTransitionSlots.has(index)) {
+          return {
+            ...clip,
+            transition: 'cut',
+            transitionDurationMs: undefined,
+            transitionAssetId: undefined,
+            transitionOverlayAssetId: undefined
+          };
+        }
+
         const nextClip = clips[index + 1];
-        const maskAsset = maskAssets[Math.floor(rng() * maskAssets.length)];
+        const maskAsset = activeMaskAssets[Math.floor(rng() * activeMaskAssets.length)];
         const durationMs = Math.max(
           250,
           Math.min(maskAsset.durationMs ?? 750, clip.durationMs, nextClip.durationMs)
@@ -692,6 +963,19 @@ export function randomizeFoundryTransitions(
           transitionOverlayAssetId: undefined
         };
       })
+    } : candidate)
+  });
+
+  const nextVariant = getVariantById(nextProject, variantId);
+  if (!nextVariant) {
+    return nextProject;
+  }
+
+  return normalizeProject({
+    ...nextProject,
+    variants: nextProject.variants.map((candidate) => candidate.id === variantId ? {
+      ...candidate,
+      clips: extendClipsToMusicDuration(nextProject, nextVariant, candidate.clips)
     } : candidate)
   });
 }
@@ -711,12 +995,25 @@ export function randomizeFoundryOverlays(
     return project;
   }
 
+  const desiredOverlayCount = variant.clips.length <= 16
+    ? variant.clips.length
+    : Math.min(variant.clips.length, 32, Math.max(12, Math.round(variant.clips.length * 0.4)));
+  const activeOverlaySlots = pickRandomIndices(variant.clips.length, desiredOverlayCount, rng);
+  const activeOverlayAssets = pickRandomSubset(overlayAssets, Math.min(overlayAssets.length, 8), rng);
+
   return normalizeProject({
     ...project,
     variants: project.variants.map((candidate) => candidate.id === variantId ? {
       ...candidate,
-      clips: candidate.clips.map((clip) => {
-        const overlayAsset = overlayAssets[Math.floor(rng() * overlayAssets.length)];
+      clips: candidate.clips.map((clip, index) => {
+        if (!activeOverlaySlots.has(index)) {
+          return {
+            ...clip,
+            overlayAssetId: undefined
+          };
+        }
+
+        const overlayAsset = activeOverlayAssets[Math.floor(rng() * activeOverlayAssets.length)];
         return {
           ...clip,
           overlayAssetId: overlayAsset.id
