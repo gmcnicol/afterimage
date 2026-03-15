@@ -1305,7 +1305,7 @@ export function createEmptyProject(input: {
       {
         id: 'variant-main',
         sequenceId: 'sequence-main',
-        name: 'Sequence A',
+        name: 'Sequence 001',
         clips: [],
         markers: [],
         sections: [],

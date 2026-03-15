@@ -25,6 +25,15 @@ describe('@afterimage/project-model', () => {
     expect(getDefaultVariant(normalized)?.musicAlignment?.syncMode).toBe('texture');
   });
 
+  it('creates numbered default sequence variants', () => {
+    const project = createEmptyProject({
+      id: 'project-sequence-name-test',
+      name: 'Sequence Name Test'
+    });
+
+    expect(getDefaultVariant(project)?.name).toBe('Sequence 001');
+  });
+
   it('reports duplicate ids and missing references', () => {
     const normalized = normalizeProject({
       ...fixtureProject,
