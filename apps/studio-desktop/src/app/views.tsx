@@ -95,7 +95,7 @@ function renderTimeline(durationMs: number, events: Array<{ id: string; timeMs: 
 
   return (
     <div style={{ borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', padding: 16, background: 'rgba(11, 14, 19, 0.92)' }}>
-      <div style={{ position: 'relative', height: 42, borderRadius: 999, background: 'linear-gradient(90deg, rgba(91, 137, 255, 0.16), rgba(244, 135, 98, 0.24))' }}>
+      <div style={{ position: 'relative', height: 42, borderRadius: 999, background: 'linear-gradient(90deg, rgba(109, 132, 166, 0.22), rgba(120, 178, 154, 0.18), rgba(156, 138, 201, 0.2))' }}>
         {events.map((event) => {
           const left = `${Math.min(100, (event.timeMs / safeDuration) * 100)}%`;
           const size = 10 + Math.round((event.strength ?? 0.4) * 8);
@@ -111,7 +111,7 @@ function renderTimeline(durationMs: number, events: Array<{ id: string; timeMs: 
                 width: size,
                 height: size,
                 borderRadius: 999,
-                background: event.kind === 'accent' ? '#ffd18a' : event.kind === 'silence-boundary' ? '#97b3ff' : accent,
+                background: event.kind === 'accent' ? '#b7a1dc' : event.kind === 'silence-boundary' ? '#8ea4c4' : accent,
                 boxShadow: '0 0 0 2px rgba(10, 13, 18, 0.95)'
               }}
             />
@@ -205,7 +205,7 @@ function AutomationLaneTimeline({
           <polyline
             points={polylinePoints}
             fill="none"
-            stroke="#ff9f7f"
+            stroke="#88a0bf"
             strokeWidth="1.6"
             vectorEffect="non-scaling-stroke"
             strokeLinejoin="round"
@@ -230,8 +230,8 @@ function AutomationLaneTimeline({
               height: 14,
               borderRadius: 999,
               border: '2px solid rgba(9, 11, 15, 0.96)',
-              background: draggingKeyframeId === keyframe.id ? '#ffd18a' : '#ff9f7f',
-              boxShadow: '0 0 0 4px rgba(255,159,127,0.16)',
+              background: draggingKeyframeId === keyframe.id ? '#b7a1dc' : '#88a0bf',
+              boxShadow: '0 0 0 4px rgba(136,160,191,0.16)',
               cursor: 'grab',
               padding: 0
             }}
@@ -286,9 +286,9 @@ export function ProjectView() {
   const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <Panel title="Project Home">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+      <Panel title="Project Home" style={{ display: 'grid', gridTemplateRows: 'auto auto 1fr', minHeight: 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
           <ToolbarButton primary onClick={() => void api.project.createProject().then((session) => session && setSession(session))}>New Project</ToolbarButton>
           <ToolbarButton onClick={() => void api.project.openProject().then((session) => session && setSession(session))}>Open Project</ToolbarButton>
           <ToolbarButton onClick={() => void api.project.saveProject({ project, projectFilePath: resolvedProjectFilePath }).then(setSession)}>Save</ToolbarButton>
@@ -296,22 +296,22 @@ export function ProjectView() {
           <ToolbarButton onClick={() => void api.project.duplicateProject({ project, projectFilePath: resolvedProjectFilePath }).then((session) => session && setSession(session))}>Duplicate</ToolbarButton>
           <ToolbarButton onClick={() => resolvedProjectFilePath && void api.project.revealProjectFolder(resolvedProjectFilePath)}>Reveal Folder</ToolbarButton>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
           <StatCard label="Project" value={project.name} />
           <StatCard label="Dirty State" value={dirty ? 'Unsaved changes' : 'Saved'} tone={dirty ? 'warn' : 'success'} />
           <StatCard label="Assets" value={String(project.assets.length)} />
           <StatCard label="Variants" value={String(project.variants.length)} />
         </div>
-        <div style={{ marginTop: 18, color: muted, fontSize: 14 }}>
+        <div style={{ marginTop: 12, color: muted, fontSize: 13, lineHeight: 1.45 }}>
           <div>File: {resolvedProjectFilePath ?? 'Not saved yet'}</div>
           <div>Root: {projectRoot ?? 'Unknown'}</div>
           <div>Last saved: {project.metadata.updatedAt ?? 'Not saved yet'}</div>
         </div>
       </Panel>
 
-      <Panel title="Recent Projects">
-        <div style={{ display: 'grid', gap: 10 }}>
-          {recentProjects.map((recentProject) => (
+      <Panel title="Recent Projects" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
+          {recentProjects.length > 0 ? recentProjects.map((recentProject) => (
             <button
               key={recentProject}
               type="button"
@@ -321,13 +321,17 @@ export function ProjectView() {
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.08)',
                 color: '#f6f7f9',
-                padding: 14,
+                padding: 12,
                 borderRadius: 16
               }}
             >
               {recentProject}
             </button>
-          ))}
+          )) : (
+            <div style={{ border: '1px dashed rgba(255,255,255,0.14)', borderRadius: 16, padding: 18, color: muted, lineHeight: 1.6 }}>
+              No recent projects yet. Save this project once and it will become the quick way back into the workstation.
+            </div>
+          )}
         </div>
       </Panel>
     </div>
@@ -351,6 +355,21 @@ export function MediaView() {
   const assets = useMemo(() => project.assets.filter((asset) =>
     `${asset.filename} ${(asset.tags ?? []).join(' ')}`.toLowerCase().includes(deferredQuery.toLowerCase())
   ), [deferredQuery, project.assets]);
+  const selectedAsset = useMemo(
+    () => assets.find((asset) => asset.id === selectedAssetId) ?? assets[0],
+    [assets, selectedAssetId]
+  );
+
+  useEffect(() => {
+    if (!selectedAssetId && assets[0]) {
+      selectAsset(assets[0].id);
+      return;
+    }
+
+    if (selectedAssetId && !assets.some((asset) => asset.id === selectedAssetId)) {
+      selectAsset(assets[0]?.id);
+    }
+  }, [assets, selectAsset, selectedAssetId]);
 
   const importMedia = async () => {
     const imported = await api.project.importMedia(projectRoot);
@@ -445,9 +464,9 @@ export function MediaView() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <Panel title="Media Library">
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(320px, 0.75fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+      <Panel title="Media Library" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <ToolbarButton primary onClick={() => void importMedia()}>Import Media</ToolbarButton>
           <ToolbarButton onClick={() => void importMusic()}>Import Music</ToolbarButton>
           <ToolbarButton onClick={() => void importTransitionMasks()}>Import Masks</ToolbarButton>
@@ -466,47 +485,124 @@ export function MediaView() {
             }}
           />
         </div>
-        <VirtualList
-          items={assets}
-          estimateSize={94}
-          renderItem={(asset) => (
-            <button
-              type="button"
-              onClick={() => selectAsset(asset.id)}
-              aria-pressed={selectedAssetId === asset.id}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                background: selectedAssetId === asset.id
-                  ? 'linear-gradient(135deg, rgba(244, 135, 98, 0.18), rgba(255,255,255,0.05))'
-                  : 'rgba(255,255,255,0.03)',
-                border: selectedAssetId === asset.id
-                  ? '1px solid rgba(255, 159, 127, 0.55)'
-                  : '1px solid rgba(255,255,255,0.08)',
-                boxShadow: selectedAssetId === asset.id
-                  ? '0 0 0 1px rgba(244, 135, 98, 0.18) inset'
-                  : 'none',
-                color: '#f6f7f9',
-                borderRadius: 16,
-                padding: 14
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 700 }}>{asset.label ?? asset.filename}</div>
-                  <div style={{ color: muted, fontSize: 13 }}>{asset.path.absolutePath}</div>
+        {assets.length > 0 ? (
+          <VirtualList
+            items={assets}
+            estimateSize={94}
+            height="100%"
+            renderItem={(asset) => (
+              <button
+                type="button"
+                onClick={() => selectAsset(asset.id)}
+                aria-pressed={selectedAsset?.id === asset.id}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  background: selectedAsset?.id === asset.id
+                    ? 'linear-gradient(135deg, rgba(114, 133, 166, 0.24), rgba(255,255,255,0.05))'
+                    : 'rgba(255,255,255,0.03)',
+                  border: selectedAsset?.id === asset.id
+                    ? '1px solid rgba(136, 160, 191, 0.55)'
+                    : '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: selectedAsset?.id === asset.id
+                    ? '0 0 0 1px rgba(136, 160, 191, 0.18) inset'
+                    : 'none',
+                  color: '#f6f7f9',
+                  borderRadius: 16,
+                  padding: 14
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{asset.label ?? asset.filename}</div>
+                    <div style={{ color: muted, fontSize: 13 }}>{asset.path.absolutePath}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <span style={pillStyle()}>{asset.mediaType}</span>
+                    <span style={pillStyle(asset.assetRole === 'transition-mask' || asset.assetRole === 'transition-overlay' ? 'warn' : asset.assetRole === 'music' ? 'success' : undefined)}>
+                      {asset.assetRole ?? 'source'}
+                    </span>
+                    <span style={pillStyle(asset.analysisStatus === 'completed' ? 'success' : 'warn')}>{asset.analysisStatus}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <span style={pillStyle()}>{asset.mediaType}</span>
-                  <span style={pillStyle(asset.assetRole === 'transition-mask' || asset.assetRole === 'transition-overlay' ? 'warn' : asset.assetRole === 'music' ? 'success' : undefined)}>
-                    {asset.assetRole ?? 'source'}
-                  </span>
-                  <span style={pillStyle(asset.analysisStatus === 'completed' ? 'success' : 'warn')}>{asset.analysisStatus}</span>
-                </div>
+              </button>
+            )}
+          />
+        ) : (
+          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 260, display: 'grid', placeItems: 'center', padding: 24 }}>
+            <div style={{ maxWidth: 440, textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>No media has been imported</div>
+              <div style={{ color: muted, lineHeight: 1.6, marginBottom: 18 }}>
+                Start with source footage, then add music or transition assets once the base library is in place.
               </div>
-            </button>
-          )}
-        />
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <ToolbarButton primary onClick={() => void importMedia()}>Import Source Media</ToolbarButton>
+                <ToolbarButton onClick={() => void importMusic()}>Import Music</ToolbarButton>
+              </div>
+            </div>
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Asset Inspector" style={{ minHeight: 0 }}>
+        {selectedAsset ? (
+          <div style={{ display: 'grid', gap: 14 }}>
+            {selectedAsset.mediaType === 'image' ? (
+              <img
+                src={toMediaSrc(selectedAsset.path.absolutePath)}
+                alt={selectedAsset.label ?? selectedAsset.filename}
+                style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 18, background: '#090a0d' }}
+              />
+            ) : selectedAsset.mediaType === 'audio' ? (
+              <div style={{ borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,10,13,0.92)', padding: 18 }}>
+                <audio controls src={toMediaSrc(selectedAsset.path.absolutePath)} style={{ width: '100%' }} />
+              </div>
+            ) : (
+              <video
+                controls
+                muted
+                playsInline
+                preload="metadata"
+                src={toMediaSrc(selectedAsset.path.absolutePath)}
+                style={{ width: '100%', borderRadius: 18, background: '#090a0d', aspectRatio: '16 / 9' }}
+              />
+            )}
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{selectedAsset.label ?? selectedAsset.filename}</div>
+              <div style={{ color: muted, fontSize: 13, marginTop: 6, lineHeight: 1.6 }}>{selectedAsset.path.absolutePath}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <span style={pillStyle()}>{selectedAsset.mediaType}</span>
+              <span style={pillStyle(selectedAsset.assetRole === 'music' ? 'success' : selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? 'warn' : 'default')}>
+                {selectedAsset.assetRole ?? 'source'}
+              </span>
+              <span style={pillStyle(selectedAsset.analysisStatus === 'completed' ? 'success' : 'warn')}>{selectedAsset.analysisStatus}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+              <StatCard label="Duration" value={selectedAsset.durationMs ? `${selectedAsset.durationMs}ms` : 'Unknown'} />
+              <StatCard label="Tags" value={String(selectedAsset.tags?.length ?? 0)} tone={(selectedAsset.tags?.length ?? 0) > 0 ? 'success' : 'default'} />
+            </div>
+            <div style={{ color: muted, lineHeight: 1.6 }}>
+              {selectedAsset.assetRole === 'music'
+                ? 'Music assets become available in Music Sync immediately.'
+                : selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay'
+                  ? 'Transition assets show up in Sequence Builder once clips exist.'
+                  : 'Source assets should move through Analysis, then Cuts, before they land in a sequence.'}
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <ToolbarButton primary onClick={() => setCurrentTab(selectedAsset.assetRole === 'music' ? 'music' : 'analysis')}>
+                {selectedAsset.assetRole === 'music' ? 'Open Music Sync' : 'Open Analysis'}
+              </ToolbarButton>
+              {selectedAsset.assetRole !== 'music' ? (
+                <ToolbarButton onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted, textAlign: 'center', padding: 24 }}>
+            Select an asset to inspect its path, preview, and where it fits in the workflow.
+          </div>
+        )}
       </Panel>
     </div>
   );
@@ -760,7 +856,7 @@ export function AnalysisView() {
   };
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 16, height: '100%', minHeight: 0 }}>
       <Panel title="Analysis Jobs">
         <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
           <ToolbarButton primary onClick={() => void runAnalysis(allAnalyzableAssetIds, 'all')} disabled={processingAnalysis || allAnalyzableAssetIds.length === 0}>
@@ -784,12 +880,13 @@ export function AnalysisView() {
           )}
         </div>
       </Panel>
-      <Panel title="Analysis">
-        <div style={{
+      <Panel title="Analysis" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+        <div className="studio-scrollable" style={{
           overflow: 'auto',
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: 18,
-          background: 'rgba(15, 18, 24, 0.88)'
+          background: 'rgba(15, 18, 24, 0.88)',
+          minHeight: 0
         }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'rgba(10, 13, 18, 0.98)' }}>
@@ -834,8 +931,8 @@ export function AnalysisView() {
                     key={row.id}
                     onClick={(event) => updateCheckedSelection(row.original.id, event)}
                     style={{
-                      background: checked ? 'rgba(244, 135, 98, 0.12)' : 'transparent',
-                      boxShadow: checked ? 'inset 2px 0 0 #f48762' : 'none',
+                      background: checked ? 'rgba(114, 133, 166, 0.14)' : 'transparent',
+                      boxShadow: checked ? 'inset 2px 0 0 #88a0bf' : 'none',
                       cursor: 'pointer'
                     }}
                   >
@@ -1048,8 +1145,8 @@ export function CutsView() {
   }, [addCutToSequence, addNotification, currentTab, cuts, selectCut, selectedCut, updateCutStatus]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(360px, 0.85fr)', gap: 16, alignItems: 'start' }}>
-      <Panel title="Cut Browser">
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(360px, 0.85fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+      <Panel title="Cut Browser" style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -1071,16 +1168,17 @@ export function CutsView() {
           items={cuts}
           estimateSize={176}
           activeIndex={selectedCutIndex}
+          height="100%"
           renderItem={(cut) => {
             const hasWorkingThumbnail = !!cut.thumbnailPath && !brokenThumbnailPaths.has(cut.thumbnailPath);
 
             return (
               <div style={{
-                border: cut.id === selectedCut?.id ? '1px solid rgba(255,159,127,0.85)' : '1px solid rgba(255,255,255,0.08)',
-                boxShadow: cut.id === selectedCut?.id ? '0 0 0 1px rgba(255,159,127,0.22)' : 'none',
+                border: cut.id === selectedCut?.id ? '1px solid rgba(136,160,191,0.85)' : '1px solid rgba(255,255,255,0.08)',
+                boxShadow: cut.id === selectedCut?.id ? '0 0 0 1px rgba(136,160,191,0.22)' : 'none',
                 borderRadius: 16,
                 padding: 14,
-                background: cut.id === selectedCut?.id ? 'rgba(255,159,127,0.08)' : 'rgba(255,255,255,0.03)'
+                background: cut.id === selectedCut?.id ? 'rgba(114,133,166,0.12)' : 'rgba(255,255,255,0.03)'
               }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 14 }}>
                   <button
@@ -1137,7 +1235,7 @@ export function CutsView() {
           }}
         />
       </Panel>
-      <Panel title="Cut Preview">
+      <Panel title="Cut Preview" style={{ minHeight: 0 }}>
         {selectedCut && selectedAsset ? (
           <div style={{ display: 'grid', gap: 14 }}>
             <div style={{ color: muted, fontSize: 13 }}>
@@ -1190,6 +1288,7 @@ export function SequenceView() {
   const allJobs = useJobsStore((state) => state.jobs);
   const previewPath = useUiStore((state) => state.previewPath);
   const setPreviewPath = useUiStore((state) => state.setPreviewPath);
+  const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const selectedVariantId = useUiStore((state) => state.selectedVariantId);
   const selectVariant = useUiStore((state) => state.selectVariant);
   const buildVariantFromReviewedCutsAction = useProjectSessionStore((state) => state.buildVariantFromReviewedCuts);
@@ -1243,8 +1342,8 @@ export function SequenceView() {
       : 'Build Preview';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(360px, 0.9fr)', gap: 16, alignItems: 'start' }}>
-      <Panel title="Sequence Builder">
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(360px, 0.9fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+      <Panel title="Sequence Builder" style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1254,9 +1353,9 @@ export function SequenceView() {
                   type="button"
                   onClick={() => selectVariant(candidate.id)}
                   style={{
-                    border: candidate.id === variant?.id ? '1px solid #ff9f7f' : '1px solid #41495b',
-                    background: candidate.id === variant?.id ? 'linear-gradient(135deg, #ff9f7f, #f48762)' : 'rgba(255,255,255,0.05)',
-                    color: candidate.id === variant?.id ? '#130f12' : '#f6f7f9',
+                    border: candidate.id === variant?.id ? '1px solid #88a0bf' : '1px solid #41495b',
+                    background: candidate.id === variant?.id ? 'linear-gradient(135deg, #9db1ca, #7285a6)' : 'rgba(255,255,255,0.05)',
+                    color: candidate.id === variant?.id ? '#0d1118' : '#f6f7f9',
                     borderRadius: 999,
                     padding: '9px 14px',
                     fontWeight: 700
@@ -1304,119 +1403,132 @@ export function SequenceView() {
             <JobRow job={previewJob} />
           </div>
         ) : null}
-        <div style={{ display: 'grid', gap: 10 }}>
-          {(variant?.clips ?? []).map((clip, clipIndex, clips) => {
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
+          {(variant?.clips.length ?? 0) > 0 ? (variant?.clips ?? []).map((clip, clipIndex, clips) => {
             const canUseMaskTransition = clipIndex < clips.length - 1;
 
             return (
-            <div key={clip.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14, background: 'rgba(255,255,255,0.03)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'start' }}>
-                <div style={{ minWidth: 0 }}>
-                  <strong>{clip.id}</strong>
-                  <div style={{ color: muted, fontSize: 13 }}>timeline {clip.timelineStartMs}ms | source {clip.sourceStartMs}ms | duration {clip.durationMs}ms</div>
-                  <div style={{ color: muted, fontSize: 13 }}>
-                    transition {clip.transition}
-                    {clip.transition !== 'cut' ? ` @ ${clip.transitionDurationMs ?? 600}ms` : ''}
-                    {clip.transition === 'mask' ? ' | white reveals next clip' : ''}
+              <div key={clip.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14, background: 'rgba(255,255,255,0.03)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'start' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <strong>{clip.id}</strong>
+                    <div style={{ color: muted, fontSize: 13 }}>timeline {clip.timelineStartMs}ms | source {clip.sourceStartMs}ms | duration {clip.durationMs}ms</div>
+                    <div style={{ color: muted, fontSize: 13 }}>
+                      transition {clip.transition}
+                      {clip.transition !== 'cut' ? ` @ ${clip.transitionDurationMs ?? 600}ms` : ''}
+                      {clip.transition === 'mask' ? ' | white reveals next clip' : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <ToolbarButton onClick={() => variant && moveClipAction(variant.id, clip.id, -1)}>Up</ToolbarButton>
+                    <ToolbarButton onClick={() => variant && moveClipAction(variant.id, clip.id, 1)}>Down</ToolbarButton>
+                    <ToolbarButton onClick={() => variant && trimClipAction(variant.id, clip.id, -250)}>[</ToolbarButton>
+                    <ToolbarButton onClick={() => variant && trimClipAction(variant.id, clip.id, 250)}>]</ToolbarButton>
+                    <ToolbarButton onClick={() => variant && removeClipAction(variant.id, clip.id)}>Remove</ToolbarButton>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <ToolbarButton onClick={() => variant && moveClipAction(variant.id, clip.id, -1)}>Up</ToolbarButton>
-                  <ToolbarButton onClick={() => variant && moveClipAction(variant.id, clip.id, 1)}>Down</ToolbarButton>
-                  <ToolbarButton onClick={() => variant && trimClipAction(variant.id, clip.id, -250)}>[</ToolbarButton>
-                  <ToolbarButton onClick={() => variant && trimClipAction(variant.id, clip.id, 250)}>]</ToolbarButton>
-                  <ToolbarButton onClick={() => variant && removeClipAction(variant.id, clip.id)}>Remove</ToolbarButton>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)', gap: 12, marginTop: 14, alignItems: 'start' }}>
+                  <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                    Clip overlay
+                    <select
+                      value={clip.overlayAssetId ?? ''}
+                      onChange={(event) => variant && setClipOverlayAssetAction(variant.id, clip.id, event.target.value || undefined)}
+                      style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                      title={overlayAssets.find((asset) => asset.id === clip.overlayAssetId)?.label ?? overlayAssets.find((asset) => asset.id === clip.overlayAssetId)?.filename}
+                    >
+                      <option value="">No overlay</option>
+                      {overlayOptions.map((asset) => (
+                        <option key={asset.id} value={asset.id} title={asset.title}>{asset.label}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                      Transition
+                      <select
+                        value={clip.transition}
+                        onChange={(event) => variant && setClipTransitionAction(variant.id, clip.id, event.target.value as TransitionStyle)}
+                        style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                      >
+                        <option value="cut">Cut</option>
+                        <option value="crossfade">Crossfade</option>
+                        <option value="mask" disabled={!canUseMaskTransition}>Mask</option>
+                      </select>
+                    </label>
+                    <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                      Duration ms
+                      <input
+                        type="number"
+                        min={100}
+                        step={50}
+                        value={clip.transition === 'cut' ? '' : String(clip.transitionDurationMs ?? 600)}
+                        disabled={clip.transition === 'cut'}
+                        onChange={(event) => {
+                          const nextValue = Number(event.target.value);
+                          if (!variant || Number.isNaN(nextValue)) {
+                            return;
+                          }
+                          setClipTransitionDurationAction(variant.id, clip.id, nextValue);
+                        }}
+                        style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                      />
+                    </label>
+                  </div>
+
+                  <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
+                    Mask asset
+                    <select
+                      value={clip.transitionAssetId ?? ''}
+                      disabled={clip.transition !== 'mask'}
+                      onChange={(event) => variant && setClipTransitionAssetAction(variant.id, clip.id, event.target.value || undefined)}
+                      style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
+                      title={transitionMaskAssets.find((asset) => asset.id === clip.transitionAssetId)?.label ?? transitionMaskAssets.find((asset) => asset.id === clip.transitionAssetId)?.filename}
+                    >
+                      <option value="">Select mask asset…</option>
+                      {transitionMaskOptions.map((asset) => (
+                        <option key={asset.id} value={asset.id} title={asset.title}>{asset.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                  {clip.transition === 'mask' ? (
+                    <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
+                      White luma in the mask reveals the next clip.
+                      {!clip.transitionAssetId ? ' Pick a mask asset before building preview.' : ''}
+                    </div>
+                  ) : (
+                    <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
+                      Use masks for reveal transitions. Overlays stay independent and ride over the clip.
+                    </div>
+                  )}
+                  {clip.overlayAssetId ? (
+                    <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
+                      Overlay is blended over this clip independently of the transition.
+                    </div>
+                  ) : null}
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 180px minmax(0, 1fr)', gap: 12, marginTop: 14, alignItems: 'start' }}>
-                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
-                  Clip overlay
-                  <select
-                    value={clip.overlayAssetId ?? ''}
-                    onChange={(event) => variant && setClipOverlayAssetAction(variant.id, clip.id, event.target.value || undefined)}
-                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
-                    title={overlayAssets.find((asset) => asset.id === clip.overlayAssetId)?.label ?? overlayAssets.find((asset) => asset.id === clip.overlayAssetId)?.filename}
-                  >
-                    <option value="">No overlay</option>
-                    {overlayOptions.map((asset) => (
-                      <option key={asset.id} value={asset.id} title={asset.title}>{asset.label}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <div style={{ display: 'grid', gap: 10 }}>
-                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
-                  Transition
-                  <select
-                    value={clip.transition}
-                    onChange={(event) => variant && setClipTransitionAction(variant.id, clip.id, event.target.value as TransitionStyle)}
-                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
-                  >
-                    <option value="cut">Cut</option>
-                    <option value="crossfade">Crossfade</option>
-                    <option value="mask" disabled={!canUseMaskTransition}>Mask</option>
-                  </select>
-                </label>
-                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
-                  Duration ms
-                  <input
-                    type="number"
-                    min={100}
-                    step={50}
-                    value={clip.transition === 'cut' ? '' : String(clip.transitionDurationMs ?? 600)}
-                    disabled={clip.transition === 'cut'}
-                    onChange={(event) => {
-                      const nextValue = Number(event.target.value);
-                      if (!variant || Number.isNaN(nextValue)) {
-                        return;
-                      }
-                      setClipTransitionDurationAction(variant.id, clip.id, nextValue);
-                    }}
-                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
-                  />
-                </label>
-                </div>
-
-                <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12, minWidth: 0 }}>
-                  Mask asset
-                  <select
-                    value={clip.transitionAssetId ?? ''}
-                    disabled={clip.transition !== 'mask'}
-                    onChange={(event) => variant && setClipTransitionAssetAction(variant.id, clip.id, event.target.value || undefined)}
-                    style={{ width: '100%', minWidth: 0, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f6f7f9', borderRadius: 10, padding: '8px 10px' }}
-                    title={transitionMaskAssets.find((asset) => asset.id === clip.transitionAssetId)?.label ?? transitionMaskAssets.find((asset) => asset.id === clip.transitionAssetId)?.filename}
-                  >
-                    <option value="">Select mask asset…</option>
-                    {transitionMaskOptions.map((asset) => (
-                      <option key={asset.id} value={asset.id} title={asset.title}>{asset.label}</option>
-                    ))}
-                  </select>
-                </label>
+            );
+          }) : (
+            <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, padding: 24, textAlign: 'center' }}>
+              <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>No sequence has been assembled yet</div>
+              <div style={{ color: muted, lineHeight: 1.6, maxWidth: 520, margin: '0 auto 18px' }}>
+                Review cuts first, then build a sequence from approved material. The sequence builder becomes useful once you have something worth arranging.
               </div>
-              <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-                {clip.transition === 'mask' ? (
-                  <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
-                    White luma in the mask reveals the next clip.
-                    {!clip.transitionAssetId ? ' Pick a mask asset before building preview.' : ''}
-                  </div>
-                ) : (
-                  <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
-                    Use masks for reveal transitions. Overlays stay independent and ride over the clip.
-                  </div>
-                )}
-                {clip.overlayAssetId ? (
-                  <div style={{ color: muted, fontSize: 12, lineHeight: 1.5 }}>
-                    Overlay is blended over this clip independently of the transition.
-                  </div>
-                ) : null}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <ToolbarButton primary onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
+                <ToolbarButton disabled={!variant} onClick={() => variant && buildVariantFromReviewedCutsAction(variant.id, 'balanced')}>
+                  Build From Approved Cuts
+                </ToolbarButton>
               </div>
             </div>
-            );
-          })}
+          )}
         </div>
       </Panel>
 
-      <Panel title="Preview">
+      <Panel title="Preview" style={{ minHeight: 0 }}>
         <div style={{ marginBottom: 12, color: muted }}>Low-resolution cached preview. Timing is authoritative; image quality is not final render quality.</div>
         {previewPath ? (
           <video
@@ -1575,8 +1687,8 @@ export function StyleView() {
   const selectedFilterDefinition = getFilterDefinition(selectedFilter?.type ?? '');
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16 }}>
-      <Panel title="Style Stack">
+    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16, height: '100%', minHeight: 0 }}>
+      <Panel title="Style Stack" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           {supportedFilterDefinitions.map((definition) => (
             <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => addFilter(definition.type)}>
@@ -1585,7 +1697,7 @@ export function StyleView() {
           ))}
           <ToolbarButton onClick={() => stack && randomizeStack(stack.id)}>Randomize Stack</ToolbarButton>
         </div>
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
           {stack?.filters.map((filter, index) => (
             <div key={filter.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
@@ -1593,8 +1705,8 @@ export function StyleView() {
                   type="button"
                   onClick={() => selectFilter(filter.id)}
                   style={{
-                    border: selectedFilter?.id === filter.id ? '1px solid rgba(244, 135, 98, 0.4)' : 'none',
-                    background: selectedFilter?.id === filter.id ? 'rgba(244, 135, 98, 0.08)' : 'transparent',
+                    border: selectedFilter?.id === filter.id ? '1px solid rgba(136, 160, 191, 0.42)' : 'none',
+                    background: selectedFilter?.id === filter.id ? 'rgba(114, 133, 166, 0.12)' : 'transparent',
                     color: '#f6f7f9',
                     padding: 10,
                     borderRadius: 12,
@@ -1618,8 +1730,8 @@ export function StyleView() {
         </div>
       </Panel>
 
-      <div style={{ display: 'grid', gap: 16 }}>
-        <Panel title="Filter Editor">
+      <div style={{ display: 'grid', gap: 16, minHeight: 0 }}>
+        <Panel title="Filter Editor" style={{ minHeight: 0 }}>
           {stack && selectedFilter && selectedFilterDefinition ? (
             <div style={{ display: 'grid', gap: 16 }}>
               <div>
@@ -1659,8 +1771,8 @@ export function StyleView() {
             <div style={{ color: muted }}>Select a supported filter to edit its authored parameters.</div>
           )}
         </Panel>
-        <Panel title="Preset Families">
-          <div style={{ display: 'grid', gap: 10 }}>
+        <Panel title="Preset Families" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+          <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
             {presets.map((preset) => (
               <div key={preset.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -1707,8 +1819,8 @@ export function AutomationView() {
   );
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <Panel title="Automation">
+    <div style={{ display: 'grid', gap: 16, height: '100%', minHeight: 0 }}>
+      <Panel title="Automation" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <ToolbarButton
             primary
@@ -1718,7 +1830,7 @@ export function AutomationView() {
             Add Lane
           </ToolbarButton>
         </div>
-        <div style={{ display: 'grid', gap: 12 }}>
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 12, minHeight: 0 }}>
           {project.automationLanes.map((lane) => {
             const laneFilter = stackFilters.find((filter) => filter.id === lane.target.filterId) ?? stackFilters[0];
             const laneProperties = getSupportedAutomationProperties(laneFilter?.type ?? '');
@@ -1839,8 +1951,8 @@ export function ExportView() {
   const enabledProfileIds = useMemo(() => getEnabledExportProfileIds(project.exportSelections), [project.exportSelections]);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <Panel title="Export Profiles">
+    <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) minmax(220px, 0.75fr)', gap: 16, height: '100%', minHeight: 0 }}>
+      <Panel title="Export Profiles" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           {project.variants.map((candidate, index) => (
             <ToolbarButton key={candidate.id} primary={candidate.id === variant?.id} onClick={() => selectVariant(candidate.id)}>
@@ -1848,7 +1960,7 @@ export function ExportView() {
             </ToolbarButton>
           ))}
         </div>
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
           {exportProfiles.map((profile) => {
             const selection = project.exportSelections.find((item) => item.profileId === profile.id);
             return (
@@ -1884,11 +1996,15 @@ export function ExportView() {
           }}>Export Selected Sequence</ToolbarButton>
         </div>
       </Panel>
-      <Panel title="Render Queue">
-        <div style={{ display: 'grid', gap: 8 }}>
-          {exportJobs.map((job) => (
+      <Panel title="Render Queue" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
+          {exportJobs.length > 0 ? exportJobs.map((job) => (
             <JobRow key={job.id} job={job} />
-          ))}
+          )) : (
+            <div style={{ border: '1px dashed rgba(255,255,255,0.14)', borderRadius: 16, padding: 18, color: muted, lineHeight: 1.6 }}>
+              No export jobs yet. Enable at least one delivery profile, then render the selected sequence and watch the queue here.
+            </div>
+          )}
         </div>
       </Panel>
     </div>
@@ -1901,7 +2017,7 @@ export function DiagnosticsView() {
   const jobs = useJobsStore((state) => state.jobs);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr) minmax(0, 1fr)', gap: 16, height: '100%', minHeight: 0 }}>
       <Panel title="Diagnostics">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
           <StatCard label="FFmpeg" value={report?.toolchain.available ? 'Available' : 'Unavailable'} tone={report?.toolchain.available ? 'success' : 'warn'} />
@@ -1919,15 +2035,15 @@ export function DiagnosticsView() {
           ))}
         </div>
       </Panel>
-      <Panel title="Job Log">
-        <div style={{ display: 'grid', gap: 8 }}>
+      <Panel title="Job Log" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
           {jobs.map((job) => (
             <JobRow key={job.id} job={job} />
           ))}
         </div>
       </Panel>
-      <Panel title="Application Log">
-        <div style={{ display: 'grid', gap: 8 }}>
+      <Panel title="Application Log" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+        <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
           {logs.length === 0 ? (
             <div style={{ color: muted }}>No log entries yet.</div>
           ) : (

@@ -38,7 +38,7 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
 
   try {
     const window = await electronApp.firstWindow();
-    await expect(window.locator('text=Offline authoring workstation')).toBeVisible();
+    await expect(window.locator('.studio-shell__brand-copy')).toBeVisible();
 
     const runtimeInfo = await window.evaluate(async () => {
       return await window.afterimage?.shell.getRuntimeInfo();
@@ -63,18 +63,18 @@ test('loads a project and can open Analysis and Export without renderer crashes'
       pageErrors.push(error.message);
     });
 
-    await expect(window.getByText('Offline authoring workstation', { exact: true })).toBeVisible();
-    await expect(window.getByText('Studio Fixture', { exact: true })).toBeVisible();
-    await expect(window.getByText(/2 assets/)).toBeVisible();
+    await expect(window.locator('.studio-hero__headline h2')).toHaveText('Project');
+    await expect(window.locator('.studio-shell__project-title')).toHaveText('Studio Fixture');
+    await expect(window.getByRole('heading', { name: 'Project Home' })).toBeVisible();
 
-    await window.getByRole('button', { name: 'Analysis' }).click();
+    await window.locator('nav[aria-label="Workflow navigation"]').getByRole('button', { name: /^Analysis/ }).click();
     await expect(window.getByRole('heading', { name: 'Analysis Jobs' })).toBeVisible();
     await expect(window.getByRole('columnheader', { name: 'Changes' })).toBeVisible();
     await expect(window.getByText('Source Alpha', { exact: false })).toBeVisible();
 
-    await window.getByRole('button', { name: 'Export' }).click();
-    await expect(window.locator('text=Export Profiles')).toBeVisible();
-    await expect(window.locator('text=Render Queue')).toBeVisible();
+    await window.locator('nav[aria-label="Workflow navigation"]').getByRole('button', { name: /^Export/ }).click();
+    await expect(window.getByRole('heading', { name: 'Export Profiles' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Render Queue' })).toBeVisible();
 
     expect(pageErrors).toEqual([]);
   } finally {

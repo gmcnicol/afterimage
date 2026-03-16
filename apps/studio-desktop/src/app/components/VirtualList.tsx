@@ -5,12 +5,14 @@ export function VirtualList<T>({
   items,
   estimateSize,
   renderItem,
-  activeIndex
+  activeIndex,
+  height = 420
 }: {
   items: T[];
   estimateSize: number;
   renderItem: (item: T, index: number) => React.ReactNode;
   activeIndex?: number;
+  height?: number | string;
 }) {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const virtualizer = useVirtualizer({
@@ -32,9 +34,10 @@ export function VirtualList<T>({
 
   return (
     <div
+      className="studio-scrollable"
       ref={setScrollElement}
       style={{
-        height: 420,
+        height,
         overflow: 'auto',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: 18,
