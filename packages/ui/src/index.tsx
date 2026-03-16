@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react';
+import type { CSSProperties, PropsWithChildren } from 'react';
 
 export function Screen({ children }: PropsWithChildren) {
   return (
@@ -14,14 +14,18 @@ export function Screen({ children }: PropsWithChildren) {
   );
 }
 
-export function Panel(props: PropsWithChildren<{ title: string }>) {
+export function Panel(props: PropsWithChildren<{ title: string; style?: CSSProperties; className?: string }>) {
   return (
-    <section style={{
-      border: '1px solid #2b3140',
-      borderRadius: 16,
-      padding: 16,
-      background: '#191d25'
-    }}>
+    <section
+      className={props.className}
+      style={{
+        border: '1px solid #2b3140',
+        borderRadius: 16,
+        padding: 16,
+        background: '#191d25',
+        ...props.style
+      }}
+    >
       <h2 style={{ marginTop: 0 }}>{props.title}</h2>
       {props.children}
     </section>
