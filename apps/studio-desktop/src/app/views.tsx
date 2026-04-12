@@ -275,6 +275,54 @@ function formatSequenceAssetLabel(asset: MediaAsset): string {
   return `${descriptor} • ${seed}`;
 }
 
+function formatMillisecondsClock(value?: number): string {
+  const safeValue = Math.max(0, Math.round(value ?? 0));
+  const minutes = Math.floor(safeValue / 60000);
+  const seconds = Math.floor((safeValue % 60000) / 1000);
+  const tenths = Math.floor((safeValue % 1000) / 100);
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${tenths}`;
+}
+
+function formatMillisecondsDetail(value?: number): string {
+  const safeValue = Math.max(0, Math.round(value ?? 0));
+  return `${formatMillisecondsClock(safeValue)} • ${safeValue}ms`;
+}
+
+function formatAssetListSubline(asset: MediaAsset): string {
+  if (asset.label && asset.label !== asset.filename) {
+    return asset.filename;
+  }
+
+  const pathSegments = asset.path.absolutePath.split(/[\\/]/).filter(Boolean);
+  return pathSegments.slice(-2).join('/');
+}
+
+function formatPathTail(value: string): string {
+  const pathSegments = value.split(/[\\/]/).filter(Boolean);
+  return pathSegments.slice(-2).join('/');
+}
+
+function getPathBasename(value: string): string {
+  const pathSegments = value.split(/[\\/]/).filter(Boolean);
+  return pathSegments[pathSegments.length - 1] ?? value;
+}
+
+function isDisposableRecentProjectPath(projectFilePath: string): boolean {
+  const normalized = projectFilePath.toLowerCase().replace(/\\/g, '/');
+  return normalized.includes('afterimagetest')
+    || /(^|[\/._\-\s])(test|tests|mock|mocks|fixture|fixtures)([\/._\-\s]|$)/i.test(normalized);
+}
+
+function isVarRecentProjectPath(projectFilePath: string): boolean {
+  const normalized = projectFilePath.replace(/\\/g, '/');
+  return normalized.startsWith('/var/') || normalized.startsWith('/private/var/');
+}
+
+function formatCutDisplayId(cutId: string): string {
+  const matchedSuffix = cutId.match(/(cut-\d+)$/i);
+  return matchedSuffix?.[1] ?? cutId;
+}
+
 export function ProjectView() {
   const api = getDesktopApi();
   const project = useProjectSessionStore((state) => state.project);
@@ -283,11 +331,74 @@ export function ProjectView() {
   const recentProjects = useProjectSessionStore((state) => state.recentProjects);
   const dirty = useProjectSessionStore((state) => state.dirty);
   const setSession = useProjectSessionStore((state) => state.setSession);
+  const setRecentProjects = useProjectSessionStore((state) => state.setRecentProjects);
+  const addNotification = useUiStore((state) => state.addNotification);
+  const [projectActionStates, setProjectActionStates] = useState<Record<string, 'opening' | 'removing'>>({});
+  const [loadedRecentProjectPath, setLoadedRecentProjectPath] = useState<string | null>(null);
   const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
+  const visibleRecentProjects = useMemo(
+    () => recentProjects.filter((recentProject) => !isVarRecentProjectPath(recentProject)),
+    [recentProjects]
+  );
+  useEffect(() => {
+    if (!loadedRecentProjectPath) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLoadedRecentProjectPath((current) => current === loadedRecentProjectPath ? null : current);
+    }, 1600);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [loadedRecentProjectPath]);
+
+  const clearProjectActionState = (targetProjectPath: string) => {
+    setProjectActionStates((current) => {
+      const next = { ...current };
+      delete next[targetProjectPath];
+      return next;
+    });
+  };
+
+  const openRecentProject = async (targetProjectPath: string) => {
+    if (projectActionStates[targetProjectPath]) {
+      return;
+    }
+
+    setProjectActionStates((current) => ({ ...current, [targetProjectPath]: 'opening' }));
+    try {
+      const session = await api.project.openProjectAt(targetProjectPath);
+      setSession(session);
+      setLoadedRecentProjectPath(targetProjectPath);
+    } catch (error) {
+      addNotification(`Could not open ${getPathBasename(targetProjectPath)}.`, 'warn', 2200);
+    } finally {
+      clearProjectActionState(targetProjectPath);
+    }
+  };
+
+  const removeRecentProject = async (targetProjectPath: string) => {
+    if (projectActionStates[targetProjectPath]) {
+      return;
+    }
+
+    setProjectActionStates((current) => ({ ...current, [targetProjectPath]: 'removing' }));
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      const nextRecentProjects = await api.project.removeRecentProject(targetProjectPath);
+      setRecentProjects(nextRecentProjects);
+      addNotification(`Removed ${getPathBasename(targetProjectPath)} from recent projects.`, 'success', 1600);
+    } catch (error) {
+      addNotification(`Could not remove ${getPathBasename(targetProjectPath)}.`, 'warn', 2200);
+    } finally {
+      clearProjectActionState(targetProjectPath);
+    }
+  };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(320px, 0.85fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-      <Panel title="Project Home" style={{ display: 'grid', gridTemplateRows: 'auto auto 1fr', minHeight: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(420px, 0.95fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+      <Panel title="Project Home" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto 1fr', minHeight: 0 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
           <ToolbarButton primary onClick={() => void api.project.createProject().then((session) => session && setSession(session))}>New Project</ToolbarButton>
           <ToolbarButton onClick={() => void api.project.openProject().then((session) => session && setSession(session))}>Open Project</ToolbarButton>
@@ -296,7 +407,7 @@ export function ProjectView() {
           <ToolbarButton onClick={() => void api.project.duplicateProject({ project, projectFilePath: resolvedProjectFilePath }).then((session) => session && setSession(session))}>Duplicate</ToolbarButton>
           <ToolbarButton onClick={() => resolvedProjectFilePath && void api.project.revealProjectFolder(resolvedProjectFilePath)}>Reveal Folder</ToolbarButton>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
           <StatCard label="Project" value={project.name} />
           <StatCard label="Dirty State" value={dirty ? 'Unsaved changes' : 'Saved'} tone={dirty ? 'warn' : 'success'} />
           <StatCard label="Assets" value={String(project.assets.length)} />
@@ -309,24 +420,137 @@ export function ProjectView() {
         </div>
       </Panel>
 
-      <Panel title="Recent Projects" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Recent Projects" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
-          {recentProjects.length > 0 ? recentProjects.map((recentProject) => (
-            <button
+          <div style={{ color: muted, fontSize: 13 }}>
+            {visibleRecentProjects.length} recent project{visibleRecentProjects.length === 1 ? '' : 's'}
+          </div>
+          {visibleRecentProjects.length > 0 ? visibleRecentProjects.map((recentProject) => (
+            (() => {
+              const actionState = projectActionStates[recentProject];
+              const isOpening = actionState === 'opening';
+              const isRemoving = actionState === 'removing';
+              const isCurrentProject = recentProject === resolvedProjectFilePath;
+              const isLoadedCue = loadedRecentProjectPath === recentProject;
+              const statusLabel = isOpening
+                ? 'Loading project…'
+                : isLoadedCue
+                  ? 'Loaded'
+                  : isCurrentProject
+                    ? 'Current project'
+                    : null;
+
+              return (
+            <div
               key={recentProject}
-              type="button"
-              onClick={() => void api.project.openProjectAt(recentProject).then(setSession)}
               style={{
-                textAlign: 'left',
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: isCurrentProject || isLoadedCue
+                  ? 'linear-gradient(135deg, rgba(24, 35, 49, 0.96), rgba(17, 22, 30, 0.96))'
+                  : 'rgba(255,255,255,0.04)',
+                border: isCurrentProject || isLoadedCue
+                  ? '1px solid rgba(181, 202, 236, 0.28)'
+                  : '1px solid rgba(255,255,255,0.08)',
+                boxShadow: isCurrentProject || isLoadedCue
+                  ? '0 0 0 1px rgba(132, 162, 210, 0.14), 0 18px 34px rgba(5, 9, 15, 0.26)'
+                  : 'none',
                 color: '#f6f7f9',
-                padding: 12,
-                borderRadius: 16
+                padding: '14px 16px',
+                borderRadius: 16,
+                lineHeight: 1.45,
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) auto',
+                gap: 12,
+                alignItems: 'start',
+                opacity: isRemoving ? 0.22 : 1,
+                transform: isRemoving
+                  ? 'translateX(18px) scale(0.985)'
+                  : isOpening
+                    ? 'translateY(-2px) scale(1.01)'
+                    : isLoadedCue
+                      ? 'translateY(-1px) scale(1.005)'
+                      : 'translateX(0) scale(1)',
+                filter: isRemoving ? 'saturate(0.72)' : 'none',
+                transition: 'background 220ms ease, border-color 220ms ease, box-shadow 220ms ease, opacity 180ms ease, transform 220ms ease, filter 180ms ease'
               }}
             >
-              {recentProject}
-            </button>
+              <button
+                type="button"
+                onClick={() => void openRecentProject(recentProject)}
+                disabled={Boolean(actionState)}
+                style={{
+                  textAlign: 'left',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#f6f7f9',
+                  padding: 0,
+                  minWidth: 0,
+                  cursor: actionState ? 'wait' : 'pointer',
+                  opacity: isRemoving ? 0.6 : 1
+                }}
+              >
+                {statusLabel ? (
+                  <div
+                    style={{
+                      color: isLoadedCue ? '#dfeaff' : accent,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      marginBottom: 6
+                    }}
+                  >
+                    {statusLabel}
+                  </div>
+                ) : null}
+                <div
+                  title={recentProject}
+                  style={{
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {getPathBasename(recentProject)}
+                </div>
+                <div
+                  title={recentProject}
+                  style={{
+                    color: muted,
+                    fontSize: 12,
+                    marginTop: 4,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {recentProject}
+                </div>
+              </button>
+              <div style={{ display: 'grid', gap: 8, alignSelf: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => void removeRecentProject(recentProject)}
+                  aria-label={`Remove ${getPathBasename(recentProject)} from recent projects`}
+                  disabled={Boolean(actionState)}
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(19, 22, 30, 0.96)',
+                    color: '#f6f7f9',
+                    borderRadius: 999,
+                    padding: '8px 12px',
+                    fontWeight: 700,
+                    cursor: actionState ? 'not-allowed' : 'pointer',
+                    opacity: actionState ? 0.6 : 1,
+                    transition: 'opacity 180ms ease, transform 180ms ease'
+                  }}
+                >
+                  {isRemoving ? 'Removing…' : 'Remove'}
+                </button>
+              </div>
+            </div>
+              );
+            })()
           )) : (
             <div style={{ border: '1px dashed rgba(255,255,255,0.14)', borderRadius: 16, padding: 18, color: muted, lineHeight: 1.6 }}>
               No recent projects yet. Save this project once and it will become the quick way back into the workstation.
@@ -349,7 +573,9 @@ export function MediaView() {
   const selectAsset = useUiStore((state) => state.selectAsset);
   const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const addNotification = useUiStore((state) => state.addNotification);
+  const allJobs = useJobsStore((state) => state.jobs);
   const [query, setQuery] = useState('');
+  const [launchLocked, setLaunchLocked] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
   const assets = useMemo(() => project.assets.filter((asset) =>
@@ -359,6 +585,69 @@ export function MediaView() {
     () => assets.find((asset) => asset.id === selectedAssetId) ?? assets[0],
     [assets, selectedAssetId]
   );
+  const analysisJobs = useMemo(() => {
+    const rank = (job: DesktopJob) => {
+      if (job.status === 'running') return 0;
+      if (job.status === 'queued') return 1;
+      if (job.status === 'failed') return 2;
+      if (job.status === 'cancelled') return 3;
+      return 4;
+    };
+    const recency = (job: DesktopJob) => Date.parse(job.endedAt ?? job.startedAt ?? '') || 0;
+    const sorted = allJobs
+      .filter((job) => job.type === 'analysis')
+      .sort((left, right) => rank(left) - rank(right) || recency(right) - recency(left) || right.id.localeCompare(left.id));
+
+    const seen = new Set<string>();
+    return sorted.filter((job) => {
+      const key = `${job.type}:${job.target}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }, [allJobs]);
+  const visibleAnalysisJobs = useMemo(() => analysisJobs.filter((job) => job.status !== 'completed'), [analysisJobs]);
+  const activeAnalysisJob = analysisJobs.find((job) => job.status === 'queued' || job.status === 'running');
+  const processingAnalysis = Boolean(activeAnalysisJob) || launchLocked;
+  const sidecarCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const ref of project.analysisRefs) {
+      counts.set(ref.assetId, (counts.get(ref.assetId) ?? 0) + 1);
+    }
+    return counts;
+  }, [project.analysisRefs]);
+  const analysisRows = useMemo<AnalysisAssetRow[]>(() => project.assets
+    .filter((asset) => asset.mediaType !== 'image')
+    .map((asset) => {
+      const summary = getAnalysisSummaryByAsset(project, asset.id);
+      return {
+        id: asset.id,
+        label: asset.label ?? asset.filename,
+        mediaType: asset.mediaType,
+        analysisStatus: asset.analysisStatus ?? 'pending',
+        durationMs: asset.durationMs ?? 0,
+        sidecarCount: sidecarCounts.get(asset.id) ?? 0,
+        changeEventCount: summary?.changeEventCount ?? 0,
+        syncEventCount: summary?.syncEventCount ?? 0,
+        path: asset.path.absolutePath
+      };
+    }), [project, sidecarCounts]);
+  const queuedAnalysisRows = useMemo(
+    () => analysisRows.filter((row) => row.analysisStatus !== 'completed'),
+    [analysisRows]
+  );
+  const pendingAnalysisAssetIds = useMemo(
+    () => queuedAnalysisRows.map((row) => row.id),
+    [queuedAnalysisRows]
+  );
+  const pendingAnalysisCount = analysisRows.filter((row) => row.analysisStatus !== 'completed').length;
+  const completedAnalysisCount = analysisRows.length - pendingAnalysisCount;
+  const selectedAnalysisRow = selectedAsset ? analysisRows.find((row) => row.id === selectedAsset.id) : undefined;
+  const analyzableSelectedAssetIds = selectedAsset && selectedAsset.mediaType !== 'image' ? [selectedAsset.id] : [];
+  const selectedAssetAnalysisReady = selectedAnalysisRow?.analysisStatus === 'completed';
+  const selectedAssetNeedsAnalysis = analyzableSelectedAssetIds.length > 0 && !selectedAssetAnalysisReady;
 
   useEffect(() => {
     if (!selectedAssetId && assets[0]) {
@@ -463,20 +752,46 @@ export function MediaView() {
     );
   };
 
+  const runAnalysis = async (assetIds: string[], mode: 'all' | 'selected') => {
+    if (processingAnalysis || assetIds.length === 0) {
+      return;
+    }
+
+    setLaunchLocked(true);
+    const queuedJobs = await api.jobs.runAnalysis({ project, projectRoot: projectRoot ?? '.', assetIds });
+    const job = queuedJobs[0];
+
+    if (job?.status === 'queued' || job?.status === 'running') {
+      addNotification(
+        activeAnalysisJob
+          ? 'Analysis is already running. Cancel the active job before starting another.'
+          : `Queued ${mode === 'all' ? 'library' : 'selected'} analysis for ${assetIds.length} asset${assetIds.length === 1 ? '' : 's'}.`,
+        activeAnalysisJob ? 'warn' : 'success',
+        activeAnalysisJob ? 3200 : 1800
+      );
+    }
+
+    window.setTimeout(() => {
+      setLaunchLocked(false);
+    }, 500);
+  };
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(320px, 0.75fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-      <Panel title="Media Library" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(340px, 0.9fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+      <Panel title="Media Library" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <ToolbarButton primary onClick={() => void importMedia()}>Import Media</ToolbarButton>
           <ToolbarButton onClick={() => void importMusic()}>Import Music</ToolbarButton>
           <ToolbarButton onClick={() => void importTransitionMasks()}>Import Masks</ToolbarButton>
           <ToolbarButton onClick={() => void importTransitionOverlays()}>Import Overlays</ToolbarButton>
+        </div>
+        <div style={{ marginBottom: 16 }}>
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by filename or tag"
             style={{
-              flex: 1,
+              width: '100%',
               borderRadius: 999,
               border: '1px solid rgba(255,255,255,0.08)',
               background: 'rgba(13, 16, 22, 0.92)',
@@ -488,7 +803,7 @@ export function MediaView() {
         {assets.length > 0 ? (
           <VirtualList
             items={assets}
-            estimateSize={94}
+            estimateSize={86}
             height="100%"
             renderItem={(asset) => (
               <button
@@ -512,18 +827,23 @@ export function MediaView() {
                   padding: 14
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                  <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700 }}>{asset.label ?? asset.filename}</div>
-                    <div style={{ color: muted, fontSize: 13 }}>{asset.path.absolutePath}</div>
+                    <div style={{ color: muted, fontSize: 12, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {formatAssetListSubline(asset)}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <span style={pillStyle()}>{asset.mediaType}</span>
-                    <span style={pillStyle(asset.assetRole === 'transition-mask' || asset.assetRole === 'transition-overlay' ? 'warn' : asset.assetRole === 'music' ? 'success' : undefined)}>
-                      {asset.assetRole ?? 'source'}
-                    </span>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
                     <span style={pillStyle(asset.analysisStatus === 'completed' ? 'success' : 'warn')}>{asset.analysisStatus}</span>
                   </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                  <span style={pillStyle()}>{asset.mediaType}</span>
+                  <span style={pillStyle(asset.assetRole === 'transition-mask' || asset.assetRole === 'transition-overlay' ? 'warn' : asset.assetRole === 'music' ? 'success' : undefined)}>
+                    {asset.assetRole ?? 'source'}
+                  </span>
+                  {asset.durationMs ? <span style={pillStyle()}>{formatMillisecondsClock(asset.durationMs)}</span> : null}
                 </div>
               </button>
             )}
@@ -544,66 +864,180 @@ export function MediaView() {
         )}
       </Panel>
 
-      <Panel title="Asset Inspector" style={{ minHeight: 0 }}>
-        {selectedAsset ? (
-          <div style={{ display: 'grid', gap: 14 }}>
-            {selectedAsset.mediaType === 'image' ? (
-              <img
-                src={toMediaSrc(selectedAsset.path.absolutePath)}
-                alt={selectedAsset.label ?? selectedAsset.filename}
-                style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 18, background: '#090a0d' }}
-              />
-            ) : selectedAsset.mediaType === 'audio' ? (
-              <div style={{ borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,10,13,0.92)', padding: 18 }}>
-                <audio controls src={toMediaSrc(selectedAsset.path.absolutePath)} style={{ width: '100%' }} />
+      <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) minmax(260px, 0.95fr)', gap: 16, minHeight: 0 }}>
+        <Panel title="Asset Inspector" bodyStyle={{ minHeight: 0 }}>
+          {selectedAsset ? (
+            <div style={{ display: 'grid', gap: 14 }}>
+              {selectedAsset.mediaType === 'image' ? (
+                <img
+                  src={toMediaSrc(selectedAsset.path.absolutePath)}
+                  alt={selectedAsset.label ?? selectedAsset.filename}
+                  style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 18, background: '#090a0d' }}
+                />
+              ) : selectedAsset.mediaType === 'audio' ? (
+                <div style={{ borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,10,13,0.92)', padding: 18 }}>
+                  <audio controls src={toMediaSrc(selectedAsset.path.absolutePath)} style={{ width: '100%' }} />
+                </div>
+              ) : (
+                <video
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                  src={toMediaSrc(selectedAsset.path.absolutePath)}
+                  style={{ width: '100%', borderRadius: 18, background: '#090a0d', aspectRatio: '16 / 9' }}
+                />
+              )}
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{selectedAsset.label ?? selectedAsset.filename}</div>
+                <div style={{ color: muted, fontSize: 13, marginTop: 6, lineHeight: 1.6 }}>{selectedAsset.path.absolutePath}</div>
               </div>
-            ) : (
-              <video
-                controls
-                muted
-                playsInline
-                preload="metadata"
-                src={toMediaSrc(selectedAsset.path.absolutePath)}
-                style={{ width: '100%', borderRadius: 18, background: '#090a0d', aspectRatio: '16 / 9' }}
-              />
-            )}
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{selectedAsset.label ?? selectedAsset.filename}</div>
-              <div style={{ color: muted, fontSize: 13, marginTop: 6, lineHeight: 1.6 }}>{selectedAsset.path.absolutePath}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span style={pillStyle()}>{selectedAsset.mediaType}</span>
+                <span style={pillStyle(selectedAsset.assetRole === 'music' ? 'success' : selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? 'warn' : 'default')}>
+                  {selectedAsset.assetRole ?? 'source'}
+                </span>
+                {selectedAsset.mediaType !== 'image' ? (
+                  <span style={pillStyle(selectedAssetAnalysisReady ? 'success' : 'warn')}>{selectedAsset.analysisStatus}</span>
+                ) : null}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                <StatCard label="Duration" value={selectedAsset.durationMs ? formatMillisecondsDetail(selectedAsset.durationMs) : 'Unknown'} />
+                <StatCard label="Tags" value={String(selectedAsset.tags?.length ?? 0)} tone={(selectedAsset.tags?.length ?? 0) > 0 ? 'success' : 'default'} />
+              </div>
+              <div style={{ color: muted, lineHeight: 1.6 }}>
+                {selectedAsset.mediaType === 'image'
+                  ? 'Images skip analysis and stay available as design or transition assets.'
+                  : selectedAsset.assetRole === 'music'
+                    ? selectedAssetAnalysisReady
+                      ? 'Music analysis is ready. Open Music Sync to work from detected change and sync events.'
+                      : 'Run analysis first to extract change and sync events before working in Music Sync.'
+                    : selectedAssetAnalysisReady
+                      ? 'Analysis is ready. Move into Cut Review to work with generated candidates.'
+                      : 'Run analysis to generate sidecars and cut candidates for this source asset.'}
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {selectedAsset.mediaType === 'image' ? null : selectedAsset.assetRole === 'music' ? (
+                  selectedAssetAnalysisReady ? (
+                    <>
+                      <ToolbarButton primary onClick={() => setCurrentTab('music')}>Open Music Sync</ToolbarButton>
+                      <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
+                        Re-analyze
+                      </ToolbarButton>
+                    </>
+                  ) : (
+                    <ToolbarButton
+                      primary
+                      onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
+                      disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
+                    >
+                      {processingAnalysis ? 'Processing…' : 'Analyze Music'}
+                    </ToolbarButton>
+                  )
+                ) : selectedAssetAnalysisReady ? (
+                  <>
+                    <ToolbarButton primary onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
+                    <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
+                      Re-analyze
+                    </ToolbarButton>
+                  </>
+                ) : (
+                  <ToolbarButton
+                    primary
+                    onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
+                    disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
+                  >
+                    {processingAnalysis ? 'Processing…' : 'Analyze Selected'}
+                  </ToolbarButton>
+                )}
+                {selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? (
+                  <ToolbarButton onClick={() => setCurrentTab('sequence')}>Open Sequence Builder</ToolbarButton>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted, textAlign: 'center', padding: 24 }}>
+              Select an asset to inspect its path, preview, and where it fits in the workflow.
+            </div>
+          )}
+        </Panel>
+
+        <Panel title="Analysis Queue" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', gap: 12, minHeight: 0 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+              <StatCard label="Ready" value={String(completedAnalysisCount)} tone={completedAnalysisCount > 0 ? 'success' : 'default'} />
+              <StatCard label="Remaining" value={String(pendingAnalysisCount)} tone={pendingAnalysisCount > 0 ? 'warn' : 'success'} />
+              <StatCard label="Active Jobs" value={String(visibleAnalysisJobs.length)} tone={visibleAnalysisJobs.length > 0 ? 'warn' : 'default'} />
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <span style={pillStyle()}>{selectedAsset.mediaType}</span>
-              <span style={pillStyle(selectedAsset.assetRole === 'music' ? 'success' : selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? 'warn' : 'default')}>
-                {selectedAsset.assetRole ?? 'source'}
-              </span>
-              <span style={pillStyle(selectedAsset.analysisStatus === 'completed' ? 'success' : 'warn')}>{selectedAsset.analysisStatus}</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-              <StatCard label="Duration" value={selectedAsset.durationMs ? `${selectedAsset.durationMs}ms` : 'Unknown'} />
-              <StatCard label="Tags" value={String(selectedAsset.tags?.length ?? 0)} tone={(selectedAsset.tags?.length ?? 0) > 0 ? 'success' : 'default'} />
-            </div>
-            <div style={{ color: muted, lineHeight: 1.6 }}>
-              {selectedAsset.assetRole === 'music'
-                ? 'Music assets become available in Music Sync immediately.'
-                : selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay'
-                  ? 'Transition assets show up in Sequence Builder once clips exist.'
-                  : 'Source assets should move through Analysis, then Cuts, before they land in a sequence.'}
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <ToolbarButton primary onClick={() => setCurrentTab(selectedAsset.assetRole === 'music' ? 'music' : 'analysis')}>
-                {selectedAsset.assetRole === 'music' ? 'Open Music Sync' : 'Open Analysis'}
+              <ToolbarButton primary onClick={() => void runAnalysis(pendingAnalysisAssetIds, 'all')} disabled={processingAnalysis || pendingAnalysisAssetIds.length === 0}>
+                {processingAnalysis ? 'Processing…' : pendingAnalysisAssetIds.length > 0 ? 'Analyze Remaining' : 'All Ready'}
               </ToolbarButton>
-              {selectedAsset.assetRole !== 'music' ? (
-                <ToolbarButton onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
+              {selectedAssetNeedsAnalysis ? (
+                <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
+                  Analyze Selected
+                </ToolbarButton>
               ) : null}
+              <ToolbarButton onClick={() => setCurrentTab('cuts')} disabled={completedAnalysisCount === 0}>Open Cut Review</ToolbarButton>
             </div>
           </div>
-        ) : (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted, textAlign: 'center', padding: 24 }}>
-            Select an asset to inspect its path, preview, and where it fits in the workflow.
+          {visibleAnalysisJobs.length > 0 ? (
+            <div className="studio-scrollable" style={{ display: 'grid', gap: 8, maxHeight: 132 }}>
+              {visibleAnalysisJobs.map((job) => (
+                <JobRow key={job.id} job={job} />
+              ))}
+            </div>
+          ) : null}
+          <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
+            {queuedAnalysisRows.length > 0 ? queuedAnalysisRows.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => selectAsset(row.id)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  border: row.id === selectedAnalysisRow?.id ? '1px solid rgba(136, 160, 191, 0.55)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 14,
+                  padding: 12,
+                  background: row.id === selectedAnalysisRow?.id ? 'rgba(114, 133, 166, 0.12)' : 'rgba(255,255,255,0.03)',
+                  color: '#f6f7f9'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>{row.label}</div>
+                    <div style={{ color: muted, fontSize: 12, marginTop: 4 }}>{formatPathTail(row.path)}</div>
+                  </div>
+                  <span style={pillStyle(row.analysisStatus === 'completed' ? 'success' : 'warn')}>{row.analysisStatus}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                  <span style={pillStyle()}>{row.mediaType}</span>
+                  <span style={pillStyle()}>{formatMillisecondsClock(row.durationMs)}</span>
+                  {row.changeEventCount > 0 ? <span style={pillStyle()}>{row.changeEventCount} changes</span> : null}
+                  {row.syncEventCount > 0 ? <span style={pillStyle()}>{row.syncEventCount} sync</span> : null}
+                  {row.sidecarCount > 0 ? <span style={pillStyle()}>{row.sidecarCount} sidecar{row.sidecarCount === 1 ? '' : 's'}</span> : null}
+                </div>
+              </button>
+            )) : (
+              <div style={{ border: '1px dashed rgba(159, 225, 193, 0.24)', borderRadius: 18, minHeight: 180, display: 'grid', placeItems: 'center', padding: 20, background: 'linear-gradient(180deg, rgba(14, 30, 24, 0.32), rgba(11, 16, 14, 0.16))' }}>
+                <div style={{ maxWidth: 360, textAlign: 'center' }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>All analyzable media is ready</div>
+                  <div style={{ color: muted, lineHeight: 1.6, marginBottom: 16 }}>
+                    The media workspace no longer keeps completed assets in the queue. Completed assets stay in the library and inspector, and reruns happen from the selected asset.
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <ToolbarButton primary onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
+                    {selectedAssetAnalysisReady && analyzableSelectedAssetIds.length > 0 ? (
+                      <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>Re-analyze Selected</ToolbarButton>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </Panel>
+        </Panel>
+      </div>
     </div>
   );
 }
@@ -880,7 +1314,7 @@ export function AnalysisView() {
           )}
         </div>
       </Panel>
-      <Panel title="Analysis" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Analysis" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         <div className="studio-scrollable" style={{
           overflow: 'auto',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -970,8 +1404,12 @@ export function CutsView() {
   const addCutToSequence = useProjectSessionStore((state) => state.addCutToSequence);
   const updateCutStatus = useProjectSessionStore((state) => state.updateCutStatus);
   const toggleCutFavorite = useProjectSessionStore((state) => state.toggleCutFavorite);
+  const trimCutAction = useProjectSessionStore((state) => state.trimCut);
   const [query, setQuery] = useState('');
   const [brokenThumbnailPaths, setBrokenThumbnailPaths] = useState<Set<string>>(() => new Set());
+  const [draftStartMs, setDraftStartMs] = useState(0);
+  const [draftEndMs, setDraftEndMs] = useState(1);
+  const [previewCurrentMs, setPreviewCurrentMs] = useState(0);
   const deferredQuery = useDeferredValue(query);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const assetLabels = useMemo(() => new Map(project.assets.map((asset) => [asset.id, asset.label ?? asset.filename])), [project.assets]);
@@ -990,6 +1428,9 @@ export function CutsView() {
   );
   const selectedCutIndex = selectedCut ? cuts.findIndex((cut) => cut.id === selectedCut.id) : -1;
   const selectedAsset = selectedCut ? assetById.get(selectedCut.assetId) : undefined;
+  const previewDurationMs = Math.max(selectedAsset?.durationMs ?? 0, selectedCut?.endMs ?? 0, 1);
+  const draftDurationMs = Math.max(1, draftEndMs - draftStartMs);
+  const hasDraftChanges = Boolean(selectedCut && (draftStartMs !== selectedCut.startMs || draftEndMs !== selectedCut.endMs));
   const markThumbnailBroken = (thumbnailPath?: string) => {
     if (!thumbnailPath) {
       return;
@@ -1016,8 +1457,69 @@ export function CutsView() {
   };
 
   const reviewCut = (cutId: string, status: 'kept' | 'rejected') => {
+    if (status === 'kept' && selectedCut?.id === cutId && hasDraftChanges) {
+      trimCutAction(cutId, draftStartMs, draftEndMs);
+    }
     updateCutStatus(cutId, status);
     selectRelativeCut(cutId, 1);
+  };
+
+  const seekPreview = (nextTimeMs: number) => {
+    const clampedTimeMs = clamp(nextTimeMs, 0, previewDurationMs);
+    const video = previewRef.current;
+    if (video) {
+      video.currentTime = clampedTimeMs / 1000;
+    }
+    setPreviewCurrentMs(clampedTimeMs);
+  };
+
+  const updateDraftRange = (
+    nextStartMs: number,
+    nextEndMs: number,
+    options: { snapTo?: 'start' | 'end' } = {}
+  ) => {
+    const safeStartMs = clamp(Math.min(nextStartMs, nextEndMs - 1), 0, Math.max(previewDurationMs - 1, 0));
+    const safeEndMs = clamp(Math.max(nextEndMs, safeStartMs + 1), safeStartMs + 1, previewDurationMs);
+
+    setDraftStartMs(safeStartMs);
+    setDraftEndMs(safeEndMs);
+
+    if (options.snapTo === 'start') {
+      seekPreview(safeStartMs);
+      return;
+    }
+
+    if (options.snapTo === 'end') {
+      seekPreview(safeEndMs);
+      return;
+    }
+
+    if (previewCurrentMs < safeStartMs || previewCurrentMs > safeEndMs) {
+      seekPreview(safeStartMs);
+    }
+  };
+
+  const applyDraftTrim = (options: { notify?: boolean } = {}) => {
+    if (!selectedCut || !hasDraftChanges) {
+      return false;
+    }
+
+    trimCutAction(selectedCut.id, draftStartMs, draftEndMs);
+    if (options.notify) {
+      addNotification(`Trimmed ${selectedCut.id} to ${formatMillisecondsClock(draftDurationMs)}.`, 'success', 1600);
+    }
+    return true;
+  };
+
+  const addSelectedCutToSequence = () => {
+    if (!selectedCut) {
+      return;
+    }
+
+    applyDraftTrim();
+    addCutToSequence(selectedCut.id);
+    addNotification(`Added ${selectedCut.id} to sequence.`, 'success', 1200);
+    selectRelativeCut(selectedCut.id, 1);
   };
 
   useEffect(() => {
@@ -1032,18 +1534,36 @@ export function CutsView() {
   }, [cuts, selectCut, selectedCut, selectedCutId]);
 
   useEffect(() => {
+    if (!selectedCut) {
+      setDraftStartMs(0);
+      setDraftEndMs(1);
+      setPreviewCurrentMs(0);
+      return;
+    }
+
+    setDraftStartMs(selectedCut.startMs);
+    setDraftEndMs(selectedCut.endMs);
+    setPreviewCurrentMs(selectedCut.startMs);
+  }, [selectedCut?.id, selectedCut?.startMs, selectedCut?.endMs]);
+
+  useEffect(() => {
     const video = previewRef.current;
     if (!video || !selectedCut) {
       return;
     }
 
-    const syncToCut = () => {
-      video.currentTime = selectedCut.startMs / 1000;
+    const syncToDraftStart = () => {
+      video.currentTime = draftStartMs / 1000;
+      setPreviewCurrentMs(draftStartMs);
     };
 
     const loopWithinCut = () => {
-      if (video.currentTime >= (selectedCut.endMs / 1000) - 0.03) {
-        video.currentTime = selectedCut.startMs / 1000;
+      const currentTimeMs = Math.round(video.currentTime * 1000);
+      setPreviewCurrentMs(currentTimeMs);
+
+      if (currentTimeMs >= draftEndMs - 30) {
+        video.currentTime = draftStartMs / 1000;
+        setPreviewCurrentMs(draftStartMs);
         if (video.paused) {
           return;
         }
@@ -1052,23 +1572,27 @@ export function CutsView() {
     };
 
     const onLoadedMetadata = () => {
-      syncToCut();
+      syncToDraftStart();
       void video.play().catch(() => undefined);
     };
 
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('timeupdate', loopWithinCut);
-    syncToCut();
 
     if (video.readyState >= 1) {
-      onLoadedMetadata();
+      const currentTimeMs = Math.round(video.currentTime * 1000);
+      if (currentTimeMs < draftStartMs || currentTimeMs > draftEndMs) {
+        syncToDraftStart();
+      } else {
+        setPreviewCurrentMs(currentTimeMs);
+      }
     }
 
     return () => {
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('timeupdate', loopWithinCut);
     };
-  }, [selectedCut?.id, selectedCut?.startMs, selectedCut?.endMs]);
+  }, [draftEndMs, draftStartMs, selectedCut?.id]);
 
   useEffect(() => {
     if (currentTab !== 'cuts' || cuts.length === 0) {
@@ -1118,9 +1642,7 @@ export function CutsView() {
 
       if (event.key === 'Enter') {
         event.preventDefault();
-        addCutToSequence(selectedCut.id);
-        addNotification(`Added ${selectedCut.id} to sequence.`, 'success', 1200);
-        selectRelativeCut(selectedCut.id, 1);
+        addSelectedCutToSequence();
         return;
       }
 
@@ -1136,17 +1658,276 @@ export function CutsView() {
           video.pause();
         }
       }
+
+      if (event.key.toLowerCase() === 'i') {
+        event.preventDefault();
+        updateDraftRange(previewCurrentMs, draftEndMs, { snapTo: 'start' });
+        return;
+      }
+
+      if (event.key.toLowerCase() === 'o') {
+        event.preventDefault();
+        updateDraftRange(draftStartMs, previewCurrentMs, { snapTo: 'end' });
+      }
     };
 
     window.addEventListener('keydown', handler);
     return () => {
       window.removeEventListener('keydown', handler);
     };
-  }, [addCutToSequence, addNotification, currentTab, cuts, selectCut, selectedCut, updateCutStatus]);
+  }, [addSelectedCutToSequence, currentTab, cuts, draftEndMs, draftStartMs, previewCurrentMs, selectCut, selectedCut, updateCutStatus]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(360px, 0.85fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-      <Panel title="Cut Browser" style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.36fr) minmax(360px, 0.86fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+      <Panel title="Cut Prep" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+        {selectedCut && selectedAsset ? (
+          <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 14, minHeight: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start', flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent, fontWeight: 800 }}>Prep Before Sequence</div>
+                <div
+                  title={selectedCut.id}
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 800,
+                    marginTop: 4,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}
+                >
+                  {formatCutDisplayId(selectedCut.id)}
+                </div>
+                <div style={{ color: muted, fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+                  {assetLabels.get(selectedCut.assetId) ?? selectedCut.assetId}
+                  {(selectedCut.tags?.length ?? 0) > 0 ? ` • ${(selectedCut.tags ?? []).join(', ')}` : ''}
+                </div>
+                <div title={selectedCut.id} style={{ color: muted, fontSize: 12, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedCut.id}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <span style={pillStyle(selectedCut.favorite ? 'success' : 'default')}>{selectedCut.favorite ? 'favorite' : (selectedCut.status ?? 'new')}</span>
+                {hasDraftChanges ? <span style={pillStyle('warn')}>trim pending</span> : null}
+                <span style={pillStyle()}>{formatMillisecondsClock(draftDurationMs)}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) auto', gap: 14, minHeight: 0 }}>
+              <div
+                style={{
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 20,
+                  padding: 18,
+                  background: 'linear-gradient(180deg, rgba(13, 17, 24, 0.95), rgba(10, 13, 18, 0.92))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 0,
+                  overflow: 'hidden'
+                }}
+              >
+                <video
+                  ref={previewRef}
+                  key={`${selectedCut.id}:${selectedAsset.path.absolutePath}`}
+                  controls
+                  muted
+                  playsInline
+                  preload="metadata"
+                  src={toMediaSrc(selectedAsset.path.absolutePath)}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    borderRadius: 18,
+                    background: '#090a0d',
+                    objectFit: 'contain'
+                  }}
+                />
+              </div>
+
+              <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, padding: 16, background: 'linear-gradient(180deg, rgba(13, 17, 24, 0.97), rgba(10, 13, 18, 0.94))', display: 'grid', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+                  <StatCard label="In" value={formatMillisecondsClock(draftStartMs)} />
+                  <StatCard label="Out" value={formatMillisecondsClock(draftEndMs)} />
+                  <StatCard label="Selected" value={formatMillisecondsClock(draftDurationMs)} tone={hasDraftChanges ? 'warn' : 'default'} />
+                  <StatCard label="Asset" value={formatMillisecondsClock(previewDurationMs)} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, 0.7fr)', gap: 14, alignItems: 'start' }}>
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, color: muted, fontSize: 12, marginBottom: 12 }}>
+                        <span>Source timeline</span>
+                        <span>Playhead {formatMillisecondsDetail(previewCurrentMs)}</span>
+                      </div>
+                      <div style={{ position: 'relative', height: 58, borderRadius: 18, overflow: 'hidden', background: 'linear-gradient(90deg, rgba(83, 99, 122, 0.28), rgba(102, 152, 135, 0.18), rgba(119, 102, 156, 0.24))', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '5% 100%' }} />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 8,
+                            bottom: 8,
+                            left: `${(draftStartMs / previewDurationMs) * 100}%`,
+                            width: `${Math.max(((draftEndMs - draftStartMs) / previewDurationMs) * 100, 0.8)}%`,
+                            borderRadius: 14,
+                            background: 'linear-gradient(90deg, rgba(136,160,191,0.9), rgba(122, 193, 165, 0.76))',
+                            boxShadow: '0 10px 24px rgba(0, 0, 0, 0.18)'
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: `${(draftStartMs / previewDurationMs) * 100}%`,
+                            top: 5,
+                            width: 3,
+                            height: 48,
+                            background: '#d8e7fb',
+                            boxShadow: '0 0 0 1px rgba(10,13,18,0.9)'
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: `${(draftEndMs / previewDurationMs) * 100}%`,
+                            top: 5,
+                            width: 3,
+                            height: 48,
+                            background: '#d8e7fb',
+                            boxShadow: '0 0 0 1px rgba(10,13,18,0.9)'
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: `${(previewCurrentMs / previewDurationMs) * 100}%`,
+                            top: 0,
+                            width: 2,
+                            height: '100%',
+                            background: '#f6f7f9',
+                            boxShadow: '0 0 0 1px rgba(10,13,18,0.9)'
+                          }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: muted, fontSize: 12, marginTop: 10 }}>
+                        <span>0</span>
+                        <span>{formatMillisecondsDetail(draftStartMs)}</span>
+                        <span>{formatMillisecondsDetail(draftEndMs)}</span>
+                        <span>{formatMillisecondsDetail(previewDurationMs)}</span>
+                      </div>
+                    </div>
+
+                    <label style={{ display: 'grid', gap: 6, color: muted, fontSize: 12 }}>
+                      Scrub source
+                      <input
+                        type="range"
+                        min={0}
+                        max={previewDurationMs}
+                        step={10}
+                        value={clamp(previewCurrentMs, 0, previewDurationMs)}
+                        onChange={(event) => seekPreview(Number(event.target.value))}
+                      />
+                    </label>
+
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: muted, fontSize: 12 }}>
+                          <span>Mark in</span>
+                          <span>{formatMillisecondsDetail(draftStartMs)}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr) 72px', gap: 8, alignItems: 'center' }}>
+                          <ToolbarButton onClick={() => updateDraftRange(draftStartMs - 100, draftEndMs, { snapTo: 'start' })}>-100</ToolbarButton>
+                          <input
+                            type="range"
+                            min={0}
+                            max={Math.max(draftEndMs - 1, 1)}
+                            step={10}
+                            value={Math.min(draftStartMs, Math.max(draftEndMs - 1, 1))}
+                            onChange={(event) => updateDraftRange(Number(event.target.value), draftEndMs, { snapTo: 'start' })}
+                          />
+                          <ToolbarButton onClick={() => updateDraftRange(draftStartMs + 100, draftEndMs, { snapTo: 'start' })}>+100</ToolbarButton>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: muted, fontSize: 12 }}>
+                          <span>Mark out</span>
+                          <span>{formatMillisecondsDetail(draftEndMs)}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr) 72px', gap: 8, alignItems: 'center' }}>
+                          <ToolbarButton onClick={() => updateDraftRange(draftStartMs, draftEndMs - 100, { snapTo: 'end' })}>-100</ToolbarButton>
+                          <input
+                            type="range"
+                            min={Math.min(draftStartMs + 1, previewDurationMs)}
+                            max={previewDurationMs}
+                            step={10}
+                            value={clamp(draftEndMs, Math.min(draftStartMs + 1, previewDurationMs), previewDurationMs)}
+                            onChange={(event) => updateDraftRange(draftStartMs, Number(event.target.value), { snapTo: 'end' })}
+                          />
+                          <ToolbarButton onClick={() => updateDraftRange(draftStartMs, draftEndMs + 100, { snapTo: 'end' })}>+100</ToolbarButton>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                      <ToolbarButton onClick={() => {
+                        const video = previewRef.current;
+                        if (!video) {
+                          return;
+                        }
+                        if (video.paused) {
+                          void video.play().catch(() => undefined);
+                        } else {
+                          video.pause();
+                        }
+                      }}
+                      >
+                        Play / Pause
+                      </ToolbarButton>
+                      <ToolbarButton onClick={() => updateDraftRange(previewCurrentMs, draftEndMs, { snapTo: 'start' })}>Set In @ Playhead</ToolbarButton>
+                      <ToolbarButton onClick={() => updateDraftRange(draftStartMs, previewCurrentMs, { snapTo: 'end' })}>Set Out @ Playhead</ToolbarButton>
+                      <ToolbarButton onClick={() => seekPreview(draftStartMs)}>Jump In</ToolbarButton>
+                      <ToolbarButton onClick={() => seekPreview(draftEndMs)}>Jump Out</ToolbarButton>
+                      <ToolbarButton disabled={!hasDraftChanges} onClick={() => {
+                        if (!selectedCut) {
+                          return;
+                        }
+                        setDraftStartMs(selectedCut.startMs);
+                        setDraftEndMs(selectedCut.endMs);
+                        seekPreview(selectedCut.startMs);
+                      }}
+                      >
+                        Reset
+                      </ToolbarButton>
+                      <ToolbarButton primary disabled={!hasDraftChanges} onClick={() => applyDraftTrim({ notify: true })}>Apply Trim</ToolbarButton>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+                      <ToolbarButton onClick={() => reviewCut(selectedCut.id, 'rejected')}>Reject</ToolbarButton>
+                      <ToolbarButton onClick={() => reviewCut(selectedCut.id, 'kept')}>Keep</ToolbarButton>
+                      <ToolbarButton primary onClick={addSelectedCutToSequence}>Add To Sequence</ToolbarButton>
+                      <ToolbarButton onClick={() => toggleCutFavorite(selectedCut.id)}>Favorite</ToolbarButton>
+                    </div>
+
+                    <div style={{ color: muted, fontSize: 12, lineHeight: 1.6 }}>
+                      `Right` keep, `Left` reject, `Up/Down` navigate, `Enter` add, `Space` play/pause, `I` set in, `O` set out.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted }}>
+            Select a cut to preview it.
+          </div>
+        )}
+      </Panel>
+
+      <Panel title="Cut Browser" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -1162,35 +1943,49 @@ export function CutsView() {
           }}
         />
         <div style={{ color: muted, fontSize: 12, marginBottom: 12 }}>
-          `Right` keep, `Left` reject, `Up/Down` navigate, `Enter` add to sequence, `Space` play/pause.
+          {cuts.length} cuts ready for review.
         </div>
         <VirtualList
           items={cuts}
-          estimateSize={176}
+          estimateSize={122}
           activeIndex={selectedCutIndex}
           height="100%"
           renderItem={(cut) => {
             const hasWorkingThumbnail = !!cut.thumbnailPath && !brokenThumbnailPaths.has(cut.thumbnailPath);
+            const cutStatusTone = cut.status === 'kept'
+              ? 'success'
+              : cut.status === 'rejected'
+                ? 'warn'
+                : cut.favorite
+                  ? 'success'
+                  : 'default';
+            const assetLabel = assetLabels.get(cut.assetId) ?? cut.assetId;
 
             return (
-              <div style={{
-                border: cut.id === selectedCut?.id ? '1px solid rgba(136,160,191,0.85)' : '1px solid rgba(255,255,255,0.08)',
-                boxShadow: cut.id === selectedCut?.id ? '0 0 0 1px rgba(136,160,191,0.22)' : 'none',
-                borderRadius: 16,
-                padding: 14,
-                background: cut.id === selectedCut?.id ? 'rgba(114,133,166,0.12)' : 'rgba(255,255,255,0.03)'
-              }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '160px minmax(0, 1fr)', gap: 14 }}>
-                  <button
-                    type="button"
-                    onClick={() => selectCut(cut.id)}
+              <button
+                type="button"
+                onClick={() => selectCut(cut.id)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  border: cut.id === selectedCut?.id ? '1px solid rgba(136,160,191,0.85)' : '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: cut.id === selectedCut?.id ? '0 0 0 1px rgba(136,160,191,0.22)' : 'none',
+                  borderRadius: 16,
+                  padding: 12,
+                  background: cut.id === selectedCut?.id ? 'rgba(114,133,166,0.12)' : 'rgba(255,255,255,0.03)',
+                  color: '#f6f7f9',
+                  overflow: 'hidden'
+                }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '104px minmax(0, 1fr)', gap: 12, alignItems: 'center' }}>
+                  <div
                     style={{
                       border: '1px solid rgba(255,255,255,0.08)',
                       background: 'rgba(10, 12, 18, 0.92)',
                       borderRadius: 14,
                       padding: 0,
                       overflow: 'hidden',
-                      aspectRatio: '16 / 9'
+                      aspectRatio: '16 / 9',
+                      minHeight: 58
                     }}
                   >
                     {hasWorkingThumbnail ? (
@@ -1207,75 +2002,62 @@ export function CutsView() {
                         {cut.thumbnailPath ? 'Thumbnail unavailable' : 'No thumbnail'}
                       </div>
                     )}
-                  </button>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                      <button type="button" onClick={() => selectCut(cut.id)} style={{ background: 'transparent', border: 'none', color: '#f6f7f9', textAlign: 'left', padding: 0, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700 }}>{cut.id}</div>
-                        <div style={{ color: muted, fontSize: 13 }}>{assetLabels.get(cut.assetId) ?? cut.assetId}</div>
-                      </button>
-                      <span style={pillStyle(cut.favorite ? 'success' : 'default')}>{cut.status}</span>
+                  </div>
+                  <div style={{ minWidth: 0, display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 10 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ color: accent, fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                          {formatCutDisplayId(cut.id)}
+                        </div>
+                        <div
+                          title={assetLabel}
+                          style={{
+                            fontWeight: 700,
+                            marginTop: 4,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          {assetLabel}
+                        </div>
+                        <div
+                          title={cut.id}
+                          style={{
+                            color: muted,
+                            fontSize: 12,
+                            marginTop: 4,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          {cut.id}
+                        </div>
+                      </div>
+                      <span style={pillStyle(cutStatusTone)}>{cut.status ?? 'new'}</span>
                     </div>
-                    <div style={{ color: muted, fontSize: 13, marginTop: 8 }}>
-                      {cut.startMs}ms {'->'} {cut.endMs}ms • {cut.durationMs}ms
+                    <div
+                      style={{
+                        color: muted,
+                        fontSize: 12,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      {formatMillisecondsClock(cut.startMs)} {'->'} {formatMillisecondsClock(cut.endMs)} • {formatMillisecondsClock(cut.durationMs)}
                     </div>
-                    <div style={{ color: muted, fontSize: 13, marginTop: 4 }}>
-                      {cut.sceneScore !== undefined ? `scene score ${cut.sceneScore.toFixed(3)}` : 'no scene score'}{hasWorkingThumbnail ? ' • thumbnail ready' : cut.thumbnailPath ? ' • thumbnail missing' : ''}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {cut.favorite ? <span style={pillStyle('success')}>favorite</span> : null}
+                      {cut.sceneScore !== undefined ? <span style={pillStyle()}>scene {cut.sceneScore.toFixed(2)}</span> : null}
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                  <ToolbarButton onClick={() => addCutToSequence(cut.id)}>Add</ToolbarButton>
-                  <ToolbarButton onClick={() => reviewCut(cut.id, 'kept')}>Keep</ToolbarButton>
-                  <ToolbarButton onClick={() => reviewCut(cut.id, 'rejected')}>Reject</ToolbarButton>
-                  <ToolbarButton onClick={() => toggleCutFavorite(cut.id)}>Favorite</ToolbarButton>
-                </div>
-              </div>
+              </button>
             );
           }}
         />
-      </Panel>
-      <Panel title="Cut Preview" style={{ minHeight: 0 }}>
-        {selectedCut && selectedAsset ? (
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div style={{ color: muted, fontSize: 13 }}>
-              {selectedCut.id} • {assetLabels.get(selectedCut.assetId) ?? selectedCut.assetId}
-            </div>
-            <video
-              ref={previewRef}
-              key={`${selectedCut.id}:${selectedAsset.path.absolutePath}`}
-              controls
-              muted
-              playsInline
-              preload="metadata"
-              src={toMediaSrc(selectedAsset.path.absolutePath)}
-              style={{ width: '100%', borderRadius: 18, background: '#090a0d', aspectRatio: '16 / 9' }}
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
-              <StatCard label="Start" value={`${selectedCut.startMs}ms`} />
-              <StatCard label="End" value={`${selectedCut.endMs}ms`} />
-              <StatCard label="Duration" value={`${selectedCut.durationMs}ms`} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-              <ToolbarButton onClick={() => reviewCut(selectedCut.id, 'rejected')}>Reject</ToolbarButton>
-              <ToolbarButton primary onClick={() => reviewCut(selectedCut.id, 'kept')}>Keep</ToolbarButton>
-              <ToolbarButton onClick={() => {
-                addCutToSequence(selectedCut.id);
-                selectRelativeCut(selectedCut.id, 1);
-              }}>Add</ToolbarButton>
-              <ToolbarButton onClick={() => toggleCutFavorite(selectedCut.id)}>Favorite</ToolbarButton>
-            </div>
-            <div style={{ color: muted, fontSize: 13, lineHeight: 1.5 }}>
-              Status: {selectedCut.status}
-              {selectedCut.sceneScore !== undefined ? ` • scene score ${selectedCut.sceneScore.toFixed(3)}` : ''}
-              {(selectedCut.tags?.length ?? 0) > 0 ? ` • tags: ${(selectedCut.tags ?? []).join(', ')}` : ''}
-            </div>
-          </div>
-        ) : (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted }}>
-            Select a cut to preview it.
-          </div>
-        )}
       </Panel>
     </div>
   );
@@ -1343,7 +2125,7 @@ export function SequenceView() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(360px, 0.9fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-      <Panel title="Sequence Builder" style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Sequence Builder" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'grid', gap: 12, marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1528,7 +2310,7 @@ export function SequenceView() {
         </div>
       </Panel>
 
-      <Panel title="Preview" style={{ minHeight: 0 }}>
+      <Panel title="Preview" bodyStyle={{ minHeight: 0 }}>
         <div style={{ marginBottom: 12, color: muted }}>Low-resolution cached preview. Timing is authoritative; image quality is not final render quality.</div>
         {previewPath ? (
           <video
@@ -1688,7 +2470,7 @@ export function StyleView() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16, height: '100%', minHeight: 0 }}>
-      <Panel title="Style Stack" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Style Stack" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           {supportedFilterDefinitions.map((definition) => (
             <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => addFilter(definition.type)}>
@@ -1731,7 +2513,7 @@ export function StyleView() {
       </Panel>
 
       <div style={{ display: 'grid', gap: 16, minHeight: 0 }}>
-        <Panel title="Filter Editor" style={{ minHeight: 0 }}>
+        <Panel title="Filter Editor" bodyStyle={{ minHeight: 0 }}>
           {stack && selectedFilter && selectedFilterDefinition ? (
             <div style={{ display: 'grid', gap: 16 }}>
               <div>
@@ -1771,7 +2553,7 @@ export function StyleView() {
             <div style={{ color: muted }}>Select a supported filter to edit its authored parameters.</div>
           )}
         </Panel>
-        <Panel title="Preset Families" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+        <Panel title="Preset Families" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
           <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
             {presets.map((preset) => (
               <div key={preset.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
@@ -1820,7 +2602,7 @@ export function AutomationView() {
 
   return (
     <div style={{ display: 'grid', gap: 16, height: '100%', minHeight: 0 }}>
-      <Panel title="Automation" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Automation" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <ToolbarButton
             primary
@@ -1952,7 +2734,7 @@ export function ExportView() {
 
   return (
     <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) minmax(220px, 0.75fr)', gap: 16, height: '100%', minHeight: 0 }}>
-      <Panel title="Export Profiles" style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', minHeight: 0 }}>
+      <Panel title="Export Profiles" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           {project.variants.map((candidate, index) => (
             <ToolbarButton key={candidate.id} primary={candidate.id === variant?.id} onClick={() => selectVariant(candidate.id)}>
@@ -1996,7 +2778,7 @@ export function ExportView() {
           }}>Export Selected Sequence</ToolbarButton>
         </div>
       </Panel>
-      <Panel title="Render Queue" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Render Queue" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
           {exportJobs.length > 0 ? exportJobs.map((job) => (
             <JobRow key={job.id} job={job} />
@@ -2035,14 +2817,14 @@ export function DiagnosticsView() {
           ))}
         </div>
       </Panel>
-      <Panel title="Job Log" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Job Log" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
           {jobs.map((job) => (
             <JobRow key={job.id} job={job} />
           ))}
         </div>
       </Panel>
-      <Panel title="Application Log" style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Application Log" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
           {logs.length === 0 ? (
             <div style={{ color: muted }}>No log entries yet.</div>
@@ -2072,8 +2854,6 @@ export function ActiveView() {
       return <ProjectView />;
     case 'media':
       return <MediaView />;
-    case 'analysis':
-      return <AnalysisView />;
     case 'cuts':
       return <CutsView />;
     case 'sequence':

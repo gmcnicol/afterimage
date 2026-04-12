@@ -86,9 +86,11 @@ export interface RunExportRequest extends RunPreviewRequest {
 export interface DesktopApi {
   project: {
     getInitialState: () => Promise<ProjectSessionSnapshot>;
+    subscribeRecentProjects: (listener: (recentProjects: string[]) => void) => () => void;
     createProject: (options?: { name?: string }) => Promise<ProjectSessionSnapshot | null>;
     openProject: () => Promise<ProjectSessionSnapshot | null>;
     openProjectAt: (projectFilePath: string) => Promise<ProjectSessionSnapshot>;
+    removeRecentProject: (projectFilePath: string) => Promise<string[]>;
     saveProject: (input: SaveProjectRequest) => Promise<ProjectSessionSnapshot>;
     saveProjectAs: (input: SaveProjectRequest) => Promise<ProjectSessionSnapshot | null>;
     duplicateProject: (input: SaveProjectRequest) => Promise<ProjectSessionSnapshot | null>;

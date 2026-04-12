@@ -4,7 +4,6 @@ import type { StudioTab } from '../stores/ui-store';
 export const tabs: Array<{ id: StudioTab; label: string }> = [
   { id: 'project', label: 'Project' },
   { id: 'media', label: 'Media' },
-  { id: 'analysis', label: 'Analysis' },
   { id: 'cuts', label: 'Cuts' },
   { id: 'sequence', label: 'Sequence' },
   { id: 'music', label: 'Music' },

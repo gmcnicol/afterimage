@@ -16,8 +16,8 @@ import { ActiveView } from './views';
 
 const shellCss = `
   .studio-shell {
-    min-height: calc(100vh - 48px);
-    height: calc(100vh - 48px);
+    min-height: 100%;
+    height: 100%;
     color: #f6f7f9;
     font-family: "IBM Plex Sans", "Aptos", "Segoe UI Variable Text", sans-serif;
     background:
@@ -29,7 +29,7 @@ const shellCss = `
 
   .studio-shell__frame {
     display: grid;
-    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-columns: 332px minmax(0, 1fr);
     gap: 16px;
     align-items: stretch;
     height: 100%;
@@ -72,7 +72,7 @@ const shellCss = `
   }
 
   .studio-shell__brand {
-    padding: 16px;
+    padding: 18px;
     display: grid;
     gap: 10px;
   }
@@ -177,7 +177,7 @@ const shellCss = `
     background: rgba(255, 255, 255, 0.03);
     color: inherit;
     border-radius: 18px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     text-align: left;
     display: grid;
     gap: 8px;
@@ -244,7 +244,7 @@ const shellCss = `
   .studio-nav__description {
     color: ${muted};
     font-size: 12px;
-    line-height: 1.35;
+    line-height: 1.45;
   }
 
   .studio-nav__status {
@@ -462,6 +462,7 @@ interface NextStep {
   tab: StudioTab;
   label: string;
   reason: string;
+  actionLabel?: string;
 }
 
 interface TabMeta {
@@ -484,15 +485,8 @@ const tabMeta: TabMeta[] = [
     id: 'media',
     label: 'Media',
     group: 'Set Up',
-    description: 'Import source footage, music, masks, and overlays.',
-    guidance: 'Bring in the source material first, then move on once the library looks complete.'
-  },
-  {
-    id: 'analysis',
-    label: 'Analysis',
-    group: 'Set Up',
-    description: 'Queue scene, sync, and sidecar analysis for imported assets.',
-    guidance: 'Run analysis before reviewing cuts so thumbnails, timing, and event tracks are trustworthy.'
+    description: 'Import assets, run analysis, and verify readiness before review.',
+    guidance: 'Bring in source material first, run analysis here, then move on once statuses are ready.'
   },
   {
     id: 'cuts',
@@ -584,14 +578,12 @@ function getTabStatus(tabId: StudioTab, metrics: WorkflowMetrics): { tone: TabSt
     case 'project':
       return metrics.assetCount > 0 ? { tone: 'ready', label: 'active project' } : { tone: 'attention', label: 'save early' };
     case 'media':
-      return metrics.sourceAssetCount > 0 ? { tone: 'ready', label: 'library loaded' } : { tone: 'attention', label: 'needs imports' };
-    case 'analysis':
-      if (metrics.analyzableAssetCount === 0) {
-        return { tone: 'blocked', label: 'nothing queued' };
+      if (metrics.sourceAssetCount === 0) {
+        return { tone: 'attention', label: 'needs imports' };
       }
-      return metrics.pendingAnalysisCount === 0
-        ? { tone: 'ready', label: 'analysis complete' }
-        : { tone: 'attention', label: `${metrics.pendingAnalysisCount} pending` };
+      return metrics.pendingAnalysisCount > 0
+        ? { tone: 'attention', label: `${metrics.pendingAnalysisCount} pending` }
+        : { tone: 'ready', label: 'media ready' };
     case 'cuts':
       if (metrics.cutCount === 0) {
         return { tone: 'blocked', label: 'no candidates' };
@@ -633,9 +625,7 @@ function getTabStatus(tabId: StudioTab, metrics: WorkflowMetrics): { tone: TabSt
 function getTabBadge(tabId: StudioTab, metrics: WorkflowMetrics): string | undefined {
   switch (tabId) {
     case 'media':
-      return metrics.assetCount > 0 ? String(metrics.assetCount) : undefined;
-    case 'analysis':
-      return metrics.pendingAnalysisCount > 0 ? `${metrics.pendingAnalysisCount}` : metrics.analyzableAssetCount > 0 ? `${metrics.analyzedAssetCount}` : undefined;
+      return metrics.pendingAnalysisCount > 0 ? `${metrics.pendingAnalysisCount}` : metrics.assetCount > 0 ? String(metrics.assetCount) : undefined;
     case 'cuts':
       return metrics.cutCount > 0 ? `${metrics.cutCount}` : undefined;
     case 'sequence':
@@ -667,16 +657,18 @@ function getNextStep(metrics: WorkflowMetrics, projectSaved: boolean): NextStep 
   if (metrics.sourceAssetCount === 0) {
     return {
       tab: 'media',
-      label: 'Import source footage',
-      reason: 'The rest of the workflow is blocked until the library has actual material to work from.'
+      label: 'Open Media',
+      reason: 'The rest of the workflow is blocked until the library has actual material to work from.',
+      actionLabel: 'Open Media'
     };
   }
 
   if (metrics.pendingAnalysisCount > 0) {
     return {
-      tab: 'analysis',
-      label: 'Run or finish analysis',
-      reason: 'Cut review and music sync are much clearer once analysis has generated events and summaries.'
+      tab: 'media',
+      label: 'Open Media',
+      reason: 'Run analysis from the Media workspace before moving on to review and sequencing.',
+      actionLabel: 'Open Media'
     };
   }
 
@@ -684,7 +676,8 @@ function getNextStep(metrics: WorkflowMetrics, projectSaved: boolean): NextStep 
     return {
       tab: 'cuts',
       label: 'Review and approve cuts',
-      reason: 'You need a pool of approved material before the sequence builder becomes useful.'
+      reason: 'You need a pool of approved material before the sequence builder becomes useful.',
+      actionLabel: 'Open Cuts'
     };
   }
 
@@ -692,7 +685,8 @@ function getNextStep(metrics: WorkflowMetrics, projectSaved: boolean): NextStep 
     return {
       tab: 'sequence',
       label: 'Build the first sequence',
-      reason: 'Sequence work is the point where reviewed cuts turn into an edit you can audition.'
+      reason: 'Sequence work is the point where reviewed cuts turn into an edit you can audition.',
+      actionLabel: 'Open Sequence'
     };
   }
 
@@ -700,14 +694,16 @@ function getNextStep(metrics: WorkflowMetrics, projectSaved: boolean): NextStep 
     return {
       tab: 'export',
       label: 'Choose delivery formats',
-      reason: 'Render targets are still undefined, so the workstation cannot produce a final output yet.'
+      reason: 'Render targets are still undefined, so the workstation cannot produce a final output yet.',
+      actionLabel: 'Open Export'
     };
   }
 
   return {
     tab: 'export',
-    label: 'Render the current sequence',
-    reason: 'The project is in a deliverable state. Watch the queue and verify output before closing it out.'
+    label: 'Ready to render',
+    reason: 'The project is in a deliverable state. Open Export to run the current sequence.',
+    actionLabel: 'Open Export'
   };
 }
 
@@ -879,7 +875,9 @@ function Header() {
           </div>
           <div className="studio-hero__button-row">
             <ToolbarButton primary onClick={() => setCurrentTab(nextStep.tab)} disabled={currentTab === nextStep.tab}>
-              {currentTab === nextStep.tab ? 'On Recommended Step' : `Go to ${tabMeta.find((tab) => tab.id === nextStep.tab)?.label ?? nextStep.tab}`}
+              {currentTab === nextStep.tab
+                ? 'On Recommended Step'
+                : (nextStep.actionLabel ?? `Open ${tabMeta.find((tab) => tab.id === nextStep.tab)?.label ?? nextStep.tab}`)}
             </ToolbarButton>
             <ToolbarButton onClick={() => void saveProject()} disabled={savingProject}>
               {savingProject ? 'Saving…' : 'Save Project'}

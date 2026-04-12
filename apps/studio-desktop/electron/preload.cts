@@ -4,9 +4,17 @@ import type { DesktopApi, DesktopJob } from '../src/shared/contracts.js';
 const api: DesktopApi = {
   project: {
     getInitialState: () => ipcRenderer.invoke('project:getInitialState'),
+    subscribeRecentProjects: (listener) => {
+      const handler = (_event: IpcRendererEvent, recentProjects: string[]) => listener(recentProjects);
+      ipcRenderer.on('project:recentProjectsUpdated', handler);
+      return () => {
+        ipcRenderer.removeListener('project:recentProjectsUpdated', handler);
+      };
+    },
     createProject: (options) => ipcRenderer.invoke('project:create', options),
     openProject: () => ipcRenderer.invoke('project:open'),
     openProjectAt: (projectFilePath) => ipcRenderer.invoke('project:openAt', projectFilePath),
+    removeRecentProject: (projectFilePath) => ipcRenderer.invoke('project:removeRecentProject', projectFilePath),
     saveProject: (input) => ipcRenderer.invoke('project:save', input),
     saveProjectAs: (input) => ipcRenderer.invoke('project:saveAs', input),
     duplicateProject: (input) => ipcRenderer.invoke('project:duplicate', input),

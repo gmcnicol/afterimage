@@ -9,6 +9,7 @@ import { useUiStore } from '../../stores/ui-store';
 export function useDesktopBootstrap(): void {
   const api = getDesktopApi();
   const setSession = useProjectSessionStore((state) => state.setSession);
+  const setRecentProjects = useProjectSessionStore((state) => state.setRecentProjects);
   const setJobs = useJobsStore((state) => state.setJobs);
   const upsertJobs = useJobsStore((state) => state.upsertJobs);
   const setReport = useDiagnosticsStore((state) => state.setReport);
@@ -91,6 +92,11 @@ export function useDesktopBootstrap(): void {
         void refreshDiagnostics();
       }
     });
+    const unsubscribeRecentProjects = api.project.subscribeRecentProjects((recentProjects) => {
+      if (isActive) {
+        setRecentProjects(recentProjects);
+      }
+    });
 
     const intervalId = window.setInterval(() => {
       if (isActive) {
@@ -102,6 +108,7 @@ export function useDesktopBootstrap(): void {
       isActive = false;
       window.clearInterval(intervalId);
       unsubscribe();
+      unsubscribeRecentProjects();
     };
-  }, [api, applyJobEffects, refreshDiagnostics, setJobs, setLogs, setReport, setSession]);
+  }, [api, applyJobEffects, refreshDiagnostics, setJobs, setLogs, setRecentProjects, setReport, setSession]);
 }

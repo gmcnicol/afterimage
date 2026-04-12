@@ -67,6 +67,7 @@ interface ProjectSessionState {
   recentProjects: string[];
   dirty: boolean;
   setSession: (input: { project: NormalizedProjectFile; projectFilePath?: string; projectRoot?: string; recentProjects?: string[] }) => void;
+  setRecentProjects: (recentProjects: string[]) => void;
   setProject: (project: NormalizedProjectFile) => void;
   mergeImportedAssets: (assets: MediaAsset[]) => void;
   relinkAsset: (assetId: string, absolutePath: string, relativePath?: string) => void;
@@ -130,6 +131,9 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       recentProjects: input.recentProjects ?? [],
       dirty: false
     });
+  },
+  setRecentProjects: (recentProjects) => {
+    set({ recentProjects });
   },
   setProject: (project) => {
     set({
