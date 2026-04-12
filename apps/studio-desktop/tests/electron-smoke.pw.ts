@@ -38,7 +38,7 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
 
   try {
     const window = await electronApp.firstWindow();
-    await expect(window.locator('.studio-shell__brand-copy')).toBeVisible();
+    await expect(window.locator('nav[aria-label="Workflow navigation"]')).toBeVisible();
 
     const runtimeInfo = await window.evaluate(async () => {
       return await window.afterimage?.shell.getRuntimeInfo();
@@ -50,7 +50,7 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
   }
 });
 
-test('loads a project and can open Analysis and Export without renderer crashes', async () => {
+test('loads a project and can open Media and Export without renderer crashes', async () => {
   test.skip(process.env.AFTERIMAGE_RUN_ELECTRON_SMOKE !== '1', 'Set AFTERIMAGE_RUN_ELECTRON_SMOKE=1 after approving Electron build scripts.');
 
   const projectPath = await createFixtureProjectCopy();
@@ -67,10 +67,10 @@ test('loads a project and can open Analysis and Export without renderer crashes'
     await expect(window.locator('.studio-shell__project-title')).toHaveText('Studio Fixture');
     await expect(window.getByRole('heading', { name: 'Project Home' })).toBeVisible();
 
-    await window.locator('nav[aria-label="Workflow navigation"]').getByRole('button', { name: /^Analysis/ }).click();
-    await expect(window.getByRole('heading', { name: 'Analysis Jobs' })).toBeVisible();
-    await expect(window.getByRole('columnheader', { name: 'Changes' })).toBeVisible();
-    await expect(window.getByText('Source Alpha', { exact: false })).toBeVisible();
+    await window.locator('nav[aria-label="Workflow navigation"]').getByRole('button', { name: /^Media/ }).click();
+    await expect(window.getByRole('heading', { name: 'Media Library' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Analysis Queue' })).toBeVisible();
+    await expect(window.getByRole('button', { name: /Source Alpha/ })).toBeVisible();
 
     await window.locator('nav[aria-label="Workflow navigation"]').getByRole('button', { name: /^Export/ }).click();
     await expect(window.getByRole('heading', { name: 'Export Profiles' })).toBeVisible();

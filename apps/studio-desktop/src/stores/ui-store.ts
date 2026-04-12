@@ -3,7 +3,6 @@ import { create } from 'zustand';
 export type StudioTab =
   | 'project'
   | 'media'
-  | 'analysis'
   | 'cuts'
   | 'sequence'
   | 'music'

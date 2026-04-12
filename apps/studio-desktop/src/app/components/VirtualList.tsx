@@ -41,18 +41,22 @@ export function VirtualList<T>({
         overflow: 'auto',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: 18,
-        background: 'rgba(15, 18, 24, 0.88)'
+        background: 'rgba(15, 18, 24, 0.88)',
+        contain: 'strict'
       }}
     >
       <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
         {virtualizer.getVirtualItems().map((virtualItem) => (
           <div
             key={virtualItem.key}
+            data-index={virtualItem.index}
+            ref={virtualizer.measureElement}
             style={{
               position: 'absolute',
               insetInline: 0,
               transform: `translateY(${virtualItem.start}px)`,
-              padding: '8px 10px'
+              padding: '8px 10px',
+              width: '100%'
             }}
           >
             {renderItem(items[virtualItem.index], virtualItem.index)}

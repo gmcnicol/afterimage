@@ -1,3 +1,4 @@
+import { watchFile } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, relative } from 'node:path';
 import type { Dialog, Shell } from 'electron';
@@ -24,6 +25,7 @@ interface ProjectServiceOptions {
   shell: Shell;
   logger: Logger;
   recentProjectsPath: string;
+  onRecentProjectsChanged?: (recentProjects: string[]) => void;
 }
 
 function stableHash(value: string): string {
@@ -74,7 +76,7 @@ async function readRecentProjects(recentProjectsPath: string): Promise<string[]>
   try {
     const raw = await readFile(recentProjectsPath, 'utf8');
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+    return Array.isArray(parsed) ? sanitizeRecentProjects(parsed.filter((item): item is string => typeof item === 'string')) : [];
   } catch {
     return [];
   }
@@ -82,18 +84,70 @@ async function readRecentProjects(recentProjectsPath: string): Promise<string[]>
 
 async function writeRecentProjects(recentProjectsPath: string, recentProjects: string[]): Promise<void> {
   await mkdir(dirname(recentProjectsPath), { recursive: true });
-  await writeFile(recentProjectsPath, JSON.stringify(recentProjects.slice(0, 12), null, 2), 'utf8');
+  await writeFile(recentProjectsPath, JSON.stringify(sanitizeRecentProjects(recentProjects), null, 2), 'utf8');
 }
 
-export function createProjectService({ dialog, shell, logger, recentProjectsPath }: ProjectServiceOptions) {
+function isVarRecentProject(projectFilePath: string): boolean {
+  const normalized = projectFilePath.toLowerCase().replace(/\\/g, '/');
+  return normalized.startsWith('/var/') || normalized.startsWith('/private/var/');
+}
+
+function sanitizeRecentProjects(recentProjects: string[]): string[] {
+  const seen = new Set<string>();
+  const sanitized: string[] = [];
+  for (const recentProject of recentProjects) {
+    if (isVarRecentProject(recentProject) || seen.has(recentProject)) {
+      continue;
+    }
+    seen.add(recentProject);
+    sanitized.push(recentProject);
+  }
+  return sanitized.slice(0, 12);
+}
+
+export function createProjectService({ dialog, shell, logger, recentProjectsPath, onRecentProjectsChanged }: ProjectServiceOptions) {
   let cachedSession: ProjectSessionSnapshot | undefined;
+  let lastRecentProjectsSignature = '';
 
   async function rememberRecentProject(projectFilePath: string): Promise<string[]> {
     const recentProjects = await readRecentProjects(recentProjectsPath);
-    const nextRecentProjects = [projectFilePath, ...recentProjects.filter((item) => item !== projectFilePath)].slice(0, 12);
+    const nextRecentProjects = sanitizeRecentProjects([projectFilePath, ...recentProjects.filter((item) => item !== projectFilePath)]);
     await writeRecentProjects(recentProjectsPath, nextRecentProjects);
     return nextRecentProjects;
   }
+
+  async function updateRecentProjects(recentProjects: string[]): Promise<string[]> {
+    const nextRecentProjects = sanitizeRecentProjects(recentProjects);
+    lastRecentProjectsSignature = JSON.stringify(nextRecentProjects);
+    await writeRecentProjects(recentProjectsPath, nextRecentProjects);
+    if (cachedSession) {
+      cachedSession = {
+        ...cachedSession,
+        recentProjects: nextRecentProjects
+      };
+    }
+    onRecentProjectsChanged?.(nextRecentProjects);
+    return nextRecentProjects;
+  }
+
+  watchFile(recentProjectsPath, { persistent: false, interval: 700 }, () => {
+    void (async () => {
+      const recentProjects = await readRecentProjects(recentProjectsPath);
+      const nextSignature = JSON.stringify(recentProjects);
+      if (nextSignature === lastRecentProjectsSignature) {
+        return;
+      }
+
+      lastRecentProjectsSignature = nextSignature;
+      if (cachedSession) {
+        cachedSession = {
+          ...cachedSession,
+          recentProjects
+        };
+      }
+      onRecentProjectsChanged?.(recentProjects);
+    })();
+  });
 
   function cacheSession(session: ProjectSessionSnapshot): ProjectSessionSnapshot {
     cachedSession = session;
@@ -207,6 +261,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       }
 
       const recentProjects = await readRecentProjects(recentProjectsPath);
+      lastRecentProjectsSignature = JSON.stringify(recentProjects);
       const mostRecentProject = recentProjects[0];
 
       if (mostRecentProject) {
@@ -265,6 +320,11 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     async openProjectAt(projectFilePath: string): Promise<ProjectSessionSnapshot> {
       const recentProjects = await rememberRecentProject(projectFilePath);
       return cacheSession(await readProjectSession(projectFilePath, recentProjects));
+    },
+    async removeRecentProject(projectFilePath: string): Promise<string[]> {
+      const recentProjects = await readRecentProjects(recentProjectsPath);
+      const nextRecentProjects = recentProjects.filter((item) => item !== projectFilePath);
+      return updateRecentProjects(nextRecentProjects);
     },
     async saveProject(input: SaveProjectRequest): Promise<ProjectSessionSnapshot> {
       const projectRoot = input.projectFilePath ? dirname(input.projectFilePath) : undefined;

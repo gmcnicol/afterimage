@@ -3,18 +3,27 @@ import type { CSSProperties, PropsWithChildren } from 'react';
 export function Screen({ children }: PropsWithChildren) {
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100%',
+      minHeight: '100%',
+      boxSizing: 'border-box',
       background: '#111318',
       color: '#f6f7f9',
       fontFamily: 'Inter, system-ui, sans-serif',
-      padding: '24px'
+      padding: '20px',
+      overflow: 'hidden'
     }}>
       {children}
     </div>
   );
 }
 
-export function Panel(props: PropsWithChildren<{ title: string; style?: CSSProperties; className?: string }>) {
+export function Panel(props: PropsWithChildren<{
+  title: string;
+  style?: CSSProperties;
+  className?: string;
+  bodyStyle?: CSSProperties;
+  bodyClassName?: string;
+}>) {
   return (
     <section
       className={props.className}
@@ -23,11 +32,22 @@ export function Panel(props: PropsWithChildren<{ title: string; style?: CSSPrope
         borderRadius: 16,
         padding: 16,
         background: '#191d25',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
         ...props.style
       }}
     >
-      <h2 style={{ marginTop: 0 }}>{props.title}</h2>
-      {props.children}
+      <h2 style={{ margin: '0 0 16px' }}>{props.title}</h2>
+      <div
+        className={props.bodyClassName}
+        style={{
+          minHeight: 0,
+          ...props.bodyStyle
+        }}
+      >
+        {props.children}
+      </div>
     </section>
   );
 }

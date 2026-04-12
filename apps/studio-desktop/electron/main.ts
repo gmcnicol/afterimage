@@ -41,7 +41,12 @@ const projectService = createProjectService({
   dialog,
   shell,
   logger,
-  recentProjectsPath: path.join(app.getPath('userData'), 'recent-projects.json')
+  recentProjectsPath: path.join(app.getPath('userData'), 'recent-projects.json'),
+  onRecentProjectsChanged(recentProjects) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('project:recentProjectsUpdated', recentProjects);
+    }
+  }
 });
 const diagnosticsService = createDiagnosticsService({ logger });
 const jobManager = createJobManager({
@@ -185,6 +190,7 @@ app.whenReady().then(() => {
   ipcMain.handle('project:create', async (_event: IpcMainInvokeEvent, options?: { name?: string }) => projectService.createProject(options));
   ipcMain.handle('project:open', async () => projectService.openProject());
   ipcMain.handle('project:openAt', async (_event: IpcMainInvokeEvent, projectFilePath: string) => projectService.openProjectAt(projectFilePath));
+  ipcMain.handle('project:removeRecentProject', async (_event: IpcMainInvokeEvent, projectFilePath: string) => projectService.removeRecentProject(projectFilePath));
   ipcMain.handle('project:save', async (_event: IpcMainInvokeEvent, input: SaveProjectRequest) => projectService.saveProject(input));
   ipcMain.handle('project:saveAs', async (_event: IpcMainInvokeEvent, input: SaveProjectRequest) => projectService.saveProjectAs(input));
   ipcMain.handle('project:duplicate', async (_event: IpcMainInvokeEvent, input: SaveProjectRequest) => projectService.duplicateProject(input));
