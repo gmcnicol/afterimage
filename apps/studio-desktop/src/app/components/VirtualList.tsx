@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useRef } from 'react';
 
 export function VirtualList<T>({
   items,
@@ -14,52 +13,57 @@ export function VirtualList<T>({
   activeIndex?: number;
   height?: number | string;
 }) {
-  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
-  const virtualizer = useVirtualizer({
-    count: items.length,
-    getScrollElement: () => scrollElement,
-    estimateSize: () => estimateSize,
-    overscan: 6
-  });
+  const scrollElementRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (activeIndex === undefined || activeIndex < 0 || activeIndex >= items.length) {
       return;
     }
 
-    virtualizer.scrollToIndex(activeIndex, {
-      align: 'auto'
-    });
-  }, [activeIndex, items.length, virtualizer]);
+    const scrollElement = scrollElementRef.current;
+    if (!scrollElement) {
+      return;
+    }
+
+    const itemHeight = estimateSize + 16;
+    const targetTop = itemHeight * activeIndex;
+    const targetBottom = targetTop + itemHeight;
+    const viewportTop = scrollElement.scrollTop;
+    const viewportBottom = viewportTop + scrollElement.clientHeight;
+
+    if (targetTop < viewportTop) {
+      scrollElement.scrollTo({ top: targetTop });
+      return;
+    }
+
+    if (targetBottom > viewportBottom) {
+      scrollElement.scrollTo({ top: Math.max(0, targetBottom - scrollElement.clientHeight) });
+    }
+  }, [activeIndex, estimateSize, items.length]);
 
   return (
     <div
       className="studio-scrollable"
-      ref={setScrollElement}
+      ref={scrollElementRef}
       style={{
         height,
         overflow: 'auto',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: 18,
-        background: 'rgba(15, 18, 24, 0.88)',
-        contain: 'strict'
+        background: 'rgba(15, 18, 24, 0.88)'
       }}
     >
-      <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-        {virtualizer.getVirtualItems().map((virtualItem) => (
+      <div style={{ display: 'grid', gap: 0 }}>
+        {items.map((item, index) => (
           <div
-            key={virtualItem.key}
-            data-index={virtualItem.index}
-            ref={virtualizer.measureElement}
+            key={index}
+            data-index={index}
             style={{
-              position: 'absolute',
-              insetInline: 0,
-              transform: `translateY(${virtualItem.start}px)`,
               padding: '8px 10px',
               width: '100%'
             }}
           >
-            {renderItem(items[virtualItem.index], virtualItem.index)}
+            {renderItem(item, index)}
           </div>
         ))}
       </div>
