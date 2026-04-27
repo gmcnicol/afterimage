@@ -164,6 +164,15 @@ export interface RenderPlan {
   command: CommandSpec;
 }
 
+export interface FinalizeRenderRequest {
+  concatListPath: string;
+  outputPath: string;
+  overwrite?: boolean;
+  profile: RenderProfile;
+  durationMs: number;
+  musicPath?: string;
+}
+
 export interface ToolVersionInfo {
   path: string;
   versionLine?: string;
@@ -813,6 +822,60 @@ function usesMaskTransitions(variant: Variant): boolean {
   return variant.clips.some((clip) => clip.transition === 'mask');
 }
 
+function countRenderedSegments(variant: Variant): number {
+  return variant.clips.reduce((count, clip, index) => {
+    const nextClip = variant.clips[index + 1];
+    const bodyCount = clip.durationMs - resolveMaskTransitionDurationMs(clip, nextClip) > 0 ? 1 : 0;
+    const transitionCount = resolveMaskTransitionDurationMs(clip, nextClip) > 0 ? 1 : 0;
+    return count + bodyCount + transitionCount;
+  }, 0);
+}
+
+export function shouldUseChunkedExport(project: NormalizedProjectFile, variant: Variant, profile: RenderProfile): boolean {
+  if (profile.videoCodec !== 'libx264') {
+    return false;
+  }
+
+  const targetDurationMs = getTargetRenderDurationMs(project, variant);
+  const segmentCount = countRenderedSegments(variant);
+  const pixelCount = profile.width * profile.height;
+
+  return segmentCount >= 140 || (segmentCount >= 90 && targetDurationMs >= 180_000) || (pixelCount >= 1920 * 1080 && targetDurationMs >= 600_000);
+}
+
+function shouldConstrainRenderResources(project: NormalizedProjectFile, variant: Variant, profile: RenderProfile): boolean {
+  return shouldUseChunkedExport(project, variant, profile);
+}
+
+function applyEncoderArgs(
+  args: string[],
+  project: NormalizedProjectFile,
+  variant: Variant,
+  profile: RenderProfile
+): void {
+  const constrained = shouldConstrainRenderResources(project, variant, profile);
+
+  if (constrained) {
+    args.push(
+      '-threads', '4',
+      '-filter_threads', '1',
+      '-filter_complex_threads', '1'
+    );
+  }
+
+  if (profile.videoCodec === 'libx264') {
+    args.push(
+      '-preset', constrained ? 'fast' : (profile.videoPreset ?? 'medium'),
+      '-crf', String(profile.crf ?? 18)
+    );
+    return;
+  }
+
+  if (profile.videoCodec === 'prores_ks') {
+    args.push('-profile:v', profile.videoProfile ?? '3');
+  }
+}
+
 function resolveMaskTransitionDurationMs(clip: SequenceClip, nextClip: SequenceClip | undefined): number {
   if (clip.transition !== 'mask' || !nextClip) {
     return 0;
@@ -953,7 +1016,8 @@ function buildMaskedRenderCommand(
   const musicAssetId = variant.musicAlignment?.primaryAssetId;
   const musicInputIndex = musicAssetId ? inputIndexByAssetId.get(musicAssetId) : undefined;
   const musicDurationMs = getMusicDurationMs(project, variant);
-  const includeClipAudio = musicInputIndex === undefined && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
+  const includeClipAudio = musicInputIndex === undefined
+    && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
 
   let segmentIndex = 0;
 
@@ -1081,14 +1145,7 @@ function buildMaskedRenderCommand(
     '-c:v', profile.videoCodec
   ];
 
-  if (profile.videoCodec === 'libx264') {
-    args.push(
-      '-preset', profile.videoPreset ?? 'medium',
-      '-crf', String(profile.crf ?? 18)
-    );
-  } else if (profile.videoCodec === 'prores_ks') {
-    args.push('-profile:v', profile.videoProfile ?? '3');
-  }
+  applyEncoderArgs(args, project, variant, profile);
 
   if (musicInputIndex !== undefined) {
     args.push('-map', '[amusic]');
@@ -1140,7 +1197,8 @@ function buildRenderCommand(
   const musicAssetId = variant.musicAlignment?.primaryAssetId;
   const musicInputIndex = musicAssetId ? inputIndexByAssetId.get(musicAssetId) : undefined;
   const musicDurationMs = getMusicDurationMs(project, variant);
-  const includeClipAudio = musicInputIndex === undefined && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
+  const includeClipAudio = musicInputIndex === undefined
+    && variant.clips.every((clip) => ensureAsset(project, clip.assetId).hasAudio);
 
   let segmentIndex = 0;
 
@@ -1196,14 +1254,7 @@ function buildRenderCommand(
     '-c:v', profile.videoCodec
   ];
 
-  if (profile.videoCodec === 'libx264') {
-    args.push(
-      '-preset', profile.videoPreset ?? 'medium',
-      '-crf', String(profile.crf ?? 18)
-    );
-  } else if (profile.videoCodec === 'prores_ks') {
-    args.push('-profile:v', profile.videoProfile ?? '3');
-  }
+  applyEncoderArgs(args, project, variant, profile);
 
   if (musicInputIndex !== undefined) {
     args.push('-map', '[amusic]');
@@ -1256,6 +1307,67 @@ export function buildPreviewPlan(
     videoPreset: 'fast',
     audioBitrateKbps: 128
   }, tools) as PreviewPlan;
+}
+
+export function buildConcatList(paths: string[]): string {
+  return paths.map((path) => `file '${path.replace(/'/g, `'\\''`)}'`).join('\n') + '\n';
+}
+
+export function buildFinalizeRenderPlan(
+  request: FinalizeRenderRequest,
+  tools?: ResolvedFfmpegTools
+): { outputPath: string; command: CommandSpec } {
+  const resolvedTools = makePlanningTools(tools);
+  const fadeDurationMs = Math.min(2000, request.durationMs);
+  const fadeStartMs = Math.max(0, request.durationMs - fadeDurationMs);
+  const filterSegments = [
+    `[0:v]trim=duration=${formatSeconds(request.durationMs)},fade=t=out:st=${formatSeconds(fadeStartMs)}:d=${formatSeconds(fadeDurationMs)},format=${request.profile.pixelFormat}[vout]`
+  ];
+  const args = [
+    request.overwrite === false ? '-n' : '-y',
+    '-f', 'concat',
+    '-safe', '0',
+    '-i', request.concatListPath
+  ];
+
+  if (request.musicPath) {
+    filterSegments.push(`[1:a]atrim=start=0:duration=${formatSeconds(request.durationMs)},asetpts=PTS-STARTPTS[amusic]`);
+    args.push('-i', request.musicPath);
+  }
+
+  args.push(
+    '-filter_complex', filterSegments.join(';'),
+    '-map', '[vout]',
+    '-c:v', request.profile.videoCodec
+  );
+
+  if (request.profile.videoCodec === 'libx264') {
+    args.push(
+      '-preset', request.profile.videoPreset ?? 'medium',
+      '-crf', String(request.profile.crf ?? 18)
+    );
+  } else if (request.profile.videoCodec === 'prores_ks') {
+    args.push('-profile:v', request.profile.videoProfile ?? '3');
+  }
+
+  if (request.musicPath) {
+    args.push('-map', '[amusic]', '-c:a', request.profile.audioCodec);
+    if (request.profile.audioCodec === 'aac') {
+      args.push('-b:a', `${request.profile.audioBitrateKbps ?? 192}k`);
+    }
+  }
+
+  args.push('-f', request.profile.container, request.outputPath);
+
+  return {
+    outputPath: request.outputPath,
+    command: {
+      label: `finalize:${request.outputPath}`,
+      binary: resolvedTools.ffmpeg.path,
+      args,
+      expectedOutputs: [request.outputPath]
+    }
+  };
 }
 
 export function buildExportPlan(
@@ -1343,7 +1455,7 @@ async function defaultCommandRunner(binary: string, args: string[], options: Com
       resolve({
         exitCode: exitCode ?? 1,
         stdout,
-        stderr
+        stderr: signal ? `${stderr}\nProcess terminated by signal ${signal}.` : stderr
       });
     });
   });

@@ -7,19 +7,23 @@ import {
   getDefaultVariant,
   getSequenceById,
   getVariantById,
-  type NormalizedProjectFile
+  type NormalizedProjectFile,
+  type SequenceClip,
+  type Variant
 } from '@afterimage/project-model';
 import {
   buildAnalysisPlan,
   buildAudioChangeAnalysisPlan,
   buildExportPlan,
   buildPreviewPlan,
+  buildRenderPlan,
   buildThumbnailPlan,
   buildWaveformPlan,
   type CommandExecutionResult,
   type CommandRunner,
   type CommandRunnerOptions,
   type CommandSpec,
+  type RenderProfile,
   executeCommandSpec,
   resolveFfmpegTools
 } from '@afterimage/ffmpeg-compiler';
@@ -154,6 +158,172 @@ function resolveTargetRenderDurationMs(project: NormalizedProjectFile, variantId
       : Math.max(0, ...variant.clips.map((clip) => clip.timelineStartMs + clip.durationMs));
 }
 
+function resolveClipOutgoingTransitionMs(clip: SequenceClip, nextClip: SequenceClip | undefined): number {
+  if (clip.transition !== 'mask' || !nextClip) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(clip.transitionDurationMs ?? 250, clip.durationMs, nextClip.durationMs));
+}
+
+function formatSeconds(milliseconds: number): string {
+  return (milliseconds / 1000).toFixed(3);
+}
+
+function countRenderedSegments(variant: Variant): number {
+  return variant.clips.reduce((count, clip, index) => count + estimateChunkClipSegmentCount(variant.clips, index), 0);
+}
+
+function shouldUseChunkedExportForVariant(project: NormalizedProjectFile, variant: Variant, profile: RenderProfile): boolean {
+  if (profile.videoCodec !== 'libx264') {
+    return false;
+  }
+
+  const targetDurationMs = resolveTargetRenderDurationMs(project, variant.id, variant.sequenceId);
+  const segmentCount = countRenderedSegments(variant);
+  const pixelCount = profile.width * profile.height;
+
+  return segmentCount >= 140 || (segmentCount >= 90 && targetDurationMs >= 180_000) || (pixelCount >= 1920 * 1080 && targetDurationMs >= 600_000);
+}
+
+function buildConcatList(paths: string[]): string {
+  return paths.map((path) => `file '${path.replace(/'/g, `'\\''`)}'`).join('\n') + '\n';
+}
+
+function buildFinalizeRenderCommand(
+  tools: ReturnType<typeof resolveFfmpegTools>,
+  input: {
+    concatListPath: string;
+    outputPath: string;
+    profile: RenderProfile;
+    durationMs: number;
+    musicPath?: string;
+  }
+): CommandSpec {
+  const fadeDurationMs = Math.min(2000, input.durationMs);
+  const fadeStartMs = Math.max(0, input.durationMs - fadeDurationMs);
+  const filterSegments = [
+    `[0:v]trim=duration=${formatSeconds(input.durationMs)},fade=t=out:st=${formatSeconds(fadeStartMs)}:d=${formatSeconds(fadeDurationMs)},format=${input.profile.pixelFormat}[vout]`
+  ];
+  const args = [
+    '-y',
+    '-f', 'concat',
+    '-safe', '0',
+    '-i', input.concatListPath
+  ];
+
+  if (input.musicPath) {
+    args.push('-i', input.musicPath);
+    filterSegments.push(`[1:a]atrim=start=0:duration=${formatSeconds(input.durationMs)},asetpts=PTS-STARTPTS[amusic]`);
+  }
+
+  args.push(
+    '-filter_complex', filterSegments.join(';'),
+    '-map', '[vout]',
+    '-c:v', input.profile.videoCodec
+  );
+
+  if (input.profile.videoCodec === 'libx264') {
+    args.push(
+      '-preset', input.profile.videoPreset ?? 'medium',
+      '-crf', String(input.profile.crf ?? 18)
+    );
+  } else if (input.profile.videoCodec === 'prores_ks') {
+    args.push('-profile:v', input.profile.videoProfile ?? '3');
+  }
+
+  if (input.musicPath) {
+    args.push('-map', '[amusic]', '-c:a', input.profile.audioCodec);
+    if (input.profile.audioCodec === 'aac') {
+      args.push('-b:a', `${input.profile.audioBitrateKbps ?? 192}k`);
+    }
+  }
+
+  args.push('-f', input.profile.container, input.outputPath);
+
+  return {
+    label: `finalize:${input.outputPath}`,
+    binary: tools.ffmpeg.path,
+    args,
+    expectedOutputs: [input.outputPath]
+  };
+}
+
+function estimateChunkClipContributionMs(clips: SequenceClip[], index: number): number {
+  const clip = clips[index];
+  const nextClip = clips[index + 1];
+  return Math.max(0, clip.durationMs - resolveClipOutgoingTransitionMs(clip, nextClip));
+}
+
+function estimateChunkClipSegmentCount(clips: SequenceClip[], index: number): number {
+  return resolveClipOutgoingTransitionMs(clips[index], clips[index + 1]) > 0 ? 2 : 1;
+}
+
+function splitClipIndicesForChunkedExport(variant: Variant, options: { maxDurationMs: number; maxSegments: number }): Array<{ start: number; end: number }> {
+  const chunks: Array<{ start: number; end: number }> = [];
+  let start = 0;
+
+  while (start < variant.clips.length) {
+    let end = start;
+    let durationMs = 0;
+    let segmentCount = 0;
+
+    while (end < variant.clips.length) {
+      const nextDurationMs = durationMs + estimateChunkClipContributionMs(variant.clips, end);
+      const nextSegmentCount = segmentCount + estimateChunkClipSegmentCount(variant.clips, end);
+      const wouldOverflow = end > start && (nextDurationMs > options.maxDurationMs || nextSegmentCount > options.maxSegments);
+
+      if (wouldOverflow) {
+        break;
+      }
+
+      durationMs = nextDurationMs;
+      segmentCount = nextSegmentCount;
+      end += 1;
+    }
+
+    chunks.push({ start, end: Math.max(start, end - 1) });
+    start = Math.max(start + 1, end);
+  }
+
+  return chunks;
+}
+
+function buildChunkedVariant(variant: Variant, chunkIndex: number, chunkStart: number, chunkEnd: number): Variant {
+  const sourceClips = variant.clips.slice(chunkStart, chunkEnd + 1).map((clip) => ({ ...clip, tags: clip.tags ? [...clip.tags] : undefined }));
+  const lastClip = sourceClips[sourceClips.length - 1];
+  const originalLastClip = variant.clips[chunkEnd];
+  const nextClip = variant.clips[chunkEnd + 1];
+  const outgoingTransitionMs = originalLastClip ? resolveClipOutgoingTransitionMs(originalLastClip, nextClip) : 0;
+
+  if (lastClip && outgoingTransitionMs > 0) {
+    lastClip.durationMs = Math.max(250, lastClip.durationMs - outgoingTransitionMs);
+    lastClip.transition = 'cut';
+    lastClip.transitionDurationMs = undefined;
+    lastClip.transitionAssetId = undefined;
+    lastClip.transitionOverlayAssetId = undefined;
+  }
+
+  let timelineStartMs = 0;
+  const clips = sourceClips.map((clip) => {
+    const nextClipForChunk = {
+      ...clip,
+      timelineStartMs
+    };
+    timelineStartMs += clip.durationMs;
+    return nextClipForChunk;
+  });
+
+  return {
+    ...variant,
+    name: `${variant.name} Chunk ${chunkIndex + 1}`,
+    clips,
+    markers: [],
+    sections: [],
+    musicAlignment: undefined
+  };
+}
+
 function createProgressRunner(
   command: CommandSpec,
   options: {
@@ -234,12 +404,12 @@ function createProgressRunner(
         reject(error);
       });
 
-      child.on('close', (exitCode) => {
+      child.on('close', (exitCode, signal) => {
         runnerOptions.signal?.removeEventListener('abort', abortHandler);
         resolve({
           exitCode: exitCode ?? 1,
           stdout,
-          stderr
+          stderr: signal ? `${stderr}\nProcess terminated by signal ${signal}.` : stderr
         });
       });
     });
@@ -615,27 +785,103 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
         const baseOutputPath = `${input.outputPath}-${profile.id}.${profile.container}`;
         const outputPath = await resolveAvailableOutputPath(baseOutputPath);
         const durationMs = resolveTargetRenderDurationMs(input.project, variant.id, sequence.id);
-        const plan = buildExportPlan(input.project, {
-          outputPath,
-          profile,
-          sequenceId: sequence.id,
-          variantId: variant.id
-        }, tools);
-        report(`Rendering ${profile.name}`, 0.02);
-        await executeCommandSpec(plan.command, {
-          signal,
-          runner: createProgressRunner(plan.command, {
-            phaseLabel: `Rendering ${profile.name}`,
-            report,
-            durationMs,
-            startProgress: 0.02,
-            endProgress: 0.98
-          })
-        });
+        const shouldChunk = shouldUseChunkedExportForVariant(input.project, variant, profile);
+
+        if (!shouldChunk) {
+          const plan = buildExportPlan(input.project, {
+            outputPath,
+            profile,
+            sequenceId: sequence.id,
+            variantId: variant.id
+          }, tools);
+          report(`Rendering ${profile.name}`, 0.02);
+          await executeCommandSpec(plan.command, {
+            signal,
+            runner: createProgressRunner(plan.command, {
+              phaseLabel: `Rendering ${profile.name}`,
+              report,
+              durationMs,
+              startProgress: 0.02,
+              endProgress: 0.98
+            })
+          });
+        } else {
+          const chunkRanges = splitClipIndicesForChunkedExport(variant, {
+            maxDurationMs: 90_000,
+            maxSegments: 36
+          });
+          const tempRoot = join(input.projectRoot, '.afterimage', 'exports-temp', `${variant.id}-${profile.id}-${Date.now()}`);
+          await mkdir(tempRoot, { recursive: true });
+
+          const chunkOutputPaths: string[] = [];
+
+          try {
+            for (const [chunkIndex, chunkRange] of chunkRanges.entries()) {
+              const chunkVariant = buildChunkedVariant(variant, chunkIndex, chunkRange.start, chunkRange.end);
+              const chunkProject = parseProject({
+                ...input.project,
+                assets: input.project.assets.map((asset) => ({
+                  ...asset,
+                  hasAudio: asset.assetRole === 'music' ? asset.hasAudio : false
+                })),
+                variants: input.project.variants.map((candidate) => candidate.id === variant.id ? chunkVariant : candidate)
+              });
+              const chunkOutputPath = join(tempRoot, `chunk-${String(chunkIndex + 1).padStart(3, '0')}.${profile.container}`);
+              const chunkDurationMs = resolveTargetRenderDurationMs(chunkProject, chunkVariant.id, sequence.id);
+              const chunkPlan = buildRenderPlan(chunkProject, {
+                outputPath: chunkOutputPath,
+                profile,
+                sequenceId: sequence.id,
+                variantId: chunkVariant.id
+              }, tools);
+
+              report(`Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`, 0.02 + ((chunkIndex / chunkRanges.length) * 0.8));
+              await executeCommandSpec(chunkPlan.command, {
+                signal,
+                runner: createProgressRunner(chunkPlan.command, {
+                  phaseLabel: `Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`,
+                  report,
+                  durationMs: chunkDurationMs,
+                  startProgress: 0.02 + ((chunkIndex / chunkRanges.length) * 0.8),
+                  endProgress: 0.02 + (((chunkIndex + 1) / chunkRanges.length) * 0.8)
+                })
+              });
+              chunkOutputPaths.push(chunkOutputPath);
+            }
+
+            const concatListPath = join(tempRoot, 'chunks.ffconcat');
+            await writeFile(concatListPath, buildConcatList(chunkOutputPaths), 'utf8');
+            const musicPath = variant.musicAlignment?.primaryAssetId
+              ? input.project.assets.find((asset) => asset.id === variant.musicAlignment?.primaryAssetId)?.path.absolutePath
+              : undefined;
+            const finalizeCommand = buildFinalizeRenderCommand(tools, {
+              concatListPath,
+              outputPath,
+              profile,
+              durationMs,
+              musicPath
+            });
+
+            report(`Finalizing ${profile.name}`, 0.84);
+            await executeCommandSpec(finalizeCommand, {
+              signal,
+              runner: createProgressRunner(finalizeCommand, {
+                phaseLabel: `Finalizing ${profile.name}`,
+                report,
+                durationMs,
+                startProgress: 0.84,
+                endProgress: 0.98
+              })
+            });
+          } finally {
+            await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
+          }
+        }
+
         await logger.log('info', 'Rendered export profile.', outputPath);
         return {
           kind: 'export',
-          outputPath: plan.outputPath
+          outputPath
         };
       }
     }));

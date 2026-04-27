@@ -238,7 +238,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     }
 
     return {
-      id: `asset-${slugify(stem)}-${stableHash(filePath).slice(0, 6)}`,
+      id: `asset-${slugify(stem)}-${slugify(assetRole)}-${stableHash(`${assetRole}:${filePath}`).slice(0, 6)}`,
       filename: basename(filePath),
       mediaType,
       assetRole,
