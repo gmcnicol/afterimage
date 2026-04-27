@@ -1,8 +1,12 @@
 import type { ExportProfileId } from '@afterimage/export-profiles';
 import type {
   AnalysisFile,
+  AnalysisRef,
+  AnalysisStatus,
+  AssetRole,
   ExportSelection,
   MediaAsset,
+  MediaType,
   NormalizedProjectFile,
   ProjectPathRef
 } from '@afterimage/project-model';
@@ -16,14 +20,16 @@ export interface LogEntry {
 }
 
 export interface DesktopJobResult {
-  kind: 'analysis' | 'preview' | 'export';
+  kind: 'analysis' | 'preview' | 'export' | 'library-scan' | 'library-analysis';
   project?: NormalizedProjectFile;
   outputPath?: string;
+  rootId?: string;
+  assetIds?: string[];
 }
 
 export interface DesktopJob {
   id: string;
-  type: 'analysis' | 'thumbnails' | 'waveform' | 'preview' | 'export';
+  type: 'analysis' | 'thumbnails' | 'waveform' | 'preview' | 'export' | 'library-scan' | 'library-analysis';
   target: string;
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   startedAt?: string;
@@ -64,6 +70,79 @@ export interface RelinkAssetResult {
   path: ProjectPathRef;
 }
 
+export type LibraryScanStatus = 'idle' | 'pending' | 'running' | 'completed' | 'failed';
+
+export interface LibraryRoot {
+  id: string;
+  path: string;
+  role: AssetRole;
+  enabled: boolean;
+  lastScanStatus: LibraryScanStatus;
+  lastScanStartedAt?: string;
+  lastScanEndedAt?: string;
+  lastScanError?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryDirectory {
+  id: string;
+  rootId: string;
+  path: string;
+  parentPath?: string;
+  fileCount: number;
+  supportedFileCount: number;
+  scannedAt: string;
+}
+
+export interface LibraryAsset {
+  id: string;
+  rootId: string;
+  directoryId: string;
+  path: string;
+  filename: string;
+  mediaType: MediaType;
+  assetRole: AssetRole;
+  fileSize: number;
+  mtimeMs: number;
+  hashKey: string;
+  durationMs?: number;
+  width?: number;
+  height?: number;
+  frameRate?: number;
+  hasAudio: boolean;
+  analysisStatus: AnalysisStatus;
+  missing: boolean;
+  analysisRef?: AnalysisRef;
+  scannedAt: string;
+  updatedAt: string;
+}
+
+export interface LibrarySearchRequest {
+  query?: string;
+  roles?: AssetRole[];
+  mediaTypes?: MediaType[];
+  analysisStatuses?: AnalysisStatus[];
+  rootId?: string;
+  includeMissing?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface LibrarySearchResult {
+  assets: LibraryAsset[];
+  total: number;
+}
+
+export interface LibraryAddRootRequest {
+  role: AssetRole;
+}
+
+export interface LibraryImportAssetsRequest {
+  projectRoot?: string;
+  assetIds: string[];
+}
+
 export interface RunAnalysisRequest {
   project: NormalizedProjectFile;
   projectRoot: string;
@@ -101,6 +180,15 @@ export interface DesktopApi {
     importTransitionMasks: (projectRoot?: string) => Promise<MediaAsset[]>;
     importTransitionOverlays: (projectRoot?: string) => Promise<MediaAsset[]>;
     relinkAsset: (input: { projectRoot: string; assetId: string; currentPath?: string }) => Promise<RelinkAssetResult | null>;
+  };
+  library: {
+    addRoot: (input: LibraryAddRootRequest) => Promise<LibraryRoot | null>;
+    rescanRoot: (rootId: string) => Promise<LibraryRoot>;
+    rescanAll: () => Promise<LibraryRoot[]>;
+    listRoots: () => Promise<LibraryRoot[]>;
+    listDirectories: (rootId?: string) => Promise<LibraryDirectory[]>;
+    searchAssets: (input?: LibrarySearchRequest) => Promise<LibrarySearchResult>;
+    importAssets: (input: LibraryImportAssetsRequest) => Promise<MediaAsset[]>;
   };
   jobs: {
     list: () => Promise<DesktopJob[]>;

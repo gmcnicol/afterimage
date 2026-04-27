@@ -49,6 +49,7 @@ type RetryPayload =
   | ({ kind: 'analysis' } & RunAnalysisRequest)
   | ({ kind: 'preview' } & RunPreviewRequest)
   | ({ kind: 'export' } & RunExportRequest);
+type LibraryJobType = 'library-scan' | 'library-analysis';
 type JobWithRetry = DesktopJob & { retryPayload?: RetryPayload };
 
 interface JobTask {
@@ -917,6 +918,20 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
     return null;
   }
 
+  function runLibraryJob(input: {
+    type: LibraryJobType;
+    target: string;
+    queueClass?: QueueClass;
+    run(signal: AbortSignal, report: (message: string, progress: number) => void): Promise<JobResult>;
+  }): DesktopJob {
+    return enqueue({
+      type: input.type,
+      target: input.target,
+      queueClass: input.queueClass ?? 'analysis',
+      run: input.run
+    });
+  }
+
   return {
     list(): DesktopJob[] {
       return snapshot();
@@ -924,6 +939,7 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
     runAnalysis,
     runPreview: async (input: RunPreviewRequest) => runPreview(input),
     runExport: async (input: RunExportRequest) => runExport(input),
+    runLibraryJob,
     cancel,
     retry
   };

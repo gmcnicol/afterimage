@@ -15,6 +15,7 @@ import type {
 import { createDiagnosticsService } from './services/diagnostics-service.js';
 import { createJobManager } from './services/job-manager.js';
 import { createLogger } from './services/logger.js';
+import { createLibraryService } from './services/library-service.js';
 import { createProjectService } from './services/project-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,6 +56,15 @@ const jobManager = createJobManager({
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('jobs:updated', jobs);
     }
+  }
+});
+const libraryService = createLibraryService({
+  dialog,
+  logger,
+  databasePath: path.join(app.getPath('userData'), 'media-library.sqlite'),
+  dataRoot: path.join(app.getPath('userData'), 'media-library'),
+  runLibraryJob: (input) => {
+    jobManager.runLibraryJob(input);
   }
 });
 
@@ -211,6 +221,14 @@ app.whenReady().then(() => {
   ipcMain.handle('jobs:runExport', async (_event: IpcMainInvokeEvent, input: RunExportRequest) => jobManager.runExport(input));
   ipcMain.handle('jobs:cancel', async (_event: IpcMainInvokeEvent, jobId: string) => jobManager.cancel(jobId));
   ipcMain.handle('jobs:retry', async (_event: IpcMainInvokeEvent, jobId: string) => jobManager.retry(jobId));
+
+  ipcMain.handle('library:addRoot', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.addRoot>[0]) => libraryService.addRoot(input));
+  ipcMain.handle('library:rescanRoot', async (_event: IpcMainInvokeEvent, rootId: string) => libraryService.rescanRoot(rootId));
+  ipcMain.handle('library:rescanAll', async () => libraryService.rescanAll());
+  ipcMain.handle('library:listRoots', async () => libraryService.listRoots());
+  ipcMain.handle('library:listDirectories', async (_event: IpcMainInvokeEvent, rootId?: string) => libraryService.listDirectories(rootId));
+  ipcMain.handle('library:searchAssets', async (_event: IpcMainInvokeEvent, input?: Parameters<typeof libraryService.searchAssets>[0]) => libraryService.searchAssets(input));
+  ipcMain.handle('library:importAssets', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.importAssets>[0]) => libraryService.importAssets(input));
 
   ipcMain.handle(
     'diagnostics:getReport',
