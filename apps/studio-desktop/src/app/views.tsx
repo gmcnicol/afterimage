@@ -10,6 +10,7 @@ import {
   getSupportedAutomationProperties,
   supportedFilterDefinitions,
   type AnalysisFile,
+  type AssetRole,
   type AutomationTargetProperty,
   type FilterInstance,
   type Marker,
@@ -20,7 +21,7 @@ import {
   type SyncMode
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
-import { getDesktopApi, type DesktopJob } from '../lib/desktop-api';
+import { getDesktopApi, type DesktopJob, type LibraryAsset, type LibraryRoot } from '../lib/desktop-api';
 import { useDiagnosticsStore } from '../stores/diagnostics-store';
 import { useJobsStore } from '../stores/jobs-store';
 import { useProjectSessionStore } from '../stores/project-session-store';
@@ -80,6 +81,13 @@ function useAnalysisFile(analysisPath?: string): AnalysisFile | null {
 
   return analysis;
 }
+
+const catalogRoles: Array<{ value: AssetRole; label: string }> = [
+  { value: 'source', label: 'Source' },
+  { value: 'music', label: 'Music' },
+  { value: 'transition-mask', label: 'Masks' },
+  { value: 'transition-overlay', label: 'Overlays' }
+];
 
 function buildSyncMarkers(syncEvents: Array<{ id: string; timeMs: number; kind: string; label?: string }>): Marker[] {
   return syncEvents.map((event, index) => ({
@@ -556,6 +564,221 @@ export function ProjectView() {
               No recent projects yet. Save this project once and it will become the quick way back into the workstation.
             </div>
           )}
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+export function CatalogView() {
+  const api = getDesktopApi();
+  const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
+  const projectRoot = useProjectSessionStore((state) => state.projectRoot);
+  const project = useProjectSessionStore((state) => state.project);
+  const mergeAssets = useProjectSessionStore((state) => state.mergeImportedAssets);
+  const setSession = useProjectSessionStore((state) => state.setSession);
+  const addNotification = useUiStore((state) => state.addNotification);
+  const [roots, setRoots] = useState<LibraryRoot[]>([]);
+  const [assets, setAssets] = useState<LibraryAsset[]>([]);
+  const [total, setTotal] = useState(0);
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<AssetRole | 'all'>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [loading, setLoading] = useState(false);
+  const deferredQuery = useDeferredValue(query);
+  const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
+  const catalogJobs = useJobsStore((state) => state.jobs.filter((job) => job.type === 'library-scan' || job.type === 'library-analysis'));
+
+  const loadCatalog = async () => {
+    const [nextRoots, search] = await Promise.all([
+      api.library.listRoots(),
+      api.library.searchAssets({
+        query: deferredQuery,
+        roles: roleFilter === 'all' ? undefined : [roleFilter],
+        limit: 300
+      })
+    ]);
+    setRoots(nextRoots);
+    setAssets(search.assets);
+    setTotal(search.total);
+    setSelectedIds((current) => new Set([...current].filter((id) => search.assets.some((asset) => asset.id === id))));
+  };
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    void Promise.all([
+      api.library.listRoots(),
+      api.library.searchAssets({
+        query: deferredQuery,
+        roles: roleFilter === 'all' ? undefined : [roleFilter],
+        limit: 300
+      })
+    ]).then(([nextRoots, search]) => {
+      if (!active) {
+        return;
+      }
+      setRoots(nextRoots);
+      setAssets(search.assets);
+      setTotal(search.total);
+      setSelectedIds((current) => new Set([...current].filter((id) => search.assets.some((asset) => asset.id === id))));
+    }).finally(() => {
+      if (active) {
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [api.library, deferredQuery, roleFilter]);
+
+  const addRoot = async (role: AssetRole) => {
+    const root = await api.library.addRoot({ role });
+    if (!root) {
+      addNotification('Catalog root selection cancelled.', 'warn');
+      return;
+    }
+    await loadCatalog();
+    addNotification(`Added ${role} catalog root. Scan queued.`, 'success');
+  };
+
+  const importSelected = async () => {
+    const imported = await api.library.importAssets({
+      projectRoot,
+      assetIds: [...selectedIds]
+    });
+    if (imported.length === 0) {
+      addNotification('No catalog assets were available to import.', 'warn');
+      return;
+    }
+
+    mergeAssets(imported);
+    if (resolvedProjectFilePath) {
+      const session = await api.project.saveProject({
+        project: useProjectSessionStore.getState().project,
+        projectFilePath: resolvedProjectFilePath
+      });
+      setSession(session);
+    }
+    addNotification(`Imported ${imported.length} catalog asset${imported.length === 1 ? '' : 's'}.`, 'success');
+  };
+
+  const toggleSelected = (assetId: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(assetId)) {
+        next.delete(assetId);
+      } else {
+        next.add(assetId);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '340px minmax(0, 1fr)', gap: 16, height: '100%', minHeight: 0 }}>
+      <Panel title="Catalog Roots" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', gap: 14, minHeight: 0 }}>
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+            {catalogRoles.map((role) => (
+              <ToolbarButton key={role.value} onClick={() => void addRoot(role.value)}>Add {role.label}</ToolbarButton>
+            ))}
+          </div>
+          <ToolbarButton onClick={() => void api.library.rescanAll().then(loadCatalog)} disabled={roots.length === 0}>Rescan All</ToolbarButton>
+        </div>
+        <div className="studio-scrollable" style={{ display: 'grid', alignContent: 'start', gap: 8, minHeight: 0 }}>
+          {roots.length > 0 ? roots.map((root) => (
+            <div key={root.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 12, background: 'rgba(255,255,255,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                <strong>{root.role}</strong>
+                <span style={pillStyle(root.lastScanStatus === 'completed' ? 'success' : root.lastScanStatus === 'failed' ? 'warn' : 'default')}>{root.lastScanStatus}</span>
+              </div>
+              <div style={{ color: muted, fontSize: 12, marginTop: 8, lineHeight: 1.45, wordBreak: 'break-word' }}>{root.path}</div>
+              <div style={{ marginTop: 10 }}>
+                <ToolbarButton onClick={() => void api.library.rescanRoot(root.id).then(loadCatalog)}>Rescan</ToolbarButton>
+              </div>
+            </div>
+          )) : (
+            <div style={{ border: '1px dashed rgba(255,255,255,0.14)', borderRadius: 16, padding: 16, color: muted, lineHeight: 1.6 }}>
+              Add reusable media folders by role. Scans include nested folders and keep project files independent from the global database.
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {catalogJobs.slice(-2).reverse().map((job) => <JobRow key={job.id} job={job} />)}
+        </div>
+      </Panel>
+
+      <Panel title="Global Assets" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) auto auto', gap: 10, marginBottom: 12 }}>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search catalog"
+            style={{
+              width: '100%',
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(13, 16, 22, 0.92)',
+              color: '#f6f7f9',
+              padding: '10px 14px'
+            }}
+          />
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value as AssetRole | 'all')}
+            style={{
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(13, 16, 22, 0.92)',
+              color: '#f6f7f9',
+              padding: '10px 14px'
+            }}
+          >
+            <option value="all">All roles</option>
+            {catalogRoles.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+          </select>
+          <ToolbarButton primary onClick={() => void importSelected()} disabled={selectedIds.size === 0}>Import {selectedIds.size}</ToolbarButton>
+        </div>
+        <div style={{ color: muted, fontSize: 13, marginBottom: 10 }}>
+          {loading ? 'Loading catalog...' : `${assets.length} shown${total > assets.length ? ` of ${total}` : ''}`}
+        </div>
+        <div className="studio-scrollable" style={{ minHeight: 0 }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 8px' }}>
+            <thead>
+              <tr style={{ color: muted, fontSize: 12, textAlign: 'left' }}>
+                <th style={{ width: 44 }} />
+                <th>Filename</th>
+                <th>Role</th>
+                <th>Type</th>
+                <th>Analysis</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assets.map((asset) => (
+                <tr key={asset.id} style={{ background: selectedIds.has(asset.id) ? 'rgba(114, 133, 166, 0.16)' : 'rgba(255,255,255,0.03)' }}>
+                  <td style={{ padding: 10, borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }}>
+                    <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={() => toggleSelected(asset.id)} />
+                  </td>
+                  <td style={{ padding: 10 }}>
+                    <div style={{ fontWeight: 700 }}>{asset.filename}</div>
+                    <div style={{ color: muted, fontSize: 12, marginTop: 4, maxWidth: 520, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{asset.path}</div>
+                  </td>
+                  <td style={{ padding: 10 }}><span style={pillStyle()}>{asset.assetRole}</span></td>
+                  <td style={{ padding: 10 }}><span style={pillStyle()}>{asset.mediaType}</span></td>
+                  <td style={{ padding: 10 }}><span style={pillStyle(asset.analysisStatus === 'completed' ? 'success' : asset.analysisStatus === 'failed' ? 'warn' : 'default')}>{asset.analysisStatus}</span></td>
+                  <td style={{ padding: 10, borderTopRightRadius: 12, borderBottomRightRadius: 12 }}>{asset.durationMs ? formatMillisecondsClock(asset.durationMs) : 'Unknown'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {assets.length === 0 ? (
+            <div style={{ border: '1px dashed rgba(255,255,255,0.14)', borderRadius: 16, padding: 18, color: muted, lineHeight: 1.6 }}>
+              No catalog assets match the current filters.
+            </div>
+          ) : null}
         </div>
       </Panel>
     </div>
@@ -2852,6 +3075,8 @@ export function ActiveView() {
   switch (currentTab) {
     case 'project':
       return <ProjectView />;
+    case 'catalog':
+      return <CatalogView />;
     case 'media':
       return <MediaView />;
     case 'cuts':

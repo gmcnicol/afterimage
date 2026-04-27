@@ -489,6 +489,13 @@ const tabMeta: TabMeta[] = [
     guidance: 'Bring in source material first, run analysis here, then move on once statuses are ready.'
   },
   {
+    id: 'catalog',
+    label: 'Catalog',
+    group: 'Set Up',
+    description: 'Manage global media folders and import selected catalog assets.',
+    guidance: 'Use the catalog for reusable footage, masks, overlays, and music that should live outside one project.'
+  },
+  {
     id: 'cuts',
     label: 'Cuts',
     group: 'Build',
@@ -584,6 +591,8 @@ function getTabStatus(tabId: StudioTab, metrics: WorkflowMetrics): { tone: TabSt
       return metrics.pendingAnalysisCount > 0
         ? { tone: 'attention', label: `${metrics.pendingAnalysisCount} pending` }
         : { tone: 'ready', label: 'media ready' };
+    case 'catalog':
+      return metrics.activeJobCount > 0 ? { tone: 'attention', label: 'jobs active' } : { tone: 'ready', label: 'global roots' };
     case 'cuts':
       if (metrics.cutCount === 0) {
         return { tone: 'blocked', label: 'no candidates' };

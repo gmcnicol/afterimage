@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 export type StudioTab =
   | 'project'
+  | 'catalog'
   | 'media'
   | 'cuts'
   | 'sequence'

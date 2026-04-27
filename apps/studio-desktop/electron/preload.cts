@@ -26,6 +26,15 @@ const api: DesktopApi = {
     importTransitionOverlays: (projectRoot) => ipcRenderer.invoke('project:importTransitionOverlays', projectRoot),
     relinkAsset: (input) => ipcRenderer.invoke('project:relinkAsset', input)
   },
+  library: {
+    addRoot: (input) => ipcRenderer.invoke('library:addRoot', input),
+    rescanRoot: (rootId) => ipcRenderer.invoke('library:rescanRoot', rootId),
+    rescanAll: () => ipcRenderer.invoke('library:rescanAll'),
+    listRoots: () => ipcRenderer.invoke('library:listRoots'),
+    listDirectories: (rootId) => ipcRenderer.invoke('library:listDirectories', rootId),
+    searchAssets: (input) => ipcRenderer.invoke('library:searchAssets', input),
+    importAssets: (input) => ipcRenderer.invoke('library:importAssets', input)
+  },
   jobs: {
     list: () => ipcRenderer.invoke('jobs:list'),
     subscribe: (listener) => {
