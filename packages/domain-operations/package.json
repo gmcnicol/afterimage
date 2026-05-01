@@ -1,0 +1,20 @@
+{
+  "name": "@afterimage/domain-operations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "lint": "node -e \"console.log('lint placeholder: @afterimage/domain-operations')\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@afterimage/project-model": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.18"
+  }
+}

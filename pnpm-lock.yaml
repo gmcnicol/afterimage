@@ -72,6 +72,9 @@ importers:
 
   apps/studio-desktop:
     dependencies:
+      '@afterimage/domain-operations':
+        specifier: workspace:*
+        version: link:../../packages/domain-operations
       '@afterimage/export-profiles':
         specifier: workspace:*
         version: link:../../packages/export-profiles
@@ -151,6 +154,16 @@ importers:
       wait-on:
         specifier: ^9.0.4
         version: 9.0.4
+
+  packages/domain-operations:
+    dependencies:
+      '@afterimage/project-model':
+        specifier: workspace:*
+        version: link:../project-model
+    devDependencies:
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@types/node@25.3.5)(jiti@2.6.1)
 
   packages/export-profiles:
     dependencies:

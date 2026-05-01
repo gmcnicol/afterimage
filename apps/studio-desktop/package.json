@@ -20,6 +20,7 @@
     "test:e2e": "pnpm build && playwright test"
   },
   "dependencies": {
+    "@afterimage/domain-operations": "workspace:*",
     "@afterimage/export-profiles": "workspace:*",
     "@afterimage/ffmpeg-compiler": "workspace:*",
     "@afterimage/media-analysis": "workspace:*",
