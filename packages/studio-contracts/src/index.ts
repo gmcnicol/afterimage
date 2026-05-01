@@ -6,6 +6,7 @@ export type {
 export type {
   DesktopJob,
   DesktopJobResult,
+  JobLaunchResult,
   JobsCommandMap,
   JobsEventMap,
   JobsQueryMap,

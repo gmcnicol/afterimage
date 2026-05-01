@@ -37,7 +37,8 @@ export function JobRow({ job }: { job: DesktopJob }) {
             })} style={{ padding: '3px 7px', fontSize: 11 }}>Cancel</ToolbarButton>
           ) : null}
           {retryable ? (
-            <ToolbarButton onClick={() => void api.jobs.retry(job.id).then((retried) => {
+            <ToolbarButton onClick={() => void api.jobs.retry(job.id).then((launch) => {
+              const retried = launch.jobIds.length > 0;
               addNotification(retried ? `Retried job ${job.id}.` : `Job ${job.id} cannot be retried.`, retried ? 'success' : 'warn');
             })} style={{ padding: '3px 7px', fontSize: 11 }}>Retry</ToolbarButton>
           ) : null}

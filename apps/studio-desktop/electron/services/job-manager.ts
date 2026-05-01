@@ -1,5 +1,6 @@
 import type {
   DesktopJob,
+  JobLaunchResult,
   RunAnalysisRequest,
   RunExportRequest,
   RunPreviewRequest
@@ -40,26 +41,39 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
   const { runExport } = createExportJobs({ logger, enqueue: queue.enqueue });
   const { runLibraryJob } = createLibraryJobs({ enqueue: queue.enqueue });
 
-  async function retry(jobId: string): Promise<DesktopJob | null> {
+  function launchResult(jobs: DesktopJob | DesktopJob[] | null): JobLaunchResult {
+    const queuedJobs = Array.isArray(jobs) ? jobs : jobs ? [jobs] : [];
+    return {
+      jobIds: queuedJobs.map((job) => job.id)
+    };
+  }
+
+  async function retry(jobId: string): Promise<JobLaunchResult> {
     const job = queue.findJob(jobId);
     if (!job?.retryPayload) {
-      return null;
+      return { jobIds: [] };
     }
 
-    return await retryPayload(job.retryPayload, {
+    return launchResult(await retryPayload(job.retryPayload, {
       runAnalysis,
       runPreview: async (input: RunPreviewRequest) => runPreview(input),
       runExport: async (input: RunExportRequest) => runExport(input)
-    });
+    }));
   }
 
   return {
     list(): DesktopJob[] {
       return queue.list();
     },
-    runAnalysis,
-    runPreview: async (input: RunPreviewRequest) => runPreview(input),
-    runExport: async (input: RunExportRequest) => runExport(input),
+    async runAnalysis(input: RunAnalysisRequest): Promise<JobLaunchResult> {
+      return launchResult(await runAnalysis(input));
+    },
+    async runPreview(input: RunPreviewRequest): Promise<JobLaunchResult> {
+      return launchResult(runPreview(input));
+    },
+    async runExport(input: RunExportRequest): Promise<JobLaunchResult> {
+      return launchResult(runExport(input));
+    },
     runLibraryJob(input: {
       type: LibraryJobType;
       target: string;

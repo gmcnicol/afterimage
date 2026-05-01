@@ -22,6 +22,10 @@ export interface DesktopJob {
   result?: DesktopJobResult;
 }
 
+export interface JobLaunchResult {
+  jobIds: string[];
+}
+
 export interface RunAnalysisRequest {
   project: NormalizedProjectFile;
   projectRoot: string;
@@ -44,15 +48,15 @@ export interface RunExportRequest extends RunPreviewRequest {
 export interface JobsCommandMap {
   'jobs.runAnalysis': {
     payload: RunAnalysisRequest;
-    result: DesktopJob[];
+    result: JobLaunchResult;
   };
   'jobs.runPreview': {
     payload: RunPreviewRequest;
-    result: DesktopJob | null;
+    result: JobLaunchResult;
   };
   'jobs.runExport': {
     payload: RunExportRequest;
-    result: DesktopJob[];
+    result: JobLaunchResult;
   };
   'jobs.cancel': {
     payload: string;
@@ -60,7 +64,7 @@ export interface JobsCommandMap {
   };
   'jobs.retry': {
     payload: string;
-    result: DesktopJob | null;
+    result: JobLaunchResult;
   };
 }
 

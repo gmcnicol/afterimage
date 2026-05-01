@@ -1,6 +1,7 @@
 export type {
   DesktopJob,
   DesktopJobResult,
+  JobLaunchResult,
   DiagnosticsSnapshot,
   LibraryAddRootRequest,
   LibraryAsset,

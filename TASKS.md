@@ -117,7 +117,7 @@
 
 ### STUDIO-030
 - priority: P1
-- status: backlog
+- status: done
 - depends_on: [STUDIO-010]
 - owner_area: workflows
 - title: Convert long-running workflows to command -> jobId -> events
@@ -125,6 +125,12 @@
   - Long-running commands return job identifiers promptly.
   - Progress and completion flow through `jobs.updated` events.
   - Renderer no longer depends on long request lifetimes for workflow progress.
+- notes:
+  - Added `JobLaunchResult` and changed `jobs.runAnalysis`, `jobs.runPreview`, `jobs.runExport`, and `jobs.retry` to return queued job ids instead of full job snapshots.
+  - Kept `DesktopJob` snapshots and progress/completion delivery on `jobs.list` and `jobs.updated`; renderer retry/analysis launch handling now checks returned `jobIds`.
+  - Successful commands: `pnpm --dir apps/studio-desktop typecheck`; `pnpm --dir apps/studio-desktop test -- job-retry.test.ts job-manager-progress.test.ts`; `pnpm --dir packages/studio-contracts test`.
+  - Pitfall: Vitest still ran the broader app unit suite despite the focused file filter.
+  - Remaining risks: library scan commands already enqueue background work but still return root snapshots for catalog UI refresh; this task only changed explicit job workflow routes.
 
 ### STUDIO-031
 - priority: P2
