@@ -86,7 +86,7 @@
 
 ### STUDIO-020
 - priority: P1
-- status: backlog
+- status: done
 - depends_on: [STUDIO-004]
 - owner_area: renderer
 - title: Move renderer views into `features/*`
@@ -94,6 +94,13 @@
   - Current view logic is grouped by feature ownership.
   - Shared UI remains in app-level components.
   - Route/client access stays behind feature-facing hooks.
+- notes:
+  - Split the former monolithic renderer views module into feature-owned `features/*/views.tsx` files, with `app/views.tsx` reduced to the active-tab view switcher.
+  - Kept reusable view helpers in `features/view-support.tsx` and shared UI primitives in `app/components`.
+  - Added feature-facing client hooks for project overview, media library, sequence builder, and export route access.
+  - Successful commands: `pnpm --dir apps/studio-desktop typecheck`; `pnpm --dir apps/studio-desktop test`.
+  - Pitfall: the active view switcher needed the existing `currentTab` store field rather than an `activeTab` name.
+  - Remaining risks: this is a structural renderer move; unit tests and typecheck pass, but no Playwright smoke run was executed in this iteration.
 
 ### STUDIO-021
 - priority: P2
