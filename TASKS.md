@@ -67,7 +67,7 @@
 
 ### STUDIO-011
 - priority: P1
-- status: backlog
+- status: done
 - depends_on: [STUDIO-002]
 - owner_area: library
 - title: Split `library-service.ts`
@@ -75,6 +75,12 @@
   - Database access, scanning, import, removal, and analysis planning are separate modules.
   - Library route handlers remain a thin coordination layer.
   - Existing library-service tests are preserved or expanded around the new modules.
+- notes:
+  - Split library service internals into `electron/services/library/*`: catalog database helpers, scanner, analyzer, import mapping, removal coordination, shared types, and utilities.
+  - `library-service.ts` now wires the modules behind the existing route-facing methods without changing renderer IPC routes.
+  - Successful commands: `pnpm --dir apps/studio-desktop test -- library-service.test.ts`; `pnpm --dir apps/studio-desktop typecheck`.
+  - Pitfall: Vitest currently runs the app unit suite even when a file filter is supplied, so the focused command also exercised existing job/client/operations tests.
+  - Remaining risks: runtime ffmpeg-backed catalog analysis is still covered through existing command planning paths, not a full media-analysis integration run.
 
 ## Milestone 3: Renderer Feature Boundaries
 
