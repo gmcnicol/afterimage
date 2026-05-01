@@ -39,9 +39,17 @@ Update `TASKS.md` before finishing:
   - commands/tests run
   - any remaining risks
 
+Commit changes before finishing:
+
+- Commit focused changes for the selected task.
+- Include the `TASKS.md` status/notes update in the same commit.
+- If the task is incomplete, still commit the useful partial work and documented remaining steps unless the worktree is known to be broken beyond the documented task state.
+- Leave the worktree clean except for explicitly documented external artifacts that should not be committed.
+
 The final response should state:
 
 - which task was selected
 - whether it is complete
 - what changed
 - what verification ran
+- the commit hash
