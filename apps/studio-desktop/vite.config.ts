@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@afterimage/ui': fileURLToPath(new URL('../../packages/ui/src/index.tsx', import.meta.url)),
+      '@afterimage/domain-operations': fileURLToPath(new URL('../../packages/domain-operations/src/index.ts', import.meta.url)),
       '@afterimage/project-model': fileURLToPath(new URL('../../packages/project-model/src/index.ts', import.meta.url)),
       '@afterimage/schema-validators': fileURLToPath(new URL('../../packages/schema-validators/src/index.ts', import.meta.url)),
       '@afterimage/ffmpeg-compiler': fileURLToPath(new URL('../../packages/ffmpeg-compiler/src/index.ts', import.meta.url)),

@@ -104,7 +104,7 @@
 
 ### STUDIO-021
 - priority: P2
-- status: backlog
+- status: done
 - depends_on: [STUDIO-020]
 - owner_area: domain operations
 - title: Extract domain operations package
@@ -112,6 +112,13 @@
   - Reusable project editing operations live outside the Studio app.
   - Package tests cover sequence, cut, style, and automation operations.
   - Studio imports domain operations through the package boundary.
+- notes:
+  - Added `@afterimage/domain-operations` and moved the existing project, sequence, cut, style, and automation operation modules out of the Studio app.
+  - Moved the operation test coverage into the new package; it now exercises sequence, cut, style, automation, and project helpers through the package source.
+  - Studio renderer state now imports editing operations from `@afterimage/domain-operations`; Vite and TypeScript aliases were updated for the package boundary.
+  - Successful commands: `pnpm --dir packages/domain-operations test`; `pnpm --dir packages/domain-operations typecheck`; `pnpm --dir apps/studio-desktop typecheck`; `pnpm --dir apps/studio-desktop test`.
+  - Pitfall: the package needed a Vitest alias for `@afterimage/project-model` because package-local tests do not inherit the Studio Vite aliases.
+  - Remaining risks: this is a mechanical extraction of existing operation behavior; no end-to-end Studio smoke run was executed in this iteration.
 
 ## Milestone 4: Workflow and Agent Extraction
 

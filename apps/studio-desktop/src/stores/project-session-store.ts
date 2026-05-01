@@ -4,50 +4,53 @@ import { createEmptyProject, getDefaultFilterParameters, getFilterDefinition, ge
 import {
   addCutToSequence,
   addMarker,
+  addSection,
+  addAutomationLane,
+  addCutToBin,
+  addFilterToStack,
+  addLaneKeyframe,
+  applyPresetToStack,
+  applySyncMarkers,
   buildNewVariantFromReviewedCuts,
   buildVariantFromReviewedCuts,
-  type SequenceBuildMode,
-  applySyncMarkers,
-  addSection,
   deleteVariant,
   duplicateVariant,
+  mergeImportedAssets,
+  moveFilterInStack,
   moveClip,
-  removeClip,
-  randomizeFoundryTransitions,
   randomizeFoundryOverlays,
-  setClipOverlayCut,
+  randomizeFoundryTransitions,
+  removeAutomationLane,
+  removeClip,
+  removeFilterFromStack,
+  removeLaneKeyframe,
+  replaceAssetPath,
+  resetLane,
+  safeRandomizeFilter,
+  safeRandomizeStack,
+  setAutomationLaneEnabled,
   setClipOverlayAsset,
+  setClipOverlayCut,
   setClipTransition,
   setClipTransitionAsset,
   setClipTransitionCut,
   setClipTransitionDuration,
-  setClipTransitionOverlayCut,
   setClipTransitionOverlayAsset,
-  trimClip
-} from '../operations/sequence-ops';
-import {
-  addLaneKeyframe,
-  addAutomationLane,
-  removeAutomationLane,
-  removeLaneKeyframe,
-  resetLane,
-  setAutomationLaneEnabled,
-  updateAutomationLaneTarget,
-  updateLaneKeyframe
-} from '../operations/automation-ops';
-import { addCutToBin, toggleCutFavorite, trimCut, updateCutStatus } from '../operations/cut-ops';
-import { mergeImportedAssets, replaceAssetPath, setVariantMusicAsset, setVariantMusicSyncMode, toggleExportProfile } from '../operations/project-ops';
-import {
-  addFilterToStack,
-  applyPresetToStack,
-  moveFilterInStack,
-  removeFilterFromStack,
-  safeRandomizeFilter,
-  safeRandomizeStack,
+  setClipTransitionOverlayCut,
+  setVariantMusicAsset,
+  setVariantMusicSyncMode,
+  type SequenceBuildMode,
+  toggleCutFavorite,
+  toggleExportProfile,
   toggleFilterEnabled,
+  trimClip,
+  trimCut,
+  updateAutomationLaneTarget,
+  updateCutStatus,
   updateFilterMix,
-  updateFilterParameter
-} from '../operations/style-ops';
+  updateFilterParameter,
+  updateLaneKeyframe
+} from '@afterimage/domain-operations';
 import type { Marker, SyncMode } from '@afterimage/project-model';
 import { useUiStore } from './ui-store';
 

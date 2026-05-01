@@ -17,10 +17,10 @@ import {
   setClipTransitionCut,
   setClipTransitionOverlayCut,
   setClipTransitionOverlayAsset
-} from '../src/operations/sequence-ops';
-import { addAutomationLane, addLaneKeyframe, updateAutomationLaneTarget } from '../src/operations/automation-ops';
-import { mergeImportedAssets, toggleExportProfile } from '../src/operations/project-ops';
-import { addFilterToStack, applyPresetToStack, safeRandomizeFilter, updateFilterParameter } from '../src/operations/style-ops';
+} from '../src/sequence-ops';
+import { addAutomationLane, addLaneKeyframe, updateAutomationLaneTarget } from '../src/automation-ops';
+import { mergeImportedAssets, toggleExportProfile } from '../src/project-ops';
+import { addFilterToStack, applyPresetToStack, safeRandomizeFilter, updateFilterParameter } from '../src/style-ops';
 
 function makeProject() {
   const project = createEmptyProject({
@@ -45,7 +45,7 @@ function makeProject() {
   };
 }
 
-describe('@afterimage/studio-desktop operations', () => {
+describe('@afterimage/domain-operations', () => {
   it('merges imported assets and toggles export profiles', () => {
     const project = mergeImportedAssets(makeProject(), [
       {

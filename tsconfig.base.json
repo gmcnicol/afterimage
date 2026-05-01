@@ -14,6 +14,7 @@
     "baseUrl": ".",
     "paths": {
       "@afterimage/project-model": ["packages/project-model/src"],
+      "@afterimage/domain-operations": ["packages/domain-operations/src"],
       "@afterimage/schema-validators": ["packages/schema-validators/src"],
       "@afterimage/ffmpeg-compiler": ["packages/ffmpeg-compiler/src"],
       "@afterimage/media-analysis": ["packages/media-analysis/src"],
