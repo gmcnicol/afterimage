@@ -1,6 +1,7 @@
 import type {
   DesktopJob,
   DiagnosticsSnapshot,
+  JobLaunchResult,
   LibraryAsset,
   LibraryDirectory,
   LibraryRoot,
@@ -20,6 +21,7 @@ import type {
 export type {
   DesktopJob,
   DiagnosticsSnapshot,
+  JobLaunchResult,
   LibraryAsset,
   LibraryDirectory,
   LibraryRoot,

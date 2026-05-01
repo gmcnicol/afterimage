@@ -969,10 +969,9 @@ export function MediaView() {
     }
 
     setLaunchLocked(true);
-    const queuedJobs = await api.jobs.runAnalysis({ project, projectRoot: projectRoot ?? '.', assetIds });
-    const job = queuedJobs[0];
+    const launch = await api.jobs.runAnalysis({ project, projectRoot: projectRoot ?? '.', assetIds });
 
-    if (job?.status === 'queued' || job?.status === 'running') {
+    if (launch.jobIds.length > 0) {
       addNotification(
         activeAnalysisJob
           ? 'Analysis is already running. Cancel the active job before starting another.'
