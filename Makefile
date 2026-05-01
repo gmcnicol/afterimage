@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 .DEFAULT_GOAL := help
 
-.PHONY: help bootstrap install dev run studio live appliance build test lint typecheck check dist-studio dist-studio-dir dist-studio-mac
+.PHONY: help bootstrap install dev run studio live appliance ralph build test lint typecheck check dist-studio dist-studio-dir dist-studio-mac
 
 help: ## Show available commands.
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\nTargets:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -26,6 +26,9 @@ live: ## Run Afterimage Live Desktop.
 
 appliance: ## Run the Live Appliance Go service locally.
 	pnpm dev:appliance
+
+ralph: ## Run Codex task automation from PROMPT.md.
+	./ralph
 
 build: ## Build all workspace packages and apps.
 	pnpm build

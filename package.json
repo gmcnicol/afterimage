@@ -11,6 +11,7 @@
     "dev:studio": "pnpm --dir apps/studio-desktop dev",
     "dev:live": "pnpm --dir apps/live-desktop dev",
     "dev:appliance": "cd apps/live-appliance && go run ./cmd/afterimage-appliance",
+    "ralph": "./ralph",
     "foundry:run": "node scripts/transition-foundry.mjs run",
     "foundry:generate": "node scripts/transition-foundry.mjs generate",
     "foundry:analyze": "node scripts/transition-foundry.mjs analyze",
