@@ -12,7 +12,7 @@ import {
   getVariantById,
   type NormalizedProjectFile
 } from '@afterimage/project-model';
-import type { DesktopJob, RunPreviewRequest } from '@afterimage/studio-contracts';
+import type { DesktopJob, PreviewRenderAgentInput, RunPreviewRequest } from '@afterimage/studio-contracts';
 import type { Logger } from '../logger.js';
 import { ensureArtifactDirs } from './artifacts.js';
 import { createProgressRunner } from './progress.js';
@@ -31,20 +31,21 @@ function resolveTargetRenderDurationMs(project: NormalizedProjectFile, variantId
 
 export function createPreviewJobs({ logger, enqueue }: { logger: Logger; enqueue: EnqueueJob }) {
   function runPreview(input: RunPreviewRequest): DesktopJob {
+    const agentInput: PreviewRenderAgentInput = input;
     const tools = resolveFfmpegTools();
     return enqueue({
       type: 'preview',
-      target: input.outputPath,
+      target: agentInput.outputPath,
       queueClass: 'heavy',
       retryPayload: { kind: 'preview', ...input },
       run: async (signal, report) => {
-        await ensureArtifactDirs(input.projectRoot);
-        const tempOutputPath = `${input.outputPath}.rendering-${Date.now()}.mp4`;
-        const durationMs = resolveTargetRenderDurationMs(input.project, input.variantId, input.sequenceId);
-        const plan = buildPreviewPlan(input.project, {
+        await ensureArtifactDirs(agentInput.projectRoot);
+        const tempOutputPath = `${agentInput.outputPath}.rendering-${Date.now()}.mp4`;
+        const durationMs = resolveTargetRenderDurationMs(agentInput.project, agentInput.variantId, agentInput.sequenceId);
+        const plan = buildPreviewPlan(agentInput.project, {
           outputPath: tempOutputPath,
-          sequenceId: input.sequenceId,
-          variantId: input.variantId
+          sequenceId: agentInput.sequenceId,
+          variantId: agentInput.variantId
         }, tools);
         report('Rendering preview cache', 0.02);
         try {
@@ -58,16 +59,16 @@ export function createPreviewJobs({ logger, enqueue }: { logger: Logger; enqueue
               endProgress: 0.98
             })
           });
-          await rm(input.outputPath, { force: true });
-          await rename(tempOutputPath, input.outputPath);
+          await rm(agentInput.outputPath, { force: true });
+          await rename(tempOutputPath, agentInput.outputPath);
         } catch (error) {
           await rm(tempOutputPath, { force: true }).catch(() => undefined);
           throw error;
         }
-        await logger.log('info', 'Rendered preview cache.', input.outputPath);
+        await logger.log('info', 'Rendered preview cache.', agentInput.outputPath);
         return {
           kind: 'preview',
-          outputPath: input.outputPath
+          outputPath: agentInput.outputPath
         };
       }
     });

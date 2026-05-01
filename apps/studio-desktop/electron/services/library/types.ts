@@ -1,10 +1,11 @@
 import type { Dialog } from 'electron';
+import type { StudioAgentOutput } from '@afterimage/studio-contracts';
 import type { Logger } from '../logger.js';
 
 export type LibraryJobRunner = (input: {
   type: 'library-scan' | 'library-analysis';
   target: string;
-  run(signal: AbortSignal, report: (message: string, progress: number) => Promise<void> | void): Promise<NonNullable<import('@afterimage/studio-contracts').DesktopJob['result']>>;
+  run(signal: AbortSignal, report: (message: string, progress: number) => Promise<void> | void): Promise<StudioAgentOutput>;
 }) => void;
 
 export interface LibraryServiceOptions {

@@ -16,7 +16,7 @@ import {
   parseSceneDetectionOutput
 } from '@afterimage/media-analysis';
 import { parseProject } from '@afterimage/schema-validators';
-import type { DesktopJob, RunAnalysisRequest } from '@afterimage/studio-contracts';
+import type { AnalysisAgentInput, DesktopJob, RunAnalysisRequest } from '@afterimage/studio-contracts';
 import type { Logger } from '../logger.js';
 import { clampProgress, ensureArtifactDirs } from './artifacts.js';
 import type { EnqueueJob } from './types.js';
@@ -29,6 +29,7 @@ interface AnalysisJobsOptions {
 
 export function createAnalysisJobs({ logger, enqueue, findActiveAnalysisJob }: AnalysisJobsOptions) {
   async function runAnalysis(input: RunAnalysisRequest): Promise<DesktopJob[]> {
+    const agentInput: AnalysisAgentInput = input;
     const existingAnalysisJob = findActiveAnalysisJob();
 
     if (existingAnalysisJob) {
@@ -43,26 +44,26 @@ export function createAnalysisJobs({ logger, enqueue, findActiveAnalysisJob }: A
       queueClass: 'analysis',
       retryPayload: { kind: 'analysis', ...input },
       run: async (signal, report) => {
-        await ensureArtifactDirs(input.projectRoot);
-        let nextProject = parseProject(input.project);
-        const assetCount = Math.max(1, input.assetIds.length);
+        await ensureArtifactDirs(agentInput.projectRoot);
+        let nextProject = parseProject(agentInput.project);
+        const assetCount = Math.max(1, agentInput.assetIds.length);
 
-        for (const [assetIndex, assetId] of input.assetIds.entries()) {
+        for (const [assetIndex, assetId] of agentInput.assetIds.entries()) {
           const reportAssetProgress = (phaseProgress: number) => {
             report(`Analyzing ${assetIndex + 1}/${assetCount}`, (assetIndex + clampProgress(phaseProgress)) / assetCount);
           };
 
           reportAssetProgress(0.02);
-          const probeOutputPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.ffprobe.json`);
-          const analysisLogPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.scene.log`);
-          const analysisSidecarPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.analysis.json`);
-          const astatsLogPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.astats.log`);
-          const aspectralstatsLogPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.aspectralstats.log`);
-          const ebur128LogPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.ebur128.log`);
-          const silencedetectLogPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.silencedetect.log`);
-          const thumbnailPattern = join(input.projectRoot, '.afterimage', 'thumbnails', `${assetId}-%03d.jpg`);
-          const thumbnailManifestPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.thumbnails.json`);
-          const waveformPath = join(input.projectRoot, '.afterimage', 'waveforms', `${assetId}.png`);
+          const probeOutputPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.ffprobe.json`);
+          const analysisLogPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.scene.log`);
+          const analysisSidecarPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.analysis.json`);
+          const astatsLogPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.astats.log`);
+          const aspectralstatsLogPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.aspectralstats.log`);
+          const ebur128LogPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.ebur128.log`);
+          const silencedetectLogPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.silencedetect.log`);
+          const thumbnailPattern = join(agentInput.projectRoot, '.afterimage', 'thumbnails', `${assetId}-%03d.jpg`);
+          const thumbnailManifestPath = join(agentInput.projectRoot, '.afterimage', 'analysis', `${assetId}.thumbnails.json`);
+          const waveformPath = join(agentInput.projectRoot, '.afterimage', 'waveforms', `${assetId}.png`);
           const asset = nextProject.assets.find((candidate) => candidate.id === assetId);
 
           if (!asset) {
@@ -154,7 +155,7 @@ export function createAnalysisJobs({ logger, enqueue, findActiveAnalysisJob }: A
               thumbnails: scene.sceneCuts.map((cut, index) => ({
                 id: `${assetId}-thumbnail-${index + 1}`,
                 timeMs: cut.timeMs,
-                path: join(input.projectRoot, '.afterimage', 'thumbnails', `${assetId}-${String(index + 1).padStart(3, '0')}.jpg`)
+                path: join(agentInput.projectRoot, '.afterimage', 'thumbnails', `${assetId}-${String(index + 1).padStart(3, '0')}.jpg`)
               })),
               waveform
             });
@@ -217,7 +218,7 @@ export function createAnalysisJobs({ logger, enqueue, findActiveAnalysisJob }: A
           reportAssetProgress(0.98);
         }
 
-        await logger.log('info', 'Completed analysis workflow.', input.assetIds.join(','));
+        await logger.log('info', 'Completed analysis workflow.', agentInput.assetIds.join(','));
         return {
           kind: 'analysis',
           project: nextProject

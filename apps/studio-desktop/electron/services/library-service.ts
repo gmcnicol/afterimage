@@ -3,9 +3,11 @@ import { DatabaseSync } from 'node:sqlite';
 import type { MediaAsset } from '@afterimage/project-model';
 import type {
   LibraryAddRootRequest,
+  LibraryAnalysisAgentInput,
   LibraryDirectory,
   LibraryImportAssetsRequest,
   LibraryRemoveAssetsRequest,
+  LibraryScanAgentInput,
   LibraryRoot
 } from '@afterimage/studio-contracts';
 import { createLibraryAnalyzer } from './library/analyzer.js';
@@ -46,20 +48,25 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
     getRoot,
     setRootScanStatus: (rootId, status, patch) => setCatalogRootScanStatus(db, rootId, status, patch),
     runAnalysisJob(root, pendingAnalysisAssets) {
+      const agentInput: LibraryAnalysisAgentInput = {
+        rootId: root.id,
+        rootPath: root.path,
+        assets: pendingAnalysisAssets
+      };
       runLibraryJob?.({
         type: 'library-analysis',
-        target: root.path,
+        target: agentInput.rootPath,
         run: async (analysisSignal, analysisReport) => {
-          for (const [index, asset] of pendingAnalysisAssets.entries()) {
+          for (const [index, asset] of agentInput.assets.entries()) {
             analysisSignal.throwIfAborted();
-            analysisReport(`Analyzing ${asset.filename}`, index / pendingAnalysisAssets.length);
+            analysisReport(`Analyzing ${asset.filename}`, index / agentInput.assets.length);
             try {
               await probeAsset(asset, analysisSignal);
             } catch (error) {
               await logger.log('warn', 'Failed to analyze library asset.', `${asset.path} :: ${getErrorMessage(error)}`);
             }
           }
-          return { kind: 'library-analysis', assetIds: pendingAnalysisAssets.map((asset) => asset.id) };
+          return { kind: 'library-analysis', assetIds: agentInput.assets.map((asset) => asset.id) };
         }
       });
     }
@@ -99,15 +106,19 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
       `).run(rootId, rootPath, input.role, timestamp, timestamp);
 
       if (runLibraryJob) {
+        const agentInput: LibraryScanAgentInput = {
+          rootId,
+          rootPath
+        };
         runLibraryJob({
           type: 'library-scan',
-          target: rootPath,
+          target: agentInput.rootPath,
           run: async (signal, report) => {
-            const scannedRoot = await scanRoot(rootId, signal, report);
+            const scannedRoot = await scanRoot(agentInput.rootId, signal, report);
             return { kind: 'library-scan', rootId: scannedRoot.id };
           }
         });
-        return getRoot(rootId);
+        return getRoot(agentInput.rootId);
       }
 
       return scanRoot(rootId);
@@ -119,15 +130,19 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
       if (runLibraryJob) {
         const root = getRoot(rootId);
         setCatalogRootScanStatus(db, rootId, 'pending');
+        const agentInput: LibraryScanAgentInput = {
+          rootId: root.id,
+          rootPath: root.path
+        };
         runLibraryJob({
           type: 'library-scan',
-          target: root.path,
+          target: agentInput.rootPath,
           run: async (signal, report) => {
-            const scannedRoot = await scanRoot(rootId, signal, report);
+            const scannedRoot = await scanRoot(agentInput.rootId, signal, report);
             return { kind: 'library-scan', rootId: scannedRoot.id };
           }
         });
-        return getRoot(rootId);
+        return getRoot(agentInput.rootId);
       }
 
       return scanRoot(rootId);

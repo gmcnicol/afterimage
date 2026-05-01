@@ -1,13 +1,12 @@
 import type { ExportProfileId } from '@afterimage/export-profiles';
 import type { ExportSelection, NormalizedProjectFile } from '@afterimage/project-model';
+import type {
+  AnalysisAgentInput,
+  PreviewRenderAgentInput,
+  StudioAgentOutput
+} from './agents.js';
 
-export interface DesktopJobResult {
-  kind: 'analysis' | 'preview' | 'export' | 'library-scan' | 'library-analysis';
-  project?: NormalizedProjectFile;
-  outputPath?: string;
-  rootId?: string;
-  assetIds?: string[];
-}
+export type DesktopJobResult = StudioAgentOutput;
 
 export interface DesktopJob {
   id: string;
@@ -26,19 +25,9 @@ export interface JobLaunchResult {
   jobIds: string[];
 }
 
-export interface RunAnalysisRequest {
-  project: NormalizedProjectFile;
-  projectRoot: string;
-  assetIds: string[];
-}
+export interface RunAnalysisRequest extends AnalysisAgentInput {}
 
-export interface RunPreviewRequest {
-  project: NormalizedProjectFile;
-  projectRoot: string;
-  outputPath: string;
-  sequenceId?: string;
-  variantId?: string;
-}
+export interface RunPreviewRequest extends PreviewRenderAgentInput {}
 
 export interface RunExportRequest extends RunPreviewRequest {
   profileIds: ExportProfileId[];

@@ -141,7 +141,7 @@
 
 ### STUDIO-031
 - priority: P2
-- status: backlog
+- status: done
 - depends_on: [STUDIO-010, STUDIO-011, STUDIO-030]
 - owner_area: service extraction
 - title: Prepare analysis, render, and library agents for worker or service extraction
@@ -149,3 +149,10 @@
   - Agent inputs and outputs are serializable contract types.
   - Worker/service transport assumptions are documented.
   - Current in-process execution remains supported while extraction is staged.
+- notes:
+  - Added `packages/studio-contracts/src/agents.ts` with serializable analysis, preview render, export render, library scan, and library analysis input/output contracts.
+  - Job and library service modules now assign route payloads to those agent contract types while preserving the existing in-process queue, retry payloads, progress callbacks, and renderer-facing job behavior.
+  - Documented staged worker/service assumptions in `docs/architecture/studio-agent-extraction.md`.
+  - Successful commands: `pnpm --dir packages/studio-contracts test`; `pnpm --dir packages/studio-contracts typecheck`; `pnpm --dir apps/studio-desktop typecheck`; `pnpm --dir apps/studio-desktop test -- job-retry.test.ts library-service.test.ts`.
+  - Pitfall: desktop focused Vitest command also ran existing `src/lib/studio-client.test.ts` and `job-manager-progress.test.ts`.
+  - Remaining risks: this creates the contract boundary only; no actual worker thread or external service transport was implemented in this staged task.

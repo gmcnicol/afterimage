@@ -1,4 +1,18 @@
 export type {
+  AnalysisAgentInput,
+  AnalysisAgentOutput,
+  ExportRenderAgentInput,
+  ExportRenderAgentOutput,
+  LibraryAnalysisAgentInput,
+  LibraryAnalysisAgentOutput,
+  LibraryScanAgentInput,
+  LibraryScanAgentOutput,
+  PreviewRenderAgentInput,
+  PreviewRenderAgentOutput,
+  StudioAgentInput,
+  StudioAgentOutput
+} from './agents.js';
+export type {
   DiagnosticsQueryMap,
   DiagnosticsSnapshot,
   LogEntry
