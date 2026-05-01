@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@afterimage/studio-contracts": ["packages/studio-contracts/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

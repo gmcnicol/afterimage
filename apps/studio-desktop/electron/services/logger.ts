@@ -1,6 +1,6 @@
 import { appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { LogEntry } from '../../src/shared/contracts.js';
+import type { LogEntry } from '@afterimage/studio-contracts';
 
 export interface Logger {
   setProjectRoot(nextProjectRoot?: string): void;

@@ -1,10 +1,10 @@
-import type { DesktopJob } from '../../lib/desktop-api';
-import { getDesktopApi } from '../../lib/desktop-api';
+import type { DesktopJob } from '../../lib/studio-client';
+import { getStudioClient } from '../../lib/studio-client';
 import { useUiStore } from '../../stores/ui-store';
 import { ToolbarButton } from './ToolbarButton';
 
 export function JobRow({ job }: { job: DesktopJob }) {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const addNotification = useUiStore((state) => state.addNotification);
   const cancellable = job.status === 'queued' || job.status === 'running';
   const retryable = job.status === 'failed' || job.status === 'cancelled';

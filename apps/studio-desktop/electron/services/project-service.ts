@@ -17,7 +17,7 @@ import type {
   ProjectSessionSnapshot,
   RelinkAssetResult,
   SaveProjectRequest
-} from '../../src/shared/contracts.js';
+} from '@afterimage/studio-contracts';
 import type { Logger } from './logger.js';
 
 interface ProjectServiceOptions {

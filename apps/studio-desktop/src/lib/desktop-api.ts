@@ -1,14 +1,14 @@
+export {
+  createStudioClient,
+  getStudioClient,
+  getStudioClient as getDesktopApi
+} from './studio-client';
 export type {
   DesktopJob,
-  DesktopJobResult,
   DiagnosticsSnapshot,
-  LibraryAddRootRequest,
   LibraryAsset,
   LibraryDirectory,
-  LibraryImportAssetsRequest,
-  LibraryRemoveAssetsRequest,
   LibraryRoot,
-  LibraryScanStatus,
   LibrarySearchRequest,
   LibrarySearchResult,
   LogEntry,
@@ -19,4 +19,4 @@ export type {
   RunPreviewRequest,
   SaveProjectRequest,
   StudioClient as DesktopApi
-} from '@afterimage/studio-contracts';
+} from './studio-client';

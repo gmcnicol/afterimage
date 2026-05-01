@@ -93,6 +93,12 @@ importers:
       '@afterimage/schema-validators':
         specifier: workspace:*
         version: link:../../packages/schema-validators
+      '@afterimage/studio-bus':
+        specifier: workspace:*
+        version: link:../../packages/studio-bus
+      '@afterimage/studio-contracts':
+        specifier: workspace:*
+        version: link:../../packages/studio-contracts
       '@afterimage/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -188,6 +194,21 @@ importers:
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
+
+  packages/studio-bus:
+    dependencies:
+      '@afterimage/studio-contracts':
+        specifier: workspace:*
+        version: link:../studio-contracts
+
+  packages/studio-contracts:
+    dependencies:
+      '@afterimage/export-profiles':
+        specifier: workspace:*
+        version: link:../export-profiles
+      '@afterimage/project-model':
+        specifier: workspace:*
+        version: link:../project-model
 
   packages/test-fixtures:
     dependencies:

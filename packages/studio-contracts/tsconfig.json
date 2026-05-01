@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@afterimage/export-profiles": ["packages/export-profiles/dist/index.d.ts"],
+      "@afterimage/project-model": ["packages/project-model/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

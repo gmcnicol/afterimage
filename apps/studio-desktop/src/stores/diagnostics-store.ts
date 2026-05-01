@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DiagnosticsSnapshot, LogEntry } from '../lib/desktop-api';
+import type { DiagnosticsSnapshot, LogEntry } from '../lib/studio-client';
 
 interface DiagnosticsStoreState {
   report?: DiagnosticsSnapshot;
