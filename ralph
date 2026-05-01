@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+prompt_file="$repo_root/PROMPT.md"
+max_iterations="${RALPH_ITERATIONS:-5}"
+
+if ! command -v codex >/dev/null 2>&1; then
+  echo "ralph: codex CLI was not found on PATH." >&2
+  exit 127
+fi
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: ./ralph [codex-exec-options]
+
+Runs Codex against PROMPT.md for up to 5 iterations by default.
+
+Environment:
+  RALPH_ITERATIONS=N  Override the iteration limit.
+
+Examples:
+  ./ralph
+  RALPH_ITERATIONS=2 ./ralph --model gpt-5.4
+  pnpm ralph
+EOF
+  exit 0
+fi
+
+if [[ ! -f "$prompt_file" ]]; then
+  echo "ralph: missing PROMPT.md at $prompt_file." >&2
+  exit 1
+fi
+
+if ! [[ "$max_iterations" =~ ^[0-9]+$ ]] || [[ "$max_iterations" -lt 1 ]]; then
+  echo "ralph: RALPH_ITERATIONS must be a positive integer." >&2
+  exit 1
+fi
+
+has_remaining_tasks() {
+  grep -Eq 'status:[[:space:]]*(in-progress|backlog)' "$repo_root/TASKS.md"
+}
+
+for ((iteration = 1; iteration <= max_iterations; iteration += 1)); do
+  if ! has_remaining_tasks; then
+    echo "ralph: no in-progress or backlog tasks remain in TASKS.md."
+    exit 0
+  fi
+
+  echo "ralph: starting Codex iteration $iteration/$max_iterations"
+  {
+    cat "$prompt_file"
+    printf '\n\n## Ralph Runner Context\n\n'
+    printf 'This is automated Ralph iteration %s of %s.\n' "$iteration" "$max_iterations"
+    printf 'Follow PROMPT.md exactly: select one task only, mark it in-progress before work, and update TASKS.md at the end.\n'
+  } | codex \
+    --sandbox danger-full-access \
+    --ask-for-approval never \
+    exec \
+    --cd "$repo_root" \
+    "$@" \
+    -
+done
+
+echo "ralph: reached iteration limit ($max_iterations)."
