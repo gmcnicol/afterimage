@@ -223,12 +223,15 @@ app.whenReady().then(() => {
   ipcMain.handle('jobs:retry', async (_event: IpcMainInvokeEvent, jobId: string) => jobManager.retry(jobId));
 
   ipcMain.handle('library:addRoot', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.addRoot>[0]) => libraryService.addRoot(input));
+  ipcMain.handle('library:removeRoot', async (_event: IpcMainInvokeEvent, rootId: string) => libraryService.removeRoot(rootId));
   ipcMain.handle('library:rescanRoot', async (_event: IpcMainInvokeEvent, rootId: string) => libraryService.rescanRoot(rootId));
   ipcMain.handle('library:rescanAll', async () => libraryService.rescanAll());
+  ipcMain.handle('library:clearAndRescanAll', async () => libraryService.clearAndRescanAll());
   ipcMain.handle('library:listRoots', async () => libraryService.listRoots());
   ipcMain.handle('library:listDirectories', async (_event: IpcMainInvokeEvent, rootId?: string) => libraryService.listDirectories(rootId));
   ipcMain.handle('library:searchAssets', async (_event: IpcMainInvokeEvent, input?: Parameters<typeof libraryService.searchAssets>[0]) => libraryService.searchAssets(input));
   ipcMain.handle('library:importAssets', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.importAssets>[0]) => libraryService.importAssets(input));
+  ipcMain.handle('library:removeAssets', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.removeAssets>[0]) => libraryService.removeAssets(input));
 
   ipcMain.handle(
     'diagnostics:getReport',

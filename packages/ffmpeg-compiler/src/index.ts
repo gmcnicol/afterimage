@@ -807,6 +807,11 @@ function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): 
       seen.add(clip.transitionAssetId);
       inputs.push({ assetId: clip.transitionAssetId, path: asset.path.absolutePath });
     }
+    if (clip.transitionOverlayAssetId && !seen.has(clip.transitionOverlayAssetId)) {
+      const asset = ensureAsset(project, clip.transitionOverlayAssetId);
+      seen.add(clip.transitionOverlayAssetId);
+      inputs.push({ assetId: clip.transitionOverlayAssetId, path: asset.path.absolutePath, loop: true });
+    }
   }
 
   const musicAssetId = variant.musicAlignment?.primaryAssetId;
@@ -931,12 +936,29 @@ function buildAudioChain(inputIndex: number, sourceStartMs: number, durationMs: 
   return `[${inputIndex}:a]atrim=start=${formatSeconds(sourceStartMs)}:duration=${formatSeconds(durationMs)},asetpts=PTS-STARTPTS[${outputLabel}]`;
 }
 
-function buildMaskAssetChain(inputIndex: number, durationMs: number, profile: RenderProfile, outputLabel: string): string {
-  return `[${inputIndex}:v]trim=start=0:duration=${formatSeconds(durationMs)},setpts=PTS-STARTPTS,fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},setsar=1,format=gray[${outputLabel}]`;
+function resolveCutStartMs(project: NormalizedProjectFile, cutId: string | undefined): number {
+  if (!cutId) {
+    return 0;
+  }
+
+  return getCutCandidateById(project, cutId)?.startMs ?? 0;
 }
 
-function buildOverlayAssetChain(inputIndex: number, durationMs: number, profile: RenderProfile, outputLabel: string): string {
-  return `[${inputIndex}:v]trim=start=0:duration=${formatSeconds(durationMs)},setpts=PTS-STARTPTS,fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},setsar=1,format=gray,eq=contrast=1.02:brightness=0.01,format=${profile.pixelFormat}[${outputLabel}]`;
+function buildMaskAssetChain(inputIndex: number, sourceStartMs: number, durationMs: number, profile: RenderProfile, outputLabel: string): string {
+  return `[${inputIndex}:v]trim=start=${formatSeconds(sourceStartMs)}:duration=${formatSeconds(durationMs)},setpts=PTS-STARTPTS,fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},setsar=1,format=gray[${outputLabel}]`;
+}
+
+function buildOverlayAssetChain(inputIndex: number, sourceStartMs: number, durationMs: number, profile: RenderProfile, outputLabel: string): string {
+  return `[${inputIndex}:v]trim=start=${formatSeconds(sourceStartMs)}:duration=${formatSeconds(durationMs)},setpts=PTS-STARTPTS,fps=${formatDecimal(profile.frameRate)},scale=${profile.width}:${profile.height},setsar=1,format=gray,eq=contrast=1.02:brightness=0.01,format=${profile.pixelFormat}[${outputLabel}]`;
+}
+
+function appendOverlayBlend(filterSegments: string[], baseLabel: string, overlayInputIndex: number, overlaySourceStartMs: number, durationMs: number, profile: RenderProfile, outputLabel: string): void {
+  const overlayLabel = `${outputLabel}_overlay`;
+  filterSegments.push(buildOverlayAssetChain(overlayInputIndex, overlaySourceStartMs, durationMs, profile, overlayLabel));
+  // Apply overlays only to luma so grayscale texture does not contaminate chroma planes.
+  filterSegments.push(
+    `[${baseLabel}][${overlayLabel}]blend=c0_expr='min(255,A+B*0.28)':c1_expr='A':c2_expr='A'[${outputLabel}]`
+  );
 }
 
 function buildFinalVideoChain(
@@ -970,6 +992,7 @@ function appendVideoSegmentWithOptionalOverlay(
   options: {
     clipInputIndex: number;
     overlayInputIndex?: number;
+    overlaySourceStartMs?: number;
     sourceStartMs: number;
     durationMs: number;
     filterExpressions: string[];
@@ -991,11 +1014,14 @@ function appendVideoSegmentWithOptionalOverlay(
     return;
   }
 
-  const overlayLabel = `${options.outputLabel}_overlay`;
-  filterSegments.push(buildOverlayAssetChain(options.overlayInputIndex, options.durationMs, options.profile, overlayLabel));
-  // Apply overlays only to luma so grayscale texture does not contaminate chroma planes.
-  filterSegments.push(
-    `[${baseLabel}][${overlayLabel}]blend=c0_expr='min(255,A+B*0.28)':c1_expr='A':c2_expr='A'[${options.outputLabel}]`
+  appendOverlayBlend(
+    filterSegments,
+    baseLabel,
+    options.overlayInputIndex,
+    options.overlaySourceStartMs ?? 0,
+    options.durationMs,
+    options.profile,
+    options.outputLabel
   );
 }
 
@@ -1027,6 +1053,7 @@ function buildMaskedRenderCommand(
     const previousClip = variant.clips[index - 1];
     const clipInputIndex = inputIndexByAssetId.get(clip.assetId);
     const clipOverlayInputIndex = clip.overlayAssetId ? inputIndexByAssetId.get(clip.overlayAssetId) : undefined;
+    const clipOverlaySourceStartMs = resolveCutStartMs(project, clip.overlayCutId);
     if (clipInputIndex === undefined) {
       throw new Error(`Missing input index for asset "${clip.assetId}".`);
     }
@@ -1041,6 +1068,7 @@ function buildMaskedRenderCommand(
       appendVideoSegmentWithOptionalOverlay(filterSegments, {
         clipInputIndex,
         overlayInputIndex: clipOverlayInputIndex,
+        overlaySourceStartMs: clipOverlaySourceStartMs,
         sourceStartMs: clip.sourceStartMs + incomingTransitionMs,
         durationMs: bodyDurationMs,
         filterExpressions,
@@ -1069,7 +1097,9 @@ function buildMaskedRenderCommand(
 
       const nextInputIndex = inputIndexByAssetId.get(nextClip.assetId);
       const nextOverlayInputIndex = nextClip.overlayAssetId ? inputIndexByAssetId.get(nextClip.overlayAssetId) : undefined;
+      const nextOverlaySourceStartMs = resolveCutStartMs(project, nextClip.overlayCutId);
       const maskInputIndex = inputIndexByAssetId.get(clip.transitionAssetId);
+      const transitionOverlayInputIndex = clip.transitionOverlayAssetId ? inputIndexByAssetId.get(clip.transitionOverlayAssetId) : undefined;
       if (nextInputIndex === undefined) {
         throw new Error(`Missing input index for asset "${nextClip.assetId}".`);
       }
@@ -1082,10 +1112,12 @@ function buildMaskedRenderCommand(
       const maskLabel = `mtmask${segmentIndex}`;
       const mergedLabel = `mtmerge${segmentIndex}`;
       const transitionOutputLabel = `v${segmentIndex}`;
+      const transitionBaseLabel = transitionOverlayInputIndex === undefined ? transitionOutputLabel : `mtoverlaybase${segmentIndex}`;
 
       appendVideoSegmentWithOptionalOverlay(filterSegments, {
         clipInputIndex,
         overlayInputIndex: clipOverlayInputIndex,
+        overlaySourceStartMs: clipOverlaySourceStartMs,
         sourceStartMs: clip.sourceStartMs + clip.durationMs - outgoingTransitionMs,
         durationMs: outgoingTransitionMs,
         filterExpressions: getClipFilterExpressionsAtTime(project, variant, clip, clip.timelineStartMs + clip.durationMs - Math.round(outgoingTransitionMs / 2)),
@@ -1095,15 +1127,27 @@ function buildMaskedRenderCommand(
       appendVideoSegmentWithOptionalOverlay(filterSegments, {
         clipInputIndex: nextInputIndex,
         overlayInputIndex: nextOverlayInputIndex,
+        overlaySourceStartMs: nextOverlaySourceStartMs,
         sourceStartMs: nextClip.sourceStartMs,
         durationMs: outgoingTransitionMs,
         filterExpressions: getClipFilterExpressionsAtTime(project, variant, nextClip, nextClip.timelineStartMs + Math.round(outgoingTransitionMs / 2)),
         profile,
         outputLabel: rightLabel
       });
-      filterSegments.push(buildMaskAssetChain(maskInputIndex, outgoingTransitionMs, profile, maskLabel));
+      filterSegments.push(buildMaskAssetChain(maskInputIndex, resolveCutStartMs(project, clip.transitionCutId), outgoingTransitionMs, profile, maskLabel));
       filterSegments.push(`[${leftLabel}][${rightLabel}][${maskLabel}]maskedmerge[${mergedLabel}]`);
-      filterSegments.push(`[${mergedLabel}]null[${transitionOutputLabel}]`);
+      filterSegments.push(`[${mergedLabel}]null[${transitionBaseLabel}]`);
+      if (transitionOverlayInputIndex !== undefined) {
+        appendOverlayBlend(
+          filterSegments,
+          transitionBaseLabel,
+          transitionOverlayInputIndex,
+          resolveCutStartMs(project, clip.transitionOverlayCutId),
+          outgoingTransitionMs,
+          profile,
+          transitionOutputLabel
+        );
+      }
 
       videoConcatInputs.push(`[${transitionOutputLabel}]`);
 
@@ -1205,6 +1249,7 @@ function buildRenderCommand(
   variant.clips.forEach((clip) => {
     const inputIndex = inputIndexByAssetId.get(clip.assetId);
     const overlayInputIndex = clip.overlayAssetId ? inputIndexByAssetId.get(clip.overlayAssetId) : undefined;
+    const overlaySourceStartMs = resolveCutStartMs(project, clip.overlayCutId);
     if (inputIndex === undefined) {
       throw new Error(`Missing input index for asset "${clip.assetId}".`);
     }
@@ -1213,6 +1258,7 @@ function buildRenderCommand(
       appendVideoSegmentWithOptionalOverlay(filterSegments, {
         clipInputIndex: inputIndex,
         overlayInputIndex,
+        overlaySourceStartMs,
         sourceStartMs: segment.sourceStartMs,
         durationMs: segment.durationMs,
         filterExpressions: segment.filterExpressions,
@@ -1450,7 +1496,7 @@ async function defaultCommandRunner(binary: string, args: string[], options: Com
       reject(error);
     });
 
-    child.on('close', (exitCode) => {
+    child.on('close', (exitCode, signal) => {
       options.signal?.removeEventListener('abort', abortHandler);
       resolve({
         exitCode: exitCode ?? 1,

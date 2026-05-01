@@ -11,8 +11,11 @@ import {
   randomizeFoundryOverlays,
   randomizeFoundryTransitions,
   setClipOverlayAsset,
+  setClipOverlayCut,
   setClipTransition,
   setClipTransitionAsset,
+  setClipTransitionCut,
+  setClipTransitionOverlayCut,
   setClipTransitionOverlayAsset
 } from '../src/operations/sequence-ops';
 import { addAutomationLane, addLaneKeyframe, updateAutomationLaneTarget } from '../src/operations/automation-ops';
@@ -190,6 +193,62 @@ describe('@afterimage/studio-desktop operations', () => {
     const withOverlay = setClipOverlayAsset(sequenced, 'variant-main', 'clip-cut-alpha', 'asset-overlay');
 
     expect(withOverlay.variants[0].clips[0].overlayAssetId).toBe('asset-overlay');
+  });
+
+  it('authors overlay and transition selections from cut candidates', () => {
+    const project = mergeImportedAssets(makeProject(), [
+      {
+        id: 'asset-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video',
+        path: {
+          absolutePath: '/media/alpha.mp4'
+        },
+        hasAudio: true
+      },
+      {
+        id: 'asset-mask',
+        filename: 'mask.mp4',
+        mediaType: 'video',
+        assetRole: 'transition-mask',
+        path: {
+          absolutePath: '/media/mask.mp4'
+        },
+        hasAudio: false
+      },
+      {
+        id: 'asset-overlay',
+        filename: 'overlay.mp4',
+        mediaType: 'video',
+        assetRole: 'transition-overlay',
+        path: {
+          absolutePath: '/media/overlay.mp4'
+        },
+        hasAudio: false
+      }
+    ]);
+    const sequenced = addCutToSequence({
+      ...project,
+      cutCandidates: [
+        { id: 'cut-alpha', assetId: 'asset-alpha', startMs: 0, endMs: 1200, durationMs: 1200 },
+        { id: 'cut-beta', assetId: 'asset-alpha', startMs: 1200, endMs: 2400, durationMs: 1200 },
+        { id: 'cut-mask', assetId: 'asset-mask', startMs: 250, endMs: 750, durationMs: 500 },
+        { id: 'cut-overlay', assetId: 'asset-overlay', startMs: 100, endMs: 600, durationMs: 500 }
+      ]
+    }, 'cut-alpha');
+    const withSecondClip = addCutToSequence(sequenced, 'cut-beta');
+    const masked = setClipTransition(withSecondClip, 'variant-main', 'clip-cut-alpha', 'mask');
+    const withTransitionCut = setClipTransitionCut(masked, 'variant-main', 'clip-cut-alpha', 'cut-mask');
+    const withTransitionOverlayCut = setClipTransitionOverlayCut(withTransitionCut, 'variant-main', 'clip-cut-alpha', 'cut-overlay');
+    const withOverlayCut = setClipOverlayCut(withTransitionOverlayCut, 'variant-main', 'clip-cut-alpha', 'cut-overlay');
+    const clip = withOverlayCut.variants[0].clips[0];
+
+    expect(clip.transitionAssetId).toBe('asset-mask');
+    expect(clip.transitionCutId).toBe('cut-mask');
+    expect(clip.transitionOverlayAssetId).toBe('asset-overlay');
+    expect(clip.transitionOverlayCutId).toBe('cut-overlay');
+    expect(clip.overlayAssetId).toBe('asset-overlay');
+    expect(clip.overlayCutId).toBe('cut-overlay');
   });
 
   it('removes clips and clears an invalid terminal mask transition', () => {

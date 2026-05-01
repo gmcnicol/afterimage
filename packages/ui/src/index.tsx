@@ -34,7 +34,9 @@ export function Panel(props: PropsWithChildren<{
         background: '#191d25',
         display: 'flex',
         flexDirection: 'column',
+        minWidth: 0,
         minHeight: 0,
+        overflow: 'hidden',
         ...props.style
       }}
     >
@@ -42,7 +44,9 @@ export function Panel(props: PropsWithChildren<{
       <div
         className={props.bodyClassName}
         style={{
+          minWidth: 0,
           minHeight: 0,
+          overflow: 'hidden',
           ...props.bodyStyle
         }}
       >

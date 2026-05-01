@@ -471,8 +471,9 @@ describe('@afterimage/ffmpeg-compiler', () => {
 
     const command = plan.command.args.join(' ');
     expect(plan.command.args).toContain('fixtures/transitions/mask-alpha.mp4');
-    expect(plan.command.args).not.toContain('fixtures/transitions/overlay-alpha.mp4');
+    expect(plan.command.args).toContain('fixtures/transitions/overlay-alpha.mp4');
     expect(command).toContain('maskedmerge');
+    expect(command).toContain("blend=c0_expr='min(255,A+B*0.28)':c1_expr='A':c2_expr='A'");
     expect(command).toContain('concat=n=3:v=1:a=0[vconcat]');
     expect(command).toContain('tpad=stop_mode=clone:stop_duration=1.500');
     expect(command).toContain('fade=t=out:st=3.000:d=2.000');
@@ -517,5 +518,74 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(plan.command.args).toContain('-stream_loop');
     expect(plan.command.args).toContain('fixtures/overlays/foam-overlay.mp4');
     expect(command).toContain("blend=c0_expr='min(255,A+B*0.28)':c1_expr='A':c2_expr='A'");
+  });
+
+  it('trims overlay and transition assets from selected cut starts', () => {
+    const plan = buildPreviewPlan(parseProject({
+      ...fixtureProject,
+      assets: [
+        ...fixtureProject.assets,
+        {
+          id: 'asset-mask-cut',
+          filename: 'mask-cut.mp4',
+          mediaType: 'video',
+          assetRole: 'transition-mask',
+          path: {
+            absolutePath: 'fixtures/transitions/mask-cut.mp4'
+          },
+          durationMs: 1200,
+          hasAudio: false
+        },
+        {
+          id: 'asset-overlay-cut',
+          filename: 'overlay-cut.mp4',
+          mediaType: 'video',
+          assetRole: 'transition-overlay',
+          path: {
+            absolutePath: 'fixtures/overlays/overlay-cut.mp4'
+          },
+          durationMs: 1200,
+          hasAudio: false
+        }
+      ],
+      cutCandidates: [
+        ...(fixtureProject.cutCandidates ?? []),
+        { id: 'cut-mask', assetId: 'asset-mask-cut', startMs: 250, endMs: 750, durationMs: 500 },
+        { id: 'cut-overlay', assetId: 'asset-overlay-cut', startMs: 125, endMs: 625, durationMs: 500 }
+      ],
+      variants: [
+        {
+          ...fixtureProject.variants[0],
+          clips: [
+            {
+              ...fixtureProject.variants[0].clips[0],
+              overlayAssetId: 'asset-overlay-cut',
+              overlayCutId: 'cut-overlay',
+              transition: 'mask',
+              transitionDurationMs: 500,
+              transitionAssetId: 'asset-mask-cut',
+              transitionCutId: 'cut-mask',
+              transitionOverlayAssetId: 'asset-overlay-cut',
+              transitionOverlayCutId: 'cut-overlay'
+            },
+            {
+              id: 'clip-second',
+              assetId: 'asset-alpha',
+              cutId: 'cut-push',
+              timelineStartMs: 2000,
+              sourceStartMs: 2500,
+              durationMs: 2000,
+              transition: 'cut'
+            }
+          ]
+        }
+      ]
+    }), {
+      outputPath: '.afterimage/preview/variant-overlay-cuts.mp4'
+    });
+
+    const command = plan.command.args.join(' ');
+    expect(command).toContain('trim=start=0.125:duration=');
+    expect(command).toContain('trim=start=0.250:duration=');
   });
 });

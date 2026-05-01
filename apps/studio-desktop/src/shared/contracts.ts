@@ -125,6 +125,8 @@ export interface LibrarySearchRequest {
   analysisStatuses?: AnalysisStatus[];
   rootId?: string;
   includeMissing?: boolean;
+  sortBy?: 'filename' | 'role' | 'type' | 'cuts' | 'duration' | 'analysis';
+  sortDirection?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
 }
@@ -140,6 +142,10 @@ export interface LibraryAddRootRequest {
 
 export interface LibraryImportAssetsRequest {
   projectRoot?: string;
+  assetIds: string[];
+}
+
+export interface LibraryRemoveAssetsRequest {
   assetIds: string[];
 }
 
@@ -183,12 +189,15 @@ export interface DesktopApi {
   };
   library: {
     addRoot: (input: LibraryAddRootRequest) => Promise<LibraryRoot | null>;
+    removeRoot: (rootId: string) => Promise<boolean>;
     rescanRoot: (rootId: string) => Promise<LibraryRoot>;
     rescanAll: () => Promise<LibraryRoot[]>;
+    clearAndRescanAll: () => Promise<LibraryRoot[]>;
     listRoots: () => Promise<LibraryRoot[]>;
     listDirectories: (rootId?: string) => Promise<LibraryDirectory[]>;
     searchAssets: (input?: LibrarySearchRequest) => Promise<LibrarySearchResult>;
     importAssets: (input: LibraryImportAssetsRequest) => Promise<MediaAsset[]>;
+    removeAssets: (input: LibraryRemoveAssetsRequest) => Promise<number>;
   };
   jobs: {
     list: () => Promise<DesktopJob[]>;

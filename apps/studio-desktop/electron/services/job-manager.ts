@@ -14,7 +14,9 @@ import {
 import {
   buildAnalysisPlan,
   buildAudioChangeAnalysisPlan,
+  buildConcatList,
   buildExportPlan,
+  buildFinalizeRenderPlan,
   buildPreviewPlan,
   buildRenderPlan,
   buildThumbnailPlan,
@@ -25,7 +27,9 @@ import {
   type CommandSpec,
   type RenderProfile,
   executeCommandSpec,
-  resolveFfmpegTools
+  getTargetRenderDurationMs,
+  resolveFfmpegTools,
+  shouldUseChunkedExport as shouldUseCompilerChunkedExport
 } from '@afterimage/ffmpeg-compiler';
 import {
   createAnalysisFile,
@@ -106,7 +110,9 @@ function clampProgress(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function parseFfmpegTimeToMs(value: string): number | undefined {
+type FfmpegProgressRecord = Record<string, string>;
+
+function parseFfmpegClockTimeToMs(value: string): number | undefined {
   const match = /^(\d+):(\d+):(\d+(?:\.\d+)?)$/.exec(value.trim());
   if (!match) {
     return undefined;
@@ -123,21 +129,56 @@ function parseFfmpegTimeToMs(value: string): number | undefined {
   return Math.round((((hours * 60) + minutes) * 60 + seconds) * 1000);
 }
 
-function resolveRenderedVariantDurationMs(project: NormalizedProjectFile, variant: NonNullable<ReturnType<typeof getVariantById>>): number {
-  let durationMs = variant.clips.reduce((sum, clip) => sum + clip.durationMs, 0);
+export function parseFfmpegProgressTimeToMs(record: FfmpegProgressRecord): number | undefined {
+  const microsecondValue = record.out_time_us ?? record.out_time_ms;
+  if (microsecondValue !== undefined && microsecondValue !== 'N/A') {
+    const microseconds = Number.parseInt(microsecondValue, 10);
+    if (Number.isFinite(microseconds) && microseconds >= 0) {
+      return Math.round(microseconds / 1000);
+    }
+  }
 
-  for (let index = 0; index < variant.clips.length - 1; index += 1) {
-    const clip = variant.clips[index];
-    const nextClip = variant.clips[index + 1];
+  if (record.out_time && record.out_time !== 'N/A') {
+    return parseFfmpegClockTimeToMs(record.out_time);
+  }
 
-    if (clip.transition !== 'mask' || !nextClip) {
+  return undefined;
+}
+
+export function parseFfmpegProgressRecords(text: string): FfmpegProgressRecord[] {
+  const records: FfmpegProgressRecord[] = [];
+  let current: FfmpegProgressRecord = {};
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
       continue;
     }
 
-    durationMs -= Math.max(0, Math.min(clip.transitionDurationMs ?? 250, clip.durationMs, nextClip.durationMs));
+    const separatorIndex = line.indexOf('=');
+    if (separatorIndex <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex);
+    const value = line.slice(separatorIndex + 1);
+    current[key] = value;
+
+    if (key === 'progress') {
+      records.push(current);
+      current = {};
+    }
   }
 
-  return Math.max(0, durationMs);
+  return records;
+}
+
+function addFfmpegProgressArgs(args: string[]): string[] {
+  if (args.includes('-progress')) {
+    return args;
+  }
+
+  return ['-progress', 'pipe:3', '-nostats', '-stats_period', '0.25', ...args];
 }
 
 function resolveTargetRenderDurationMs(project: NormalizedProjectFile, variantId?: string, sequenceId?: string): number {
@@ -148,15 +189,7 @@ function resolveTargetRenderDurationMs(project: NormalizedProjectFile, variantId
     return 0;
   }
 
-  const musicDurationMs = variant.musicAlignment?.primaryAssetId
-    ? project.assets.find((asset) => asset.id === variant.musicAlignment?.primaryAssetId)?.durationMs
-    : undefined;
-
-  return typeof musicDurationMs === 'number' && musicDurationMs > 0
-    ? musicDurationMs
-    : variant.clips.some((clip) => clip.transition === 'mask')
-      ? resolveRenderedVariantDurationMs(project, variant)
-      : Math.max(0, ...variant.clips.map((clip) => clip.timelineStartMs + clip.durationMs));
+  return getTargetRenderDurationMs(project, variant);
 }
 
 function resolveClipOutgoingTransitionMs(clip: SequenceClip, nextClip: SequenceClip | undefined): number {
@@ -167,87 +200,8 @@ function resolveClipOutgoingTransitionMs(clip: SequenceClip, nextClip: SequenceC
   return Math.max(0, Math.min(clip.transitionDurationMs ?? 250, clip.durationMs, nextClip.durationMs));
 }
 
-function formatSeconds(milliseconds: number): string {
-  return (milliseconds / 1000).toFixed(3);
-}
-
-function countRenderedSegments(variant: Variant): number {
-  return variant.clips.reduce((count, clip, index) => count + estimateChunkClipSegmentCount(variant.clips, index), 0);
-}
-
 function shouldUseChunkedExportForVariant(project: NormalizedProjectFile, variant: Variant, profile: RenderProfile): boolean {
-  if (profile.videoCodec !== 'libx264') {
-    return false;
-  }
-
-  const targetDurationMs = resolveTargetRenderDurationMs(project, variant.id, variant.sequenceId);
-  const segmentCount = countRenderedSegments(variant);
-  const pixelCount = profile.width * profile.height;
-
-  return segmentCount >= 140 || (segmentCount >= 90 && targetDurationMs >= 180_000) || (pixelCount >= 1920 * 1080 && targetDurationMs >= 600_000);
-}
-
-function buildConcatList(paths: string[]): string {
-  return paths.map((path) => `file '${path.replace(/'/g, `'\\''`)}'`).join('\n') + '\n';
-}
-
-function buildFinalizeRenderCommand(
-  tools: ReturnType<typeof resolveFfmpegTools>,
-  input: {
-    concatListPath: string;
-    outputPath: string;
-    profile: RenderProfile;
-    durationMs: number;
-    musicPath?: string;
-  }
-): CommandSpec {
-  const fadeDurationMs = Math.min(2000, input.durationMs);
-  const fadeStartMs = Math.max(0, input.durationMs - fadeDurationMs);
-  const filterSegments = [
-    `[0:v]trim=duration=${formatSeconds(input.durationMs)},fade=t=out:st=${formatSeconds(fadeStartMs)}:d=${formatSeconds(fadeDurationMs)},format=${input.profile.pixelFormat}[vout]`
-  ];
-  const args = [
-    '-y',
-    '-f', 'concat',
-    '-safe', '0',
-    '-i', input.concatListPath
-  ];
-
-  if (input.musicPath) {
-    args.push('-i', input.musicPath);
-    filterSegments.push(`[1:a]atrim=start=0:duration=${formatSeconds(input.durationMs)},asetpts=PTS-STARTPTS[amusic]`);
-  }
-
-  args.push(
-    '-filter_complex', filterSegments.join(';'),
-    '-map', '[vout]',
-    '-c:v', input.profile.videoCodec
-  );
-
-  if (input.profile.videoCodec === 'libx264') {
-    args.push(
-      '-preset', input.profile.videoPreset ?? 'medium',
-      '-crf', String(input.profile.crf ?? 18)
-    );
-  } else if (input.profile.videoCodec === 'prores_ks') {
-    args.push('-profile:v', input.profile.videoProfile ?? '3');
-  }
-
-  if (input.musicPath) {
-    args.push('-map', '[amusic]', '-c:a', input.profile.audioCodec);
-    if (input.profile.audioCodec === 'aac') {
-      args.push('-b:a', `${input.profile.audioBitrateKbps ?? 192}k`);
-    }
-  }
-
-  args.push('-f', input.profile.container, input.outputPath);
-
-  return {
-    label: `finalize:${input.outputPath}`,
-    binary: tools.ffmpeg.path,
-    args,
-    expectedOutputs: [input.outputPath]
-  };
+  return shouldUseCompilerChunkedExport(project, variant, profile);
 }
 
 function estimateChunkClipContributionMs(clips: SequenceClip[], index: number): number {
@@ -325,7 +279,7 @@ function buildChunkedVariant(variant: Variant, chunkIndex: number, chunkStart: n
   };
 }
 
-function createProgressRunner(
+export function createProgressRunner(
   command: CommandSpec,
   options: {
     phaseLabel: string;
@@ -341,45 +295,70 @@ function createProgressRunner(
     }
 
     return await new Promise((resolve, reject) => {
-      const child = spawn(binary, args, {
+      const child = spawn(binary, addFfmpegProgressArgs(args), {
         cwd: runnerOptions.cwd,
         env: runnerOptions.env,
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe', 'pipe']
       });
 
       let stdout = '';
       let stderr = '';
-      let stderrWindow = '';
       let lastReportedProgress = options.startProgress;
       let lastReportedAt = 0;
+      let progressLineBuffer = '';
+      let progressRecord: FfmpegProgressRecord = {};
 
-      const maybeReportProgress = () => {
+      const reportProgressRecord = (record: FfmpegProgressRecord) => {
         if (options.durationMs <= 0) {
           return;
         }
 
-        const matches = [...stderrWindow.matchAll(/time=(\d+:\d+:\d+(?:\.\d+)?)/g)];
-        const latest = matches.at(-1)?.[1];
-        if (!latest) {
-          return;
-        }
-
-        const encodedMs = parseFfmpegTimeToMs(latest);
+        const encodedMs = parseFfmpegProgressTimeToMs(record);
         if (encodedMs === undefined) {
           return;
         }
 
         const ratio = clampProgress(encodedMs / options.durationMs);
-        const nextProgress = clampProgress(options.startProgress + ((options.endProgress - options.startProgress) * ratio));
+        const recordProgress = record.progress === 'end'
+          ? options.endProgress
+          : options.startProgress + ((options.endProgress - options.startProgress) * ratio);
+        const nextProgress = Math.max(lastReportedProgress, clampProgress(recordProgress));
         const now = Date.now();
 
-        if ((nextProgress - lastReportedProgress) < 0.01 && (now - lastReportedAt) < 250) {
+        if (record.progress !== 'end' && (nextProgress - lastReportedProgress) < 0.01 && (now - lastReportedAt) < 250) {
           return;
         }
 
         lastReportedProgress = nextProgress;
         lastReportedAt = now;
         options.report(`${options.phaseLabel} ${Math.round(nextProgress * 100)}%`, nextProgress);
+      };
+
+      const consumeProgressText = (text: string) => {
+        progressLineBuffer += text;
+        const lines = progressLineBuffer.split(/\r?\n/);
+        progressLineBuffer = lines.pop() ?? '';
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line) {
+            continue;
+          }
+
+          const separatorIndex = line.indexOf('=');
+          if (separatorIndex <= 0) {
+            continue;
+          }
+
+          const key = line.slice(0, separatorIndex);
+          const value = line.slice(separatorIndex + 1);
+          progressRecord[key] = value;
+
+          if (key === 'progress') {
+            reportProgressRecord(progressRecord);
+            progressRecord = {};
+          }
+        }
       };
 
       const abortHandler = () => {
@@ -389,15 +368,18 @@ function createProgressRunner(
 
       runnerOptions.signal?.addEventListener('abort', abortHandler, { once: true });
 
-      child.stdout.on('data', (chunk) => {
+      child.stdout?.on('data', (chunk) => {
         stdout += chunk.toString();
       });
 
-      child.stderr.on('data', (chunk) => {
+      child.stderr?.on('data', (chunk) => {
         const text = chunk.toString();
         stderr += text;
-        stderrWindow = `${stderrWindow}${text}`.slice(-4096);
-        maybeReportProgress();
+      });
+
+      const progressStream = child.stdio[3];
+      progressStream?.on('data', (chunk) => {
+        consumeProgressText(chunk.toString());
       });
 
       child.on('error', (error) => {
@@ -407,6 +389,9 @@ function createProgressRunner(
 
       child.on('close', (exitCode, signal) => {
         runnerOptions.signal?.removeEventListener('abort', abortHandler);
+        if (progressLineBuffer) {
+          consumeProgressText('\n');
+        }
         resolve({
           exitCode: exitCode ?? 1,
           stdout,
@@ -486,20 +471,34 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
   }
 
   async function startTask(task: JobTask): Promise<void> {
+    const queuedJob = jobs.find((job) => job.id === task.jobId);
+    if (!queuedJob || queuedJob.status !== 'queued') {
+      activeCounts[task.queueClass] -= 1;
+      pump();
+      return;
+    }
+
     const controller = new AbortController();
     running.set(task.jobId, controller);
     updateJob(task.jobId, {
       status: 'running',
-      startedAt: new Date().toISOString()
+      startedAt: new Date().toISOString(),
+      progress: 0
     });
 
     try {
       const result = await task.run(controller.signal, (message, progress) => {
+        if (controller.signal.aborted) {
+          return;
+        }
         updateJob(task.jobId, {
           log: [...(jobs.find((job) => job.id === task.jobId)?.log ?? []), message].slice(-12),
           progress
         });
       });
+      if (controller.signal.aborted) {
+        throw new DOMException(`Job "${task.jobId}" aborted.`, 'AbortError');
+      }
       updateJob(task.jobId, {
         status: 'completed',
         endedAt: new Date().toISOString(),
@@ -543,9 +542,14 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
       run: async (signal, report) => {
         await ensureArtifactDirs(input.projectRoot);
         let nextProject = parseProject(input.project);
+        const assetCount = Math.max(1, input.assetIds.length);
 
-        for (const assetId of input.assetIds) {
-          report(`Analyzing ${assetId}`, 0.1);
+        for (const [assetIndex, assetId] of input.assetIds.entries()) {
+          const reportAssetProgress = (phaseProgress: number) => {
+            report(`Analyzing ${assetIndex + 1}/${assetCount}`, (assetIndex + clampProgress(phaseProgress)) / assetCount);
+          };
+
+          reportAssetProgress(0.02);
           const probeOutputPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.ffprobe.json`);
           const analysisLogPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.scene.log`);
           const analysisSidecarPath = join(input.projectRoot, '.afterimage', 'analysis', `${assetId}.analysis.json`);
@@ -575,6 +579,7 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
             expectedOutputs: [probeOutputPath]
           }, { signal });
           await writeFile(probeOutputPath, probeResult.stdout, 'utf8');
+          reportAssetProgress(0.18);
 
           const probe = parseFfprobeOutput(probeResult.stdout);
           let waveform: { durationMs: number; peaks: number[] } | undefined;
@@ -596,6 +601,7 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
             const [astatsResult, aspectralstatsResult, ebur128Result, silencedetectResult] = await Promise.all(
               audioChangePlan.commands.map((command) => executeCommandSpec(command, { signal }))
             );
+            reportAssetProgress(0.58);
             const astatsLog = [astatsResult.stdout, astatsResult.stderr].filter(Boolean).join('\n');
             const aspectralstatsLog = [aspectralstatsResult.stdout, aspectralstatsResult.stderr].filter(Boolean).join('\n');
             const ebur128Log = [ebur128Result.stdout, ebur128Result.stderr].filter(Boolean).join('\n');
@@ -605,6 +611,7 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
             await writeFile(ebur128LogPath, ebur128Log, 'utf8');
             await writeFile(silencedetectLogPath, silencedetectLog, 'utf8');
             await executeCommandSpec(waveformPlan.command, { signal });
+            reportAssetProgress(0.78);
             waveform = {
               durationMs: probe.durationMs,
               peaks: [0.18, 0.32, 0.55, 0.74, 0.61, 0.48]
@@ -637,7 +644,9 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
             const sceneLog = [sceneResult.stdout, sceneResult.stderr].filter(Boolean).join('\n');
             await writeFile(analysisLogPath, sceneLog, 'utf8');
             const scene = parseSceneDetectionOutput(sceneLog);
+            reportAssetProgress(0.62);
             await executeCommandSpec(thumbnailPlan.command, { signal });
+            reportAssetProgress(0.78);
             analysisFile = createAnalysisFile(`analysis-${assetId}`, assetId, probe, scene.sceneCuts, {
               thumbnails: scene.sceneCuts.map((cut, index) => ({
                 id: `${assetId}-thumbnail-${index + 1}`,
@@ -650,6 +659,7 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
 
           await writeFile(analysisSidecarPath, `${JSON.stringify(analysisFile, null, 2)}\n`, 'utf8');
           await writeFile(thumbnailManifestPath, `${JSON.stringify(analysisFile.thumbnails ?? [], null, 2)}\n`, 'utf8');
+          reportAssetProgress(0.9);
 
           const generatedCuts = analysisFile.sceneCuts.length > 0
             ? generateCutCandidatesFromAnalysis(analysisFile, {
@@ -701,7 +711,7 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
               };
             })
           });
-          report(`Finished ${assetId}`, 0.8);
+          reportAssetProgress(0.98);
         }
 
         await logger.log('info', 'Completed analysis workflow.', input.assetIds.join(','));
@@ -855,18 +865,18 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
             const musicPath = variant.musicAlignment?.primaryAssetId
               ? input.project.assets.find((asset) => asset.id === variant.musicAlignment?.primaryAssetId)?.path.absolutePath
               : undefined;
-            const finalizeCommand = buildFinalizeRenderCommand(tools, {
+            const finalizePlan = buildFinalizeRenderPlan({
               concatListPath,
               outputPath,
               profile,
               durationMs,
               musicPath
-            });
+            }, tools);
 
             report(`Finalizing ${profile.name}`, 0.84);
-            await executeCommandSpec(finalizeCommand, {
+            await executeCommandSpec(finalizePlan.command, {
               signal,
-              runner: createProgressRunner(finalizeCommand, {
+              runner: createProgressRunner(finalizePlan.command, {
                 phaseLabel: `Finalizing ${profile.name}`,
                 report,
                 durationMs,
@@ -889,11 +899,27 @@ export function createJobManager({ logger, onJobsChanged }: JobManagerOptions) {
   }
 
   async function cancel(jobId: string): Promise<boolean> {
+    const queuedIndex = queue.findIndex((task) => task.jobId === jobId);
+    if (queuedIndex >= 0) {
+      queue.splice(queuedIndex, 1);
+      updateJob(jobId, {
+        status: 'cancelled',
+        endedAt: new Date().toISOString(),
+        log: [...(jobs.find((job) => job.id === jobId)?.log ?? []), 'Cancelled before execution.'].slice(-12)
+      });
+      return true;
+    }
+
     const controller = running.get(jobId);
     if (!controller) {
       return false;
     }
     controller.abort();
+    updateJob(jobId, {
+      status: 'cancelled',
+      endedAt: new Date().toISOString(),
+      log: [...(jobs.find((job) => job.id === jobId)?.log ?? []), 'Cancellation requested.'].slice(-12)
+    });
     return true;
   }
 
