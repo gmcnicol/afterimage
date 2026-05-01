@@ -50,7 +50,7 @@
 
 ### STUDIO-010
 - priority: P1
-- status: backlog
+- status: done
 - depends_on: [STUDIO-002]
 - owner_area: jobs
 - title: Split `job-manager.ts`
@@ -58,6 +58,12 @@
   - Queue orchestration, analysis jobs, preview jobs, export jobs, and library jobs are separate modules.
   - Retry payload handling has focused tests.
   - Public behavior of `jobs.*` routes is unchanged.
+- notes:
+  - Split job code into `electron/services/jobs/*`; `job-manager.ts` now wires queue, job modules, and retry handling.
+  - Preserved existing progress parser exports from `job-manager.ts` for current tests and callers.
+  - Added focused retry payload tests in `apps/studio-desktop/tests/job-retry.test.ts`.
+  - Successful commands: `pnpm --dir apps/studio-desktop test -- job-manager-progress.test.ts job-retry.test.ts`; `pnpm --dir apps/studio-desktop typecheck`.
+  - Remaining risks: behavior is covered by existing tests and typecheck, but export/analysis workflows still rely on external ffmpeg execution for full runtime validation.
 
 ### STUDIO-011
 - priority: P1
