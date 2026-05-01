@@ -1200,7 +1200,7 @@ export function applySyncMarkers(
     variants: project.variants.map((variant) => variant.id === variantId ? {
       ...variant,
       markers: [
-        ...(variant.markers ?? []).filter((marker) => !marker.id.startsWith('sync-marker-')),
+        ...(variant.markers ?? []).filter((marker) => !marker.id.startsWith('sync-marker-') && !marker.id.startsWith('custom-cue-')),
         ...markers
       ]
     } : variant)

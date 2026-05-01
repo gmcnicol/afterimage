@@ -76,6 +76,7 @@ export interface StudioClient {
     importTransitionMasks: (projectRoot?: string) => Promise<ProjectCommandMap['project.importTransitionMasks']['result']>;
     importTransitionOverlays: (projectRoot?: string) => Promise<ProjectCommandMap['project.importTransitionOverlays']['result']>;
     relinkAsset: (input: ProjectCommandMap['project.relinkAsset']['payload']) => Promise<ProjectCommandMap['project.relinkAsset']['result']>;
+    importCueFile: () => Promise<ProjectCommandMap['project.importCueFile']['result']>;
   };
   library: {
     addRoot: (input: LibraryCommandMap['library.addRoot']['payload']) => Promise<LibraryCommandMap['library.addRoot']['result']>;

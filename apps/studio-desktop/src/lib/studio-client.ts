@@ -71,7 +71,8 @@ export function createStudioClient(bridge: StudioPreloadBridge): StudioClient {
       importMusic: (projectRoot) => bridge.invoke('command', 'project.importMusic', projectRoot),
       importTransitionMasks: (projectRoot) => bridge.invoke('command', 'project.importTransitionMasks', projectRoot),
       importTransitionOverlays: (projectRoot) => bridge.invoke('command', 'project.importTransitionOverlays', projectRoot),
-      relinkAsset: (input) => bridge.invoke('command', 'project.relinkAsset', input)
+      relinkAsset: (input) => bridge.invoke('command', 'project.relinkAsset', input),
+      importCueFile: () => bridge.invoke('command', 'project.importCueFile', undefined)
     },
     library: {
       addRoot: (input) => bridge.invoke('command', 'library.addRoot', input),

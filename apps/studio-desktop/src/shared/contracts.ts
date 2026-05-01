@@ -13,6 +13,7 @@ export type {
   LibrarySearchRequest,
   LibrarySearchResult,
   LogEntry,
+  ImportCueFileResult,
   ProjectSessionSnapshot,
   RelinkAssetResult,
   RunAnalysisRequest,

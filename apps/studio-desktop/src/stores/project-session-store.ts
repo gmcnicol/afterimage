@@ -37,6 +37,7 @@ import {
   setClipTransitionDuration,
   setClipTransitionOverlayAsset,
   setClipTransitionOverlayCut,
+  setProjectMusicAsset,
   setVariantMusicAsset,
   setVariantMusicSyncMode,
   type SequenceBuildMode,
@@ -120,6 +121,7 @@ interface ProjectSessionState {
   resetLane: (laneId: string) => void;
   toggleExportProfile: (profileId: string) => void;
   setVariantMusicAsset: (variantId: string, assetId: string) => void;
+  setProjectMusicAsset: (assetId: string) => void;
   setVariantMusicSyncMode: (variantId: string, syncMode: SyncMode) => void;
   applySyncMarkers: (variantId: string, markers: Marker[]) => void;
   markSaved: (input: { projectFilePath?: string; projectRoot?: string; recentProjects?: string[] }) => void;
@@ -431,6 +433,11 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
   setVariantMusicAsset: (variantId, assetId) => {
     set((state) => markDirty({
       project: setVariantMusicAsset(state.project, variantId, assetId)
+    }));
+  },
+  setProjectMusicAsset: (assetId) => {
+    set((state) => markDirty({
+      project: setProjectMusicAsset(state.project, assetId)
     }));
   },
   setVariantMusicSyncMode: (variantId, syncMode) => {

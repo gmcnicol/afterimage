@@ -9,11 +9,13 @@ import {
   normalizeProjectPathRef,
   slugify,
   type AssetRole,
+  type Marker,
   type MediaAsset,
   type ProjectPathRef
 } from '@afterimage/project-model';
 import { parseAnalysis, parseProject } from '@afterimage/schema-validators';
 import type {
+  ImportCueFileResult,
   ProjectSessionSnapshot,
   RelinkAssetResult,
   SaveProjectRequest
@@ -58,6 +60,60 @@ function buildPathRef(projectRoot: string, absolutePath: string): ProjectPathRef
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseCueKind(value: unknown): Marker['kind'] {
+  if (value === 'beat' || value === 'chapter' || value === 'marker') {
+    return value;
+  }
+  return 'marker';
+}
+
+function parseCueTimeMs(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return undefined;
+  }
+  return Math.round(value);
+}
+
+function parseAfterimageCueFile(raw: string): Marker[] {
+  const parsed = JSON.parse(raw) as unknown;
+  const cues = isRecord(parsed) && Array.isArray(parsed.cues) ? parsed.cues : undefined;
+  if (!cues) {
+    throw new Error('Cue file must be JSON with a "cues" array.');
+  }
+
+  const markers = cues.map((cue, index): Marker | undefined => {
+    if (!isRecord(cue)) {
+      return undefined;
+    }
+
+    const timeMs = parseCueTimeMs(cue.timeMs);
+    if (timeMs === undefined) {
+      return undefined;
+    }
+
+    const label = typeof cue.label === 'string' && cue.label.trim()
+      ? cue.label.trim()
+      : `Cue ${index + 1}`;
+    const kind = parseCueKind(cue.kind);
+    return {
+      id: `custom-cue-${index + 1}-${stableHash(`${timeMs}:${label}:${kind}`)}`,
+      timeMs,
+      label,
+      kind
+    };
+  }).filter((marker): marker is Marker => Boolean(marker));
+
+  if (markers.length === 0) {
+    throw new Error('Cue file did not contain any valid cues.');
+  }
+
+  return markers.sort((left, right) => left.timeMs - right.timeMs || left.id.localeCompare(right.id));
 }
 
 async function ensureProjectStructure(projectRoot: string): Promise<void> {
@@ -474,6 +530,30 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       };
       await logger.log('info', 'Relinked asset.', input.assetId);
       return relinkedAsset;
+    },
+    async importCueFile(): Promise<ImportCueFileResult | null> {
+      const result = await dialog.showOpenDialog({
+        title: 'Import Afterimage Cue File',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Afterimage Cue Files', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        await logger.log('info', 'Cue import cancelled.');
+        return null;
+      }
+
+      const cuePath = result.filePaths[0];
+      const raw = await readFile(cuePath, 'utf8');
+      const markers = parseAfterimageCueFile(raw);
+      await logger.log('info', 'Imported cue file.', `${cuePath} :: ${markers.length} cue(s)`);
+      return {
+        path: cuePath,
+        markers
+      };
     }
   };
 }

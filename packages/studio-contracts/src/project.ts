@@ -1,5 +1,6 @@
 import type {
   AnalysisFile,
+  Marker,
   MediaAsset,
   NormalizedProjectFile,
   ProjectPathRef
@@ -20,6 +21,11 @@ export interface SaveProjectRequest {
 export interface RelinkAssetResult {
   assetId: string;
   path: ProjectPathRef;
+}
+
+export interface ImportCueFileResult {
+  path: string;
+  markers: Marker[];
 }
 
 export interface ProjectCommandMap {
@@ -74,6 +80,10 @@ export interface ProjectCommandMap {
   'project.relinkAsset': {
     payload: { projectRoot: string; assetId: string; currentPath?: string };
     result: RelinkAssetResult | null;
+  };
+  'project.importCueFile': {
+    payload: undefined;
+    result: ImportCueFileResult | null;
   };
 }
 

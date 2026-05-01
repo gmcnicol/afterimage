@@ -95,21 +95,68 @@ export function CutsView() {
     [cuts, selectedCutId]
   );
   const selectedCutIndex = selectedCut ? cuts.findIndex((cut) => cut.id === selectedCut.id) : -1;
-  const queueCounts = useMemo(() => ({
-    new: cuts.filter((cut) => !cut.status || cut.status === 'new').length,
-    kept: cuts.filter((cut) => cut.status === 'kept').length,
-    rejected: cuts.filter((cut) => cut.status === 'rejected').length,
-    favorite: cuts.filter((cut) => cut.favorite).length
-  }), [cuts]);
-  const nextCuts = useMemo(() => {
-    if (!selectedCut) {
-      return cuts.slice(0, 3);
-    }
+  const cutColumns = useMemo<ColDef<CutCandidate>[]>(() => [
+    {
+      headerName: 'Status',
+      width: 112,
+      valueGetter: ({ data }) => data?.favorite ? 'favorite' : (data?.status ?? 'new'),
+      cellRenderer: ({ data }: { data?: CutCandidate }) => {
+        if (!data) {
+          return null;
+        }
 
-    const followingCuts = cuts.slice(selectedCutIndex + 1, selectedCutIndex + 4);
-    return followingCuts.length > 0 ? followingCuts : cuts.slice(0, 3);
-  }, [cuts, selectedCut, selectedCutIndex]);
+        const tone = data.favorite || data.status === 'kept' ? 'success' : data.status === 'rejected' ? 'warn' : 'default';
+        return <span style={pillStyle(tone)}>{data.favorite ? 'favorite' : (data.status ?? 'new')}</span>;
+      }
+    },
+    {
+      headerName: 'Cut',
+      minWidth: 260,
+      flex: 1.4,
+      valueGetter: ({ data }) => data?.id ?? '',
+      cellRenderer: ({ data }: { data?: CutCandidate }) => data ? (
+        <div style={{ minWidth: 0 }}>
+          <div title={data.id} style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {formatCutDisplayId(data.id)}
+          </div>
+          <div style={{ color: muted, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {assetLabels.get(data.assetId) ?? data.assetId}
+          </div>
+        </div>
+      ) : null
+    },
+    {
+      headerName: 'In',
+      width: 96,
+      valueGetter: ({ data }) => data ? formatMillisecondsClock(data.startMs) : ''
+    },
+    {
+      headerName: 'Out',
+      width: 96,
+      valueGetter: ({ data }) => data ? formatMillisecondsClock(data.endMs) : ''
+    },
+    {
+      headerName: 'Length',
+      width: 100,
+      valueGetter: ({ data }) => data ? formatMillisecondsClock(data.durationMs) : ''
+    },
+    {
+      headerName: 'Score',
+      width: 92,
+      valueGetter: ({ data }) => data && typeof data.sceneScore === 'number' ? data.sceneScore.toFixed(2) : ''
+    },
+    {
+      headerName: 'Tags',
+      minWidth: 180,
+      flex: 1,
+      valueGetter: ({ data }) => data?.tags?.length ? data.tags.join(', ') : ''
+    }
+  ], [assetLabels]);
   const selectedAsset = selectedCut ? assetById.get(selectedCut.assetId) : undefined;
+  const selectedCutTitle = useMemo(() => {
+    const rawLabel = selectedAsset ? (selectedAsset.label ?? selectedAsset.filename) : selectedCut?.id ?? '';
+    return rawLabel.replace(/^.*?-\s*/, '');
+  }, [selectedAsset, selectedCut?.id]);
   const previewDurationMs = Math.max(selectedAsset?.durationMs ?? 0, selectedCut?.endMs ?? 0, 1);
   const draftDurationMs = Math.max(1, draftEndMs - draftStartMs);
   const hasDraftChanges = Boolean(selectedCut && (draftStartMs !== selectedCut.startMs || draftEndMs !== selectedCut.endMs));
@@ -367,11 +414,11 @@ export function CutsView() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.24fr) minmax(360px, 0.76fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-      <Panel title="Review Cut" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         {selectedCut && selectedAsset ? (
-          <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(160px, 1fr) auto', gap: 12, minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(160px, 1fr) auto', gap: 10, minHeight: 0, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'start' }}>
-              <div style={{ minWidth: 0, display: 'grid', gap: 6 }}>
+              <div style={{ minWidth: 0, display: 'grid', gap: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent, fontWeight: 800 }}>
                     {selectedCutIndex + 1 > 0 ? `Cut ${selectedCutIndex + 1} of ${cuts.length}` : 'Cut Review'}
@@ -382,22 +429,24 @@ export function CutsView() {
                   {hasDraftChanges ? <span style={pillStyle('warn')}>trim pending</span> : null}
                 </div>
                 <div
-                  title={selectedCut.id}
+                  title={selectedCutTitle}
                   style={{
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: 800,
-                    lineHeight: 1.2,
+                    lineHeight: 1.15,
+                    maxWidth: 640,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
                     overflowWrap: 'anywhere'
                   }}
                 >
-                  {formatCutDisplayId(selectedCut.id)}
+                  {selectedCutTitle}
                 </div>
-                <div style={{ color: muted, fontSize: 13, marginTop: 6, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
-                  {assetLabels.get(selectedCut.assetId) ?? selectedCut.assetId}
-                  {(selectedCut.tags?.length ?? 0) > 0 ? ` • ${(selectedCut.tags ?? []).join(', ')}` : ''}
-                </div>
-                <div title={selectedCut.id} style={{ color: muted, fontSize: 12, marginTop: 4, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
-                  {selectedCut.id}
+                <div style={{ color: muted, fontSize: 12, lineHeight: 1.35, overflowWrap: 'anywhere', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span>{assetLabels.get(selectedCut.assetId) ?? selectedCut.assetId}</span>
+                  {(selectedCut.tags?.length ?? 0) > 0 ? <span>• {(selectedCut.tags ?? []).join(', ')}</span> : null}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 360 }}>
@@ -580,7 +629,11 @@ export function CutsView() {
         )}
       </Panel>
 
-      <Panel title="Review Queue" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto auto minmax(0, 1fr)', gap: 12, minHeight: 0 }}>
+      <Panel
+        title=""
+        style={{ minHeight: 0, overflow: 'hidden' }}
+        bodyStyle={{ flex: '1 1 auto', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 12, minHeight: 0, minWidth: 0 }}
+      >
         <input
           ref={cutsSearchRef}
           value={query}
@@ -596,83 +649,23 @@ export function CutsView() {
             padding: '10px 14px'
           }}
         />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-          {[
-            ['New', String(queueCounts.new), 'default'],
-            ['Kept', String(queueCounts.kept), 'success'],
-            ['Reject', String(queueCounts.rejected), 'warn'],
-            ['Stars', String(queueCounts.favorite), 'success']
-          ].map(([label, value, tone]) => (
-            <div key={label} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '9px 10px', background: 'rgba(16, 20, 28, 0.72)', minWidth: 0 }}>
-              <div style={{ color: muted, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
-              <div style={{ color: tone === 'success' ? '#9fe1c1' : tone === 'warn' ? '#ccbdf0' : '#f6f7f9', fontSize: 18, fontWeight: 800, marginTop: 2 }}>{value}</div>
-            </div>
-          ))}
-        </div>
-
-        {selectedCut ? (
-          <div style={{ border: '1px solid rgba(136, 160, 191, 0.22)', borderRadius: 14, padding: 12, background: 'rgba(136, 160, 191, 0.08)', display: 'grid', gap: 8, minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start', flexWrap: 'wrap' }}>
-              <strong style={{ minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.3 }}>{formatCutDisplayId(selectedCut.id)}</strong>
-              <span style={pillStyle(selectedCut.favorite ? 'success' : selectedCut.status === 'kept' ? 'success' : selectedCut.status === 'rejected' ? 'warn' : 'default')}>
-                {selectedCut.favorite ? 'favorite' : (selectedCut.status ?? 'new')}
-              </span>
-            </div>
-            <div style={{ color: muted, fontSize: 12, lineHeight: 1.5, overflowWrap: 'anywhere' }}>
-              {formatMillisecondsDetail(selectedCut.startMs)} to {formatMillisecondsDetail(selectedCut.endMs)}
-              {typeof selectedCut.sceneScore === 'number' ? ` • score ${selectedCut.sceneScore.toFixed(2)}` : ''}
-            </div>
-          </div>
-        ) : null}
-
-        <div style={{ minHeight: 0, overflow: 'hidden', display: 'grid', gap: 8, alignContent: 'start' }}>
-          {cuts.length === 0 ? (
-            <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 14, minHeight: 180, display: 'grid', placeItems: 'center', color: muted, fontSize: 13 }}>
-              No cuts match the current filter.
-            </div>
-          ) : (
-            nextCuts.map((cut) => {
-              const isSelected = cut.id === selectedCut?.id;
-              const statusTone = cut.favorite || cut.status === 'kept' ? 'success' : cut.status === 'rejected' ? 'warn' : 'default';
-              return (
-                <button
-                  key={cut.id}
-                  type="button"
-                  onClick={() => {
-                    selectCut(cut.id);
-                    seekPreview(cut.startMs);
-                  }}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    textAlign: 'left',
-                    border: isSelected ? '1px solid rgba(136, 160, 191, 0.62)' : '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 12,
-                    padding: 12,
-                    background: isSelected ? 'rgba(136, 160, 191, 0.14)' : 'rgba(16, 20, 28, 0.78)',
-                    color: '#f6f7f9',
-                    cursor: 'pointer',
-                    display: 'grid',
-                    gap: 8,
-                    minWidth: 0
-                  }}
-                >
-                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'start', minWidth: 0 }}>
-                    <strong style={{ minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.3 }}>{formatCutDisplayId(cut.id)}</strong>
-                    <span style={pillStyle(statusTone)}>{cut.favorite ? 'favorite' : (cut.status ?? 'new')}</span>
-                  </span>
-                  <span style={{ color: muted, fontSize: 12, overflowWrap: 'anywhere', lineHeight: 1.35 }}>
-                    {assetLabels.get(cut.assetId) ?? cut.assetId}
-                  </span>
-                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: muted, fontSize: 12, flexWrap: 'wrap' }}>
-                    <span>{formatMillisecondsClock(cut.durationMs)}</span>
-                    <span>{typeof cut.sceneScore === 'number' ? `score ${cut.sceneScore.toFixed(2)}` : formatMillisecondsClock(cut.startMs)}</span>
-                  </span>
-                </button>
-              );
-            })
-          )}
-        </div>
+        <StudioDataGrid
+          rows={cuts}
+          columns={cutColumns}
+          focusedRowId={selectedCut?.id}
+          emptyMessage="No cuts match the current filter."
+          onFocusRow={(cut) => {
+            selectCut(cut.id);
+            seekPreview(cut.startMs);
+          }}
+          onRowOpen={(cut) => {
+            selectCut(cut.id);
+            seekPreview(cut.startMs);
+          }}
+          rowHeight={50}
+          headerHeight={34}
+          style={{ minHeight: 0, height: '100%' }}
+        />
       </Panel>
     </div>
   );

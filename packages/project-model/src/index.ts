@@ -13,7 +13,7 @@ export type AudioChangeKind = 'energy-shift' | 'spectral-change' | 'silence-star
 export type AudioChangeSource = 'astats' | 'aspectralstats' | 'ebur128' | 'silencedetect' | 'derived';
 export type SyncEventSource = 'audio-change' | 'beat' | 'downbeat' | 'midi' | 'manual';
 export type SyncEventKind = 'change' | 'accent' | 'section' | 'silence-boundary' | 'cue' | 'beat' | 'downbeat';
-export type SyncMode = 'texture' | 'pulse' | 'performance' | 'hybrid';
+export type SyncMode = 'texture' | 'pulse' | 'performance' | 'hybrid' | 'custom';
 export type TransitionStyle = 'cut' | 'crossfade' | 'mask';
 export type AssistedGenerationStrategy =
   | 'manual'

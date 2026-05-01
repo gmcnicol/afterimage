@@ -20,6 +20,8 @@ const shellCss = `
     height: 100%;
     color: #f6f7f9;
     font-family: "IBM Plex Sans", "Aptos", "Segoe UI Variable Text", sans-serif;
+    font-size: 12px;
+    line-height: 1.2;
     background:
       radial-gradient(circle at top left, rgba(112, 131, 160, 0.2), transparent 24%),
       radial-gradient(circle at top right, rgba(133, 117, 176, 0.12), transparent 18%),
@@ -31,6 +33,22 @@ const shellCss = `
   .studio-shell *::before,
   .studio-shell *::after {
     box-sizing: border-box;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .studio-shell strong {
+    font-weight: 400 !important;
+  }
+
+  .studio-shell .studio-emphasis {
+    font-weight: 500 !important;
+  }
+
+  .studio-shell h1,
+  .studio-shell h2,
+  .studio-shell__project-title {
+    font-weight: 500 !important;
   }
 
   .studio-shell__frame {
@@ -86,9 +104,7 @@ const shellCss = `
 
   .studio-surface {
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 24px;
     background: linear-gradient(180deg, rgba(19, 23, 31, 0.94), rgba(12, 15, 21, 0.94));
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
     backdrop-filter: blur(18px);
   }
 
@@ -103,7 +119,7 @@ const shellCss = `
     text-transform: uppercase;
     letter-spacing: 0.14em;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 600;
   }
 
   .studio-shell__brand h1 {
@@ -413,7 +429,168 @@ const shellCss = `
   .studio-main-surface {
     min-width: 0;
     min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
     overflow: hidden;
+  }
+
+  .music-sync {
+    display: grid;
+    grid-template-rows: auto auto 44px minmax(0, 1fr);
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .music-sync--empty {
+    align-content: start;
+  }
+
+  .music-sync__toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.6fr) minmax(96px, 0.35fr) minmax(96px, 0.35fr) minmax(110px, 0.4fr) auto;
+    gap: 8px;
+    align-items: end;
+    min-width: 0;
+  }
+
+  .music-sync__field {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+    color: ${muted};
+  }
+
+  .music-sync__value,
+  .music-sync__select {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding: 0 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(12, 15, 21, 0.98);
+    color: #f6f7f9;
+  }
+
+  .music-sync__select {
+    padding: 0 6px;
+  }
+
+  .music-sync__status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: ${muted};
+    overflow: hidden;
+  }
+
+  .music-sync__pill {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 3px 8px;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .music-sync__pill--success {
+    background: rgba(103, 177, 145, 0.18);
+    color: #9fe1c1;
+  }
+
+  .music-sync__pill--warn {
+    background: rgba(166, 144, 210, 0.18);
+    color: #ccbdf0;
+  }
+
+  .music-sync__status-text,
+  .music-sync__muted {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: ${muted};
+  }
+
+  .music-sync__timeline {
+    display: grid;
+    grid-template-rows: 24px 14px;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(12, 15, 21, 0.98);
+  }
+
+  .music-sync__timeline-track {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    background: linear-gradient(90deg, rgba(136, 160, 191, 0.16), rgba(122, 177, 146, 0.12), rgba(176, 151, 215, 0.16));
+  }
+
+  .music-sync__cue-mark {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-1px);
+  }
+
+  .music-sync__cue-mark--change {
+    background: #9fe1c1;
+  }
+
+  .music-sync__cue-mark--accent {
+    background: #b7a1dc;
+  }
+
+  .music-sync__cue-mark--boundary {
+    background: #8ea4c4;
+  }
+
+  .music-sync__timeline-scale {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 8px;
+    color: ${muted};
+  }
+
+  .music-sync__grids {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .music-sync__grid-panel {
+    display: grid;
+    grid-template-rows: 24px minmax(0, 1fr);
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .music-sync__grid-title {
+    display: flex;
+    align-items: center;
+    color: #f6f7f9;
   }
 
   .catalog-browser {
@@ -667,7 +844,7 @@ const shellCss = `
   }
 `;
 
-type TabGroup = 'Set Up' | 'Build' | 'Deliver';
+type TabGroup = 'Project' | 'Process' | 'Deliver';
 type TabStatusTone = 'ready' | 'attention' | 'blocked';
 
 interface WorkflowMetrics {
@@ -707,70 +884,70 @@ interface TabMeta {
 const tabMeta: TabMeta[] = [
   {
     id: 'project',
-    label: 'Project',
-    group: 'Set Up',
+    label: 'View Project Info',
+    group: 'Project',
     description: 'Create, save, duplicate, and re-open desktop projects.',
     guidance: 'Keep the project saved early so imports and generated results have a stable home.'
   },
   {
     id: 'media',
-    label: 'Media',
-    group: 'Set Up',
+    label: 'Select Media',
+    group: 'Project',
     description: 'Import project media directly or pull reusable assets from the catalogue.',
     guidance: 'Bring in source material first, run analysis here, then move on once statuses are ready.'
   },
   {
     id: 'catalog',
-    label: 'Catalogue',
-    group: 'Set Up',
+    label: 'Manage Catalogue',
+    group: 'Project',
     description: 'Import reusable footage, transitions, and overlays into the current project.',
     guidance: 'Manage global folders here, then mark the cuts or assets that should come into Media.'
   },
   {
+    id: 'music',
+    label: 'Set Cue Timing',
+    group: 'Process',
+    description: 'Review analysed timing cues or load custom cue markers for the project tune.',
+    guidance: 'Use this when the sequence should cut to specific musical or authored cue points.'
+  },
+  {
     id: 'cuts',
-    label: 'Cuts',
-    group: 'Build',
+    label: 'Review Cuts',
+    group: 'Process',
     description: 'Review cut candidates, keep what works, and send the rest away.',
     guidance: 'This is the main review queue. Keep or reject decisively and add strong material to the sequence.'
   },
   {
     id: 'sequence',
-    label: 'Sequence',
-    group: 'Build',
+    label: 'Build Sequence',
+    group: 'Process',
     description: 'Assemble the sequence, transitions, overlays, markers, and preview renders.',
     guidance: 'Once you have approved material, shape the edit and use preview renders to confirm pacing.'
   },
   {
-    id: 'music',
-    label: 'Music',
-    group: 'Build',
-    description: 'Align a music track and import timing markers into the sequence.',
-    guidance: 'Use this when rhythm matters. If there is no soundtrack yet, this stage can wait.'
-  },
-  {
     id: 'style',
-    label: 'Style',
-    group: 'Build',
+    label: 'Tune Style',
+    group: 'Process',
     description: 'Tune the filter stack, presets, and authored looks.',
     guidance: 'Treat style as a finishing pass after the sequence is structurally sound.'
   },
   {
     id: 'automation',
-    label: 'Automation',
-    group: 'Build',
+    label: 'Set Automation',
+    group: 'Process',
     description: 'Author motion lanes and keyframes for filter parameters.',
     guidance: 'Automation only pays off once the sequence and style stack are stable.'
   },
   {
     id: 'export',
-    label: 'Export',
+    label: 'Export Deliverables',
     group: 'Deliver',
     description: 'Pick delivery profiles and render the chosen sequence.',
     guidance: 'Enable the exact formats you need, then watch the render queue for failures.'
   },
   {
     id: 'diagnostics',
-    label: 'Diagnostics',
+    label: 'View Diagnostics',
     group: 'Deliver',
     description: 'Inspect toolchain health, missing media, job history, and logs.',
     guidance: 'Use this to resolve missing inputs or toolchain problems before wasting render time.'
@@ -983,8 +1160,8 @@ function Sidebar() {
   const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
   const groupedTabs = useMemo(
     () => ({
-      'Set Up': tabMeta.filter((tab) => tab.group === 'Set Up' && tab.id !== 'catalog'),
-      Build: tabMeta.filter((tab) => tab.group === 'Build'),
+      Project: tabMeta.filter((tab) => tab.group === 'Project' && tab.id !== 'catalog'),
+      Process: tabMeta.filter((tab) => tab.group === 'Process'),
       Deliver: tabMeta.filter((tab) => tab.group === 'Deliver')
     }),
     []
@@ -1037,7 +1214,6 @@ function Sidebar() {
                     </div>
                     {badge ? <span className="studio-nav__badge">{badge}</span> : null}
                   </div>
-                  <div className="studio-nav__description">{tab.description}</div>
                   <span className={`studio-nav__status tone-${status.tone}`}>{status.label}</span>
                 </button>
               );
@@ -1053,78 +1229,24 @@ function Header() {
   const api = getStudioClient();
   const currentTab = useUiStore((state) => state.currentTab);
   const setCurrentTab = useUiStore((state) => state.setCurrentTab);
-  const addNotification = useUiStore((state) => state.addNotification);
   const project = useProjectSessionStore((state) => state.project);
   const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);
-  const dirty = useProjectSessionStore((state) => state.dirty);
   const setSession = useProjectSessionStore((state) => state.setSession);
   const metrics = useWorkflowMetrics();
-  const [savingProject, setSavingProject] = useState(false);
-  const currentMeta = tabMeta.find((tab) => tab.id === currentTab) ?? tabMeta[0];
   const projectSaved = Boolean(resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName));
   const nextStep = getNextStep(metrics, projectSaved);
-  const showProjectContext = currentTab !== 'catalog';
-
-  const saveProject = async () => {
-    if (savingProject) {
-      return;
-    }
-
-    setSavingProject(true);
-    try {
-      const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
-      const session = await api.project.saveProject({ project, projectFilePath: resolvedProjectFilePath });
-      setSession(session);
-      addNotification('Saved project.', 'success', 1800);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.toLowerCase().includes('cancelled')) {
-        addNotification(`Save failed: ${message}`, 'warn', 3600);
-      }
-    } finally {
-      setSavingProject(false);
-    }
-  };
 
   return (
     <section className="studio-surface studio-hero">
       <div className="studio-hero__layout">
         <div className="studio-hero__headline">
-          <div className="studio-shell__eyebrow">{currentMeta.group}</div>
-          <h2>{currentMeta.label}</h2>
-          <p>
-            {currentMeta.description} {currentMeta.guidance}
-          </p>
-          {showProjectContext ? (
-            <div className="studio-hero__context">
-              <span style={pillStyle(dirty ? 'warn' : 'success')}>{dirty ? 'Unsaved project' : 'Saved project'}</span>
-              <span style={pillStyle()}>{project.name}</span>
-              <span style={pillStyle()}>{metrics.variantCount} variants</span>
-              {metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? (
-                <span style={pillStyle('warn')}>{metrics.warningCount + metrics.missingMediaCount} diagnostics alerts</span>
-              ) : (
-                <span style={pillStyle('success')}>Diagnostics clean</span>
-              )}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="studio-hero__actions">
-          <div className="studio-hero__next-step">
-            <span>Next</span>
-            <strong>{nextStep.label}</strong>
+          <div className="studio-shell__eyebrow">Next</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0 }}>{nextStep.label}</h2>
+            {currentTab !== nextStep.tab ? <span style={pillStyle('default')}>Recommended</span> : <span style={pillStyle('success')}>Current</span>}
           </div>
-          <div className="studio-hero__button-row">
-            <ToolbarButton primary onClick={() => setCurrentTab(nextStep.tab)} disabled={currentTab === nextStep.tab}>
-              {currentTab === nextStep.tab
-                ? 'On Recommended Step'
-                : (nextStep.actionLabel ?? `Open ${tabMeta.find((tab) => tab.id === nextStep.tab)?.label ?? nextStep.tab}`)}
-            </ToolbarButton>
-            <ToolbarButton onClick={() => void saveProject()} disabled={savingProject}>
-              {savingProject ? 'Saving…' : 'Save Project'}
-            </ToolbarButton>
-          </div>
+          {nextStep.reason ? <p style={{ margin: 0 }}>{nextStep.reason}</p> : null}
         </div>
       </div>
     </section>
