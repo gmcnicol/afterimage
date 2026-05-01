@@ -1,12 +1,12 @@
 import { useEffect, useEffectEvent } from 'react';
 import { getDefaultVariant } from '@afterimage/project-model';
-import { getDesktopApi } from '../../lib/desktop-api';
+import { getStudioClient } from '../../lib/studio-client';
 import { useProjectSessionStore } from '../../stores/project-session-store';
 import { useUiStore } from '../../stores/ui-store';
 import { getEnabledExportProfileIds, resolveProjectFilePath } from '../utils';
 
 export function useKeyboardShortcuts(): void {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const currentTab = useUiStore((state) => state.currentTab);
   const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const project = useProjectSessionStore((state) => state.project);

@@ -1,10 +1,10 @@
 import { useEffect, useEffectEvent, useRef } from 'react';
-import { getDesktopApi } from '../../lib/desktop-api';
+import { getStudioClient } from '../../lib/studio-client';
 import { useProjectSessionStore } from '../../stores/project-session-store';
 import { resolveProjectFilePath } from '../utils';
 
 export function useProjectAutosave(): void {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const project = useProjectSessionStore((state) => state.project);
   const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);

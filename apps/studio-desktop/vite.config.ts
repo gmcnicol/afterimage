@@ -14,7 +14,9 @@ export default defineConfig({
       '@afterimage/media-analysis': fileURLToPath(new URL('../../packages/media-analysis/src/index.ts', import.meta.url)),
       '@afterimage/preset-library': fileURLToPath(new URL('../../packages/preset-library/src/index.ts', import.meta.url)),
       '@afterimage/midi-engine': fileURLToPath(new URL('../../packages/midi-engine/src/index.ts', import.meta.url)),
-      '@afterimage/export-profiles': fileURLToPath(new URL('../../packages/export-profiles/src/index.ts', import.meta.url))
+      '@afterimage/export-profiles': fileURLToPath(new URL('../../packages/export-profiles/src/index.ts', import.meta.url)),
+      '@afterimage/studio-contracts': fileURLToPath(new URL('../../packages/studio-contracts/src/index.ts', import.meta.url)),
+      '@afterimage/studio-bus': fileURLToPath(new URL('../../packages/studio-bus/src/index.ts', import.meta.url))
     }
   },
   server: {

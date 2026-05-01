@@ -26,13 +26,13 @@ import type {
   LibraryScanStatus,
   LibrarySearchRequest,
   LibrarySearchResult
-} from '../../src/shared/contracts.js';
+} from '@afterimage/studio-contracts';
 import type { Logger } from './logger.js';
 
 type LibraryJobRunner = (input: {
   type: 'library-scan' | 'library-analysis';
   target: string;
-  run(signal: AbortSignal, report: (message: string, progress: number) => Promise<void> | void): Promise<NonNullable<import('../../src/shared/contracts.js').DesktopJob['result']>>;
+  run(signal: AbortSignal, report: (message: string, progress: number) => Promise<void> | void): Promise<NonNullable<import('@afterimage/studio-contracts').DesktopJob['result']>>;
 }) => void;
 
 interface LibraryServiceOptions {

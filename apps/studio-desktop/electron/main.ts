@@ -3,15 +3,19 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell, type IpcMainInvokeEvent } from 'electron';
+import { createRouteRegistry, type RouteHandlerMap } from '@afterimage/studio-bus';
+import type {
+  StudioCommandMap,
+  StudioEventMap,
+  StudioEventType,
+  StudioInvokeEnvelope,
+  StudioQueryMap
+} from '@afterimage/studio-contracts';
+import { app, BrowserWindow, dialog, ipcMain, protocol, shell } from 'electron';
 import type {
   DesktopJob,
   ProjectSessionSnapshot,
-  RunAnalysisRequest,
-  RunExportRequest,
-  RunPreviewRequest,
-  SaveProjectRequest
-} from '../src/shared/contracts.js';
+} from '@afterimage/studio-contracts';
 import { createDiagnosticsService } from './services/diagnostics-service.js';
 import { createJobManager } from './services/job-manager.js';
 import { createLogger } from './services/logger.js';
@@ -45,7 +49,10 @@ const projectService = createProjectService({
   recentProjectsPath: path.join(app.getPath('userData'), 'recent-projects.json'),
   onRecentProjectsChanged(recentProjects) {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('project:recentProjectsUpdated', recentProjects);
+      mainWindow.webContents.send('studio:event', {
+        type: 'project.recentProjectsChanged',
+        payload: recentProjects
+      } satisfies StudioEventEnvelope<'project.recentProjectsChanged'>);
     }
   }
 });
@@ -54,7 +61,10 @@ const jobManager = createJobManager({
   logger,
   onJobsChanged(jobs: DesktopJob[]) {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('jobs:updated', jobs);
+      mainWindow.webContents.send('studio:event', {
+        type: 'jobs.updated',
+        payload: jobs
+      } satisfies StudioEventEnvelope<'jobs.updated'>);
     }
   }
 });
@@ -79,6 +89,70 @@ function getStartupProjectPath(argv: string[]): string | undefined {
 
 const startupProjectPath = getStartupProjectPath(process.argv);
 let startupSessionPromise: Promise<ProjectSessionSnapshot> | undefined;
+
+type StudioEventEnvelope<EventType extends StudioEventType = StudioEventType> = {
+  type: EventType;
+  payload: StudioEventMap[EventType];
+};
+
+function createStudioRouteRegistry() {
+  const commands: RouteHandlerMap<StudioCommandMap> = {
+    'project.create': (options) => projectService.createProject(options),
+    'project.open': () => projectService.openProject(),
+    'project.openAt': (projectFilePath) => projectService.openProjectAt(projectFilePath),
+    'project.removeRecentProject': (projectFilePath) => projectService.removeRecentProject(projectFilePath),
+    'project.save': (input) => projectService.saveProject(input),
+    'project.saveAs': (input) => projectService.saveProjectAs(input),
+    'project.duplicate': (input) => projectService.duplicateProject(input),
+    'project.revealFolder': (projectFilePath) => projectService.revealProjectFolder(projectFilePath),
+    'project.importMedia': (projectRoot) => projectService.importMedia(projectRoot),
+    'project.importMusic': (projectRoot) => projectService.importMusic(projectRoot),
+    'project.importTransitionMasks': (projectRoot) => projectService.importTransitionMasks(projectRoot),
+    'project.importTransitionOverlays': (projectRoot) => projectService.importTransitionOverlays(projectRoot),
+    'project.relinkAsset': (input) => projectService.relinkAsset(input),
+    'library.addRoot': (input) => libraryService.addRoot(input),
+    'library.removeRoot': (rootId) => libraryService.removeRoot(rootId),
+    'library.rescanRoot': (rootId) => libraryService.rescanRoot(rootId),
+    'library.rescanAll': () => libraryService.rescanAll(),
+    'library.clearAndRescanAll': () => libraryService.clearAndRescanAll(),
+    'library.importAssets': (input) => libraryService.importAssets(input),
+    'library.removeAssets': (input) => libraryService.removeAssets(input),
+    'jobs.runAnalysis': (input) => jobManager.runAnalysis(input),
+    'jobs.runPreview': (input) => jobManager.runPreview(input),
+    'jobs.runExport': (input) => jobManager.runExport(input),
+    'jobs.cancel': (jobId) => jobManager.cancel(jobId),
+    'jobs.retry': (jobId) => jobManager.retry(jobId),
+    'shell.revealPath': (targetPath) => shell.showItemInFolder(targetPath)
+  };
+
+  const queries: RouteHandlerMap<StudioQueryMap> = {
+    'project.getInitialState': async () => {
+      if (!startupProjectPath) {
+        return projectService.getInitialState();
+      }
+
+      if (!startupSessionPromise) {
+        startupSessionPromise = projectService.openProjectAt(startupProjectPath);
+      }
+
+      return startupSessionPromise;
+    },
+    'project.loadAnalysis': (analysisPath) => projectService.loadAnalysis(analysisPath),
+    'library.listRoots': () => libraryService.listRoots(),
+    'library.listDirectories': (rootId) => libraryService.listDirectories(rootId),
+    'library.searchAssets': (input) => libraryService.searchAssets(input),
+    'jobs.list': () => jobManager.list(),
+    'diagnostics.getReport': (input) => diagnosticsService.getReport(input),
+    'diagnostics.getLogs': () => logger.list(),
+    'shell.getRuntimeInfo': () => ({
+      platform: process.platform,
+      node: process.version,
+      electron: process.versions.electron ?? 'unknown'
+    })
+  };
+
+  return createRouteRegistry(commands, queries);
+}
 
 function getContentType(absolutePath: string): string {
   const extension = path.extname(absolutePath).toLowerCase();
@@ -186,64 +260,8 @@ function createWindow(): void {
 app.whenReady().then(() => {
   protocol.handle('afterimage-file', handleLocalAssetRequest);
 
-  ipcMain.handle('project:getInitialState', async () => {
-    if (!startupProjectPath) {
-      return projectService.getInitialState();
-    }
-
-    if (!startupSessionPromise) {
-      startupSessionPromise = projectService.openProjectAt(startupProjectPath);
-    }
-
-    return startupSessionPromise;
-  });
-  ipcMain.handle('project:create', async (_event: IpcMainInvokeEvent, options?: { name?: string }) => projectService.createProject(options));
-  ipcMain.handle('project:open', async () => projectService.openProject());
-  ipcMain.handle('project:openAt', async (_event: IpcMainInvokeEvent, projectFilePath: string) => projectService.openProjectAt(projectFilePath));
-  ipcMain.handle('project:removeRecentProject', async (_event: IpcMainInvokeEvent, projectFilePath: string) => projectService.removeRecentProject(projectFilePath));
-  ipcMain.handle('project:save', async (_event: IpcMainInvokeEvent, input: SaveProjectRequest) => projectService.saveProject(input));
-  ipcMain.handle('project:saveAs', async (_event: IpcMainInvokeEvent, input: SaveProjectRequest) => projectService.saveProjectAs(input));
-  ipcMain.handle('project:duplicate', async (_event: IpcMainInvokeEvent, input: SaveProjectRequest) => projectService.duplicateProject(input));
-  ipcMain.handle('project:revealFolder', async (_event: IpcMainInvokeEvent, projectFilePath: string) => projectService.revealProjectFolder(projectFilePath));
-  ipcMain.handle('project:loadAnalysis', async (_event: IpcMainInvokeEvent, analysisPath: string) => projectService.loadAnalysis(analysisPath));
-  ipcMain.handle('project:importMedia', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importMedia(projectRoot));
-  ipcMain.handle('project:importMusic', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importMusic(projectRoot));
-  ipcMain.handle('project:importTransitionMasks', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importTransitionMasks(projectRoot));
-  ipcMain.handle('project:importTransitionOverlays', async (_event: IpcMainInvokeEvent, projectRoot?: string) => projectService.importTransitionOverlays(projectRoot));
-  ipcMain.handle(
-    'project:relinkAsset',
-    async (_event: IpcMainInvokeEvent, input: { projectRoot: string; assetId: string; currentPath?: string }) => projectService.relinkAsset(input)
-  );
-
-  ipcMain.handle('jobs:list', async () => jobManager.list());
-  ipcMain.handle('jobs:runAnalysis', async (_event: IpcMainInvokeEvent, input: RunAnalysisRequest) => jobManager.runAnalysis(input));
-  ipcMain.handle('jobs:runPreview', async (_event: IpcMainInvokeEvent, input: RunPreviewRequest) => jobManager.runPreview(input));
-  ipcMain.handle('jobs:runExport', async (_event: IpcMainInvokeEvent, input: RunExportRequest) => jobManager.runExport(input));
-  ipcMain.handle('jobs:cancel', async (_event: IpcMainInvokeEvent, jobId: string) => jobManager.cancel(jobId));
-  ipcMain.handle('jobs:retry', async (_event: IpcMainInvokeEvent, jobId: string) => jobManager.retry(jobId));
-
-  ipcMain.handle('library:addRoot', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.addRoot>[0]) => libraryService.addRoot(input));
-  ipcMain.handle('library:removeRoot', async (_event: IpcMainInvokeEvent, rootId: string) => libraryService.removeRoot(rootId));
-  ipcMain.handle('library:rescanRoot', async (_event: IpcMainInvokeEvent, rootId: string) => libraryService.rescanRoot(rootId));
-  ipcMain.handle('library:rescanAll', async () => libraryService.rescanAll());
-  ipcMain.handle('library:clearAndRescanAll', async () => libraryService.clearAndRescanAll());
-  ipcMain.handle('library:listRoots', async () => libraryService.listRoots());
-  ipcMain.handle('library:listDirectories', async (_event: IpcMainInvokeEvent, rootId?: string) => libraryService.listDirectories(rootId));
-  ipcMain.handle('library:searchAssets', async (_event: IpcMainInvokeEvent, input?: Parameters<typeof libraryService.searchAssets>[0]) => libraryService.searchAssets(input));
-  ipcMain.handle('library:importAssets', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.importAssets>[0]) => libraryService.importAssets(input));
-  ipcMain.handle('library:removeAssets', async (_event: IpcMainInvokeEvent, input: Parameters<typeof libraryService.removeAssets>[0]) => libraryService.removeAssets(input));
-
-  ipcMain.handle(
-    'diagnostics:getReport',
-    async (_event: IpcMainInvokeEvent, input?: { project?: RunAnalysisRequest['project']; projectRoot?: string }) => diagnosticsService.getReport(input)
-  );
-  ipcMain.handle('diagnostics:getLogs', async () => logger.list());
-  ipcMain.handle('shell:revealPath', async (_event: IpcMainInvokeEvent, targetPath: string) => shell.showItemInFolder(targetPath));
-  ipcMain.handle('shell:getRuntimeInfo', async () => ({
-    platform: process.platform,
-    node: process.version,
-    electron: process.versions.electron ?? 'unknown'
-  }));
+  const routeRegistry = createStudioRouteRegistry();
+  ipcMain.handle('studio:invoke', async (_event, envelope: StudioInvokeEnvelope) => routeRegistry.handle(envelope));
 
   createWindow();
 

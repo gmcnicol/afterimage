@@ -44,7 +44,7 @@ import type {
   RunAnalysisRequest,
   RunExportRequest,
   RunPreviewRequest
-} from '../../src/shared/contracts.js';
+} from '@afterimage/studio-contracts';
 import type { Logger } from './logger.js';
 
 type QueueClass = 'analysis' | 'heavy';

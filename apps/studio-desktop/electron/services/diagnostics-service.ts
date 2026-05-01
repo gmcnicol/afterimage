@@ -2,7 +2,7 @@ import { access } from 'node:fs/promises';
 import type { NormalizedProjectFile } from '@afterimage/project-model';
 import { collectProjectIntegrityIssues } from '@afterimage/project-model';
 import { getToolchainHealth, resolveFfmpegTools } from '@afterimage/ffmpeg-compiler';
-import type { DiagnosticsSnapshot } from '../../src/shared/contracts.js';
+import type { DiagnosticsSnapshot } from '@afterimage/studio-contracts';
 import type { Logger } from './logger.js';
 
 interface DiagnosticsServiceOptions {

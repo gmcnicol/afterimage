@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Screen } from '@afterimage/ui';
-import { getDesktopApi } from '../lib/desktop-api';
+import { getStudioClient } from '../lib/studio-client';
 import { useDiagnosticsStore } from '../stores/diagnostics-store';
 import { useJobsStore } from '../stores/jobs-store';
 import { useProjectSessionStore } from '../stores/project-session-store';
@@ -972,7 +972,7 @@ function NotificationCenter() {
 }
 
 function Sidebar() {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const currentTab = useUiStore((state) => state.currentTab);
   const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const project = useProjectSessionStore((state) => state.project);
@@ -1050,7 +1050,7 @@ function Sidebar() {
 }
 
 function Header() {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const currentTab = useUiStore((state) => state.currentTab);
   const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const addNotification = useUiStore((state) => state.addNotification);

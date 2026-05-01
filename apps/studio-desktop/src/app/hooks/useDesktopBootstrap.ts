@@ -1,13 +1,13 @@
 import { useEffect, useEffectEvent, useRef } from 'react';
-import type { DesktopJob } from '../../lib/desktop-api';
-import { getDesktopApi } from '../../lib/desktop-api';
+import type { DesktopJob } from '../../lib/studio-client';
+import { getStudioClient } from '../../lib/studio-client';
 import { useDiagnosticsStore } from '../../stores/diagnostics-store';
 import { useJobsStore } from '../../stores/jobs-store';
 import { useProjectSessionStore } from '../../stores/project-session-store';
 import { useUiStore } from '../../stores/ui-store';
 
 export function useDesktopBootstrap(): void {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const setSession = useProjectSessionStore((state) => state.setSession);
   const setRecentProjects = useProjectSessionStore((state) => state.setRecentProjects);
   const setJobs = useJobsStore((state) => state.setJobs);

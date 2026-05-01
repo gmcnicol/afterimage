@@ -24,7 +24,7 @@ import {
   type TransitionStyle
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
-import { getDesktopApi, type DesktopJob, type LibraryAsset, type LibraryRoot, type LibrarySearchRequest } from '../lib/desktop-api';
+import { getStudioClient, type DesktopJob, type LibraryAsset, type LibraryRoot, type LibrarySearchRequest } from '../lib/studio-client';
 import { useDiagnosticsStore } from '../stores/diagnostics-store';
 import { useJobsStore } from '../stores/jobs-store';
 import { useProjectSessionStore } from '../stores/project-session-store';
@@ -58,7 +58,7 @@ function formatSequenceName(name: string, index?: number): string {
 }
 
 function useAnalysisFile(analysisPath?: string): AnalysisFile | null {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const [analysis, setAnalysis] = useState<AnalysisFile | null>(null);
 
   useEffect(() => {
@@ -373,7 +373,7 @@ function formatCutDisplayId(cutId: string): string {
 }
 
 export function ProjectView() {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const project = useProjectSessionStore((state) => state.project);
   const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);
@@ -612,7 +612,7 @@ export function ProjectView() {
 }
 
 export function CatalogView() {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);
   const project = useProjectSessionStore((state) => state.project);
@@ -1321,7 +1321,7 @@ export function CatalogView() {
 }
 
 export function MediaView() {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const project = useProjectSessionStore((state) => state.project);
   const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);
@@ -2439,7 +2439,7 @@ export function CutsView() {
 }
 
 export function SequenceView() {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const project = useProjectSessionStore((state) => state.project);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot) ?? '.';
   const allJobs = useJobsStore((state) => state.jobs);
@@ -3296,7 +3296,7 @@ export function AutomationView() {
 }
 
 export function ExportView() {
-  const api = getDesktopApi();
+  const api = getStudioClient();
   const project = useProjectSessionStore((state) => state.project);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot) ?? '.';
   const toggleProfile = useProjectSessionStore((state) => state.toggleExportProfile);

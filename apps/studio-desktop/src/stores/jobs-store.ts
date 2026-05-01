@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DesktopJob } from '../lib/desktop-api';
+import type { DesktopJob } from '../lib/studio-client';
 
 interface JobsStoreState {
   jobs: DesktopJob[];

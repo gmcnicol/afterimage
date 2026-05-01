@@ -61,7 +61,7 @@ try {
   await waitForFile(expectedOutputPath);
 
   const jobs = await window.evaluate(async () => {
-    return await window.afterimage.jobs.list();
+    return await window.afterimage.invoke('query', 'jobs.list', undefined);
   });
 
   const failedJobs = jobs.filter((job) => job.status === 'failed');

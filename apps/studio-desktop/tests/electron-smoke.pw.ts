@@ -41,10 +41,20 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
     await expect(window.locator('nav[aria-label="Workflow navigation"]')).toBeVisible();
 
     const runtimeInfo = await window.evaluate(async () => {
-      return await window.afterimage?.shell.getRuntimeInfo();
+      return await window.afterimage?.invoke('query', 'shell.getRuntimeInfo', undefined);
     });
 
     expect(runtimeInfo?.electron).toBeTruthy();
+    const bridgeShape = await window.evaluate(() => ({
+      hasInvoke: typeof window.afterimage?.invoke === 'function',
+      hasSubscribe: typeof window.afterimage?.subscribe === 'function',
+      exposesNestedShell: 'shell' in (window.afterimage ?? {})
+    }));
+    expect(bridgeShape).toEqual({
+      hasInvoke: true,
+      hasSubscribe: true,
+      exposesNestedShell: false
+    });
   } finally {
     await electronApp.close();
   }
