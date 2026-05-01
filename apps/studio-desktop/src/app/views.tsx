@@ -26,5 +26,9 @@ const viewMap: Record<StudioTab, ComponentType> = {
 export function ActiveView() {
   const activeTab = useUiStore((state) => state.currentTab);
   const View = viewMap[activeTab];
-  return <View />;
+  return (
+    <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0, minWidth: 0 }}>
+      <View />
+    </div>
+  );
 }

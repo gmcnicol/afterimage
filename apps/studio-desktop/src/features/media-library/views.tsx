@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ColDef } from 'ag-grid-community';
 import { exportProfiles, type ExportProfileId } from '@afterimage/export-profiles';
 import { loadPresetLibrary } from '@afterimage/preset-library';
@@ -32,7 +32,6 @@ import { useUiStore } from '../../stores/ui-store';
 import { accent, muted, pillStyle } from '../../app/styles';
 import { getEnabledExportProfileIds, resolveProjectFilePath, toMediaSrc } from '../../app/utils';
 import { JobRow } from '../../app/components/JobRow';
-import { StatCard } from '../../app/components/StatCard';
 import { StudioDataGrid, type StudioGridAction } from '../../app/components/StudioDataGrid';
 import { ToolbarButton } from '../../app/components/ToolbarButton';
 import { useMediaLibraryClient } from './hooks';
@@ -55,7 +54,6 @@ import {
   formatMillisecondsClock,
   formatSequenceCutLabel,
   formatMillisecondsDetail,
-  formatAssetListSubline,
   formatPathTail,
   getPathBasename,
   isDisposableRecentProjectPath,
@@ -788,6 +786,9 @@ export function MediaView() {
   const [query, setQuery] = useState('');
   const [launchLocked, setLaunchLocked] = useState(false);
   const mediaSearchRef = useRef<HTMLInputElement | null>(null);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [autoplayAssetId, setAutoplayAssetId] = useState<string>();
   const deferredQuery = useDeferredValue(query);
   const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
   const assets = useMemo(() => project.assets.filter((asset) =>
@@ -822,43 +823,33 @@ export function MediaView() {
   }, [allJobs]);
   const activeAnalysisJob = analysisJobs.find((job) => job.status === 'queued' || job.status === 'running');
   const processingAnalysis = Boolean(activeAnalysisJob) || launchLocked;
-  const sidecarCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const ref of project.analysisRefs) {
-      counts.set(ref.assetId, (counts.get(ref.assetId) ?? 0) + 1);
-    }
-    return counts;
-  }, [project.analysisRefs]);
-  const analysisRows = useMemo<AnalysisAssetRow[]>(() => project.assets
-    .filter((asset) => asset.mediaType !== 'image')
-    .map((asset) => {
-      const summary = getAnalysisSummaryByAsset(project, asset.id);
-      return {
-        id: asset.id,
-        label: asset.label ?? asset.filename,
-        mediaType: asset.mediaType,
-        analysisStatus: asset.analysisStatus ?? 'pending',
-        durationMs: asset.durationMs ?? 0,
-        sidecarCount: sidecarCounts.get(asset.id) ?? 0,
-        changeEventCount: summary?.changeEventCount ?? 0,
-        syncEventCount: summary?.syncEventCount ?? 0,
-        path: asset.path.absolutePath
-      };
-    }), [project, sidecarCounts]);
-  const queuedAnalysisRows = useMemo(
-    () => analysisRows.filter((row) => row.analysisStatus !== 'completed'),
-    [analysisRows]
-  );
-  const pendingAnalysisAssetIds = useMemo(
-    () => queuedAnalysisRows.map((row) => row.id),
-    [queuedAnalysisRows]
-  );
-  const pendingAnalysisCount = analysisRows.filter((row) => row.analysisStatus !== 'completed').length;
-  const completedAnalysisCount = analysisRows.length - pendingAnalysisCount;
-  const selectedAnalysisRow = selectedAsset ? analysisRows.find((row) => row.id === selectedAsset.id) : undefined;
+  const selectedAnalysisRef = selectedAsset ? project.analysisRefs.find((ref) => ref.assetId === selectedAsset.id) : undefined;
+  const selectedAnalysisFile = useAnalysisFile(selectedAnalysisRef?.path);
+  const selectedAnalysisSummary = selectedAsset ? getAnalysisSummaryByAsset(project, selectedAsset.id) : undefined;
+  const selectedChangeCount = selectedAsset?.assetRole === 'music'
+    ? selectedAnalysisFile?.audioChangeTrack?.events.length ?? selectedAnalysisSummary?.changeEventCount ?? 0
+    : selectedAnalysisSummary?.changeEventCount ?? 0;
+  const selectedSyncCount = selectedAsset?.assetRole === 'music'
+    ? selectedAnalysisFile?.syncEventTrack?.events.length ?? selectedAnalysisSummary?.syncEventCount ?? 0
+    : selectedAnalysisSummary?.syncEventCount ?? 0;
   const analyzableSelectedAssetIds = selectedAsset && selectedAsset.mediaType !== 'image' ? [selectedAsset.id] : [];
-  const selectedAssetAnalysisReady = selectedAnalysisRow?.analysisStatus === 'completed';
+  const selectedAssetAnalysisReady = selectedAsset?.analysisStatus === 'completed';
   const selectedAssetNeedsAnalysis = analyzableSelectedAssetIds.length > 0 && !selectedAssetAnalysisReady;
+  const importToolbarButtonStyle = (primary: boolean, edge: 'left' | 'middle' | 'right'): CSSProperties => ({
+    padding: '9px 13px',
+    borderRadius: 0,
+    borderTop: 'none',
+    borderBottom: 'none',
+    borderLeft: edge === 'left' ? 'none' : '1px solid rgba(255,255,255,0.08)',
+    borderRight: 'none',
+    background: primary
+      ? 'linear-gradient(135deg, #9db1ca, #7285a6)'
+      : 'linear-gradient(180deg, rgba(28, 33, 44, 0.96), rgba(19, 22, 30, 0.96))',
+    color: primary ? '#0d1118' : '#f6f7f9',
+    boxShadow: 'none',
+    fontWeight: 700,
+    whiteSpace: 'nowrap'
+  });
 
   useEffect(() => {
     if (!selectedAssetId && assets[0]) {
@@ -870,6 +861,23 @@ export function MediaView() {
       selectAsset(assets[0]?.id);
     }
   }, [assets, selectAsset, selectedAssetId]);
+
+  useEffect(() => {
+    if (!selectedAsset || autoplayAssetId !== selectedAsset.id) {
+      return;
+    }
+
+    const player = selectedAsset.mediaType === 'audio'
+      ? previewAudioRef.current
+      : selectedAsset.mediaType === 'video'
+        ? previewVideoRef.current
+        : null;
+
+    if (player) {
+      void player.play().catch(() => {});
+    }
+    setAutoplayAssetId(undefined);
+  }, [autoplayAssetId, selectedAsset]);
 
   const importMedia = async () => {
     const imported = await api.project.importMedia(projectRoot);
@@ -988,50 +996,69 @@ export function MediaView() {
 
   const mediaAssetColumns = useMemo<ColDef<MediaAsset>[]>(() => [
     {
-      headerName: 'Filename',
-      minWidth: 250,
-      flex: 1.6,
-      valueGetter: ({ data }) => data?.label ?? data?.filename ?? '',
+      headerName: 'Asset',
+      minWidth: 260,
+      flex: 1.9,
       cellRenderer: ({ data }: { data?: MediaAsset }) => data ? (
-        <div title={data.path.absolutePath}>
-          <strong>{data.label ?? data.filename}</strong>
-          <div style={{ color: muted, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatAssetListSubline(data)}</div>
+        <div title={data.path.absolutePath} style={{ minWidth: 0 }}>
+          <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{data.label ?? data.filename}</strong>
         </div>
       ) : null
     },
     {
       field: 'assetRole',
       headerName: 'Role',
-      width: 118,
-      valueFormatter: ({ value }) => value ?? 'source'
-    },
-    {
-      field: 'mediaType',
-      headerName: 'Type',
-      width: 100
-    },
-    {
-      field: 'durationMs',
-      headerName: 'Duration',
-      width: 116,
-      valueFormatter: ({ value }) => value ? formatMillisecondsClock(Number(value)) : 'Unknown'
+      width: 78,
+      minWidth: 78,
+      valueFormatter: ({ data }) => data?.assetRole ? formatCatalogRole(data.assetRole) : ''
     },
     {
       field: 'analysisStatus',
-      headerName: 'Analysis',
-      width: 118,
-      cellRenderer: ({ value }: { value?: string }) => <span style={pillStyle(value === 'completed' ? 'success' : 'warn')}>{value}</span>
+      headerName: 'Status',
+      width: 84,
+      cellRenderer: ({ value }: { value?: string }) => {
+        const ready = value === 'completed';
+        const tone = ready ? 'success' : 'warn';
+        return (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              minWidth: 0,
+              maxWidth: '100%',
+              padding: '4px 8px',
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: tone === 'success' ? 'rgba(103, 177, 145, 0.14)' : 'rgba(166, 144, 210, 0.14)',
+              color: tone === 'success' ? '#9fe1c1' : '#ccbdf0',
+              fontSize: 11,
+              fontWeight: 700,
+              lineHeight: 1,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor', flex: '0 0 auto' }} />
+            {ready ? 'ready' : 'pending'}
+          </div>
+        );
+      }
     },
     {
       headerName: 'Actions',
-      width: 170,
+      width: 144,
       sortable: false,
       cellRenderer: ({ data }: { data?: MediaAsset }) => data ? (
         <div style={{ display: 'flex', gap: 6 }}>
-          <ToolbarButton onClick={() => selectAsset(data.id)} style={{ padding: '5px 7px' }}>Preview</ToolbarButton>
+          <ToolbarButton compact onClick={() => {
+            selectAsset(data.id);
+            if (data.mediaType === 'video' || data.mediaType === 'audio') {
+              setAutoplayAssetId(data.id);
+            }
+          }} style={{ minWidth: 66, justifyContent: 'center', padding: '6px 7px', boxShadow: 'none' }}>Preview</ToolbarButton>
           {data.mediaType !== 'image' ? (
-            <ToolbarButton primary onClick={() => void runAnalysis([data.id], 'selected')} disabled={processingAnalysis} style={{ padding: '5px 7px' }}>
-              Analyze
+            <ToolbarButton compact onClick={() => void runAnalysis([data.id], 'selected')} disabled={processingAnalysis} style={{ minWidth: 66, justifyContent: 'center', padding: '6px 7px', boxShadow: 'none' }}>
+              Analyse
             </ToolbarButton>
           ) : null}
         </div>
@@ -1039,45 +1066,19 @@ export function MediaView() {
     }
   ], [processingAnalysis, selectAsset]);
 
-  const analysisQueueColumns = useMemo<ColDef<AnalysisAssetRow>[]>(() => [
-    {
-      field: 'label',
-      headerName: 'Asset',
-      minWidth: 230,
-      flex: 1.4,
-      cellRenderer: ({ data }: { data?: AnalysisAssetRow }) => data ? (
-        <div title={data.path}>
-          <strong>{data.label}</strong>
-          <div style={{ color: muted, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatPathTail(data.path)}</div>
-        </div>
-      ) : null
-    },
-    { field: 'mediaType', headerName: 'Type', width: 94 },
-    { field: 'analysisStatus', headerName: 'Status', width: 112, cellRenderer: ({ value }: { value?: string }) => <span style={pillStyle(value === 'completed' ? 'success' : 'warn')}>{value}</span> },
-    { field: 'durationMs', headerName: 'Duration', width: 110, valueFormatter: ({ value }) => formatMillisecondsClock(Number(value)) },
-    { field: 'changeEventCount', headerName: 'Changes', width: 94 },
-    { field: 'syncEventCount', headerName: 'Sync', width: 80 },
-    { field: 'sidecarCount', headerName: 'Sidecars', width: 90 }
-  ], []);
-
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(340px, 0.9fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-      <Panel title="Media Library" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', minHeight: 0 }}>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <ToolbarButton primary onClick={() => void importMedia()}>Import Media</ToolbarButton>
-          <ToolbarButton onClick={() => setCurrentTab('catalog')}>Import From Catalogue</ToolbarButton>
-          <ToolbarButton onClick={() => void importMusic()}>Import Music</ToolbarButton>
-          <ToolbarButton onClick={() => void importTransitionMasks()}>Import Transitions</ToolbarButton>
-          <ToolbarButton onClick={() => void importTransitionOverlays()}>Import Overlays</ToolbarButton>
-        </div>
-        <div style={{ marginBottom: 16 }}>
+    <Panel title="Media Library" style={{ height: '100%', minWidth: 0, overflow: 'hidden' }} bodyStyle={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, minWidth: 0 }}>
+      <div style={{ display: 'grid', gap: 10, minWidth: 0, flex: '0 0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
           <input
             ref={mediaSearchRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search by filename or tag"
             style={{
-              width: '100%',
+              flex: '1 1 320px',
+              minWidth: 0,
               borderRadius: 7,
               border: '1px solid rgba(255,255,255,0.08)',
               background: 'rgba(13, 16, 22, 0.92)',
@@ -1085,7 +1086,18 @@ export function MediaView() {
               padding: '10px 14px'
             }}
           />
+          <ToolbarButton onClick={() => setCurrentTab('catalog')}>
+            Import From Catalogue
+          </ToolbarButton>
         </div>
+        <div style={{ display: 'inline-flex', alignSelf: 'start', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, overflow: 'hidden', background: 'rgba(16, 20, 28, 0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+          <ToolbarButton primary onClick={() => void importMedia()} style={importToolbarButtonStyle(true, 'left')}>Import Media</ToolbarButton>
+          <ToolbarButton onClick={() => void importMusic()} style={importToolbarButtonStyle(false, 'middle')}>Import Music</ToolbarButton>
+          <ToolbarButton onClick={() => void importTransitionMasks()} style={importToolbarButtonStyle(false, 'middle')}>Import Transitions</ToolbarButton>
+          <ToolbarButton onClick={() => void importTransitionOverlays()} style={importToolbarButtonStyle(false, 'right')}>Import Overlays</ToolbarButton>
+        </div>
+      </div>
+      <div style={{ minHeight: 0, flex: '1 1 auto' }}>
         <StudioDataGrid
           rows={assets}
           columns={mediaAssetColumns}
@@ -1101,70 +1113,100 @@ export function MediaView() {
               void runAnalysis([asset.id], 'selected');
             }
           }}
-          rowHeight={58}
-          emptyMessage="No media has been imported"
+          rowHeight={48}
+          emptyMessage="No imported media yet"
         />
-      </Panel>
+      </div>
+    </Panel>
 
-      <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) minmax(260px, 0.95fr)', gap: 16, minHeight: 0 }}>
-        <Panel title="Asset Inspector" bodyStyle={{ minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) minmax(220px, 0.85fr)', gap: 16, minHeight: 0 }}>
+        <Panel title="Asset Inspector" style={{ height: '100%', minWidth: 0, overflow: 'hidden' }} bodyStyle={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
           {selectedAsset ? (
-            <div style={{ display: 'grid', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, height: '100%' }}>
               {selectedAsset.mediaType === 'image' ? (
                 <img
                   src={toMediaSrc(selectedAsset.path.absolutePath)}
                   alt={selectedAsset.label ?? selectedAsset.filename}
-                  style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 18, background: '#090a0d' }}
+                  style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 0, background: '#090a0d', maxHeight: 210 }}
                 />
               ) : selectedAsset.mediaType === 'audio' ? (
-                <div style={{ borderRadius: 18, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,10,13,0.92)', padding: 18 }}>
-                  <audio controls src={toMediaSrc(selectedAsset.path.absolutePath)} style={{ width: '100%' }} />
+                <div style={{ borderRadius: 0, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,10,13,0.92)', padding: 10 }}>
+                  <audio
+                    ref={previewAudioRef}
+                    controls
+                    autoPlay={autoplayAssetId === selectedAsset.id}
+                    src={toMediaSrc(selectedAsset.path.absolutePath)}
+                    style={{ width: '100%' }}
+                  />
                 </div>
               ) : (
                 <video
+                  ref={previewVideoRef}
                   controls
                   muted
                   playsInline
                   preload="metadata"
+                  autoPlay={autoplayAssetId === selectedAsset.id}
                   src={toMediaSrc(selectedAsset.path.absolutePath)}
-                  style={{ width: '100%', borderRadius: 18, background: '#090a0d', aspectRatio: '16 / 9' }}
+                  style={{ width: '100%', borderRadius: 0, background: '#090a0d', aspectRatio: '16 / 9', maxHeight: 210 }}
                 />
               )}
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{selectedAsset.label ?? selectedAsset.filename}</div>
-                <div style={{ color: muted, fontSize: 13, marginTop: 6, lineHeight: 1.6 }}>{selectedAsset.path.absolutePath}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <span style={pillStyle()}>{selectedAsset.mediaType}</span>
-                <span style={pillStyle(selectedAsset.assetRole === 'music' ? 'success' : selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? 'warn' : 'default')}>
-                  {selectedAsset.assetRole ?? 'source'}
-                </span>
+              <div style={{ display: 'grid', gap: 8, minHeight: 0, overflow: 'auto', paddingRight: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedAsset.label ?? selectedAsset.filename}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={pillStyle()}>{selectedAsset.mediaType}</span>
+                  <span style={pillStyle(selectedAsset.assetRole === 'music' ? 'success' : selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? 'warn' : 'default')}>
+                    {selectedAsset.assetRole ?? 'source'}
+                  </span>
+                  {selectedAsset.mediaType !== 'image' ? (
+                    <span style={pillStyle(selectedAssetAnalysisReady ? 'success' : 'warn')}>{selectedAsset.analysisStatus}</span>
+                  ) : null}
+                </div>
                 {selectedAsset.mediaType !== 'image' ? (
-                  <span style={pillStyle(selectedAssetAnalysisReady ? 'success' : 'warn')}>{selectedAsset.analysisStatus}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+                    <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
+                      <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Analysis</div>
+                      <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2 }}>{selectedAssetAnalysisReady ? 'ready' : 'pending'}</div>
+                    </div>
+                    <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
+                      <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Changes</div>
+                      <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2 }}>{String(selectedChangeCount)}</div>
+                    </div>
+                    <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
+                      <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sync</div>
+                      <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2 }}>{String(selectedSyncCount)}</div>
+                    </div>
+                  </div>
                 ) : null}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                  <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
+                    <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Duration</div>
+                    <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2 }}>{selectedAsset.durationMs ? formatMillisecondsDetail(selectedAsset.durationMs) : 'Unknown'}</div>
+                  </div>
+                  <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
+                    <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Tags</div>
+                    <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2, color: (selectedAsset.tags?.length ?? 0) > 0 ? '#9fe1c1' : '#f6f7f9' }}>{String(selectedAsset.tags?.length ?? 0)}</div>
+                  </div>
+                </div>
+                <div style={{ color: muted, lineHeight: 1.4, fontSize: 12 }}>
+                  {selectedAsset.mediaType === 'image'
+                    ? 'Images stay available as design or transition assets.'
+                    : selectedAsset.assetRole === 'music'
+                      ? selectedAssetAnalysisReady
+                        ? 'Music analysis is ready. Open cue timing to work from detected change and sync events.'
+                        : 'Run analysis first to extract change and sync events before working with cue timing.'
+                      : selectedAssetAnalysisReady
+                        ? 'Analysis is ready. Move into Cut Review to work with generated candidates.'
+                        : 'Run analysis to generate sidecars and cut candidates for this source asset.'}
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-                <StatCard label="Duration" value={selectedAsset.durationMs ? formatMillisecondsDetail(selectedAsset.durationMs) : 'Unknown'} />
-                <StatCard label="Tags" value={String(selectedAsset.tags?.length ?? 0)} tone={(selectedAsset.tags?.length ?? 0) > 0 ? 'success' : 'default'} />
-              </div>
-              <div style={{ color: muted, lineHeight: 1.6 }}>
-                {selectedAsset.mediaType === 'image'
-                  ? 'Images skip analysis and stay available as design or transition assets.'
-                  : selectedAsset.assetRole === 'music'
-                    ? selectedAssetAnalysisReady
-                      ? 'Music analysis is ready. Open Music Sync to work from detected change and sync events.'
-                      : 'Run analysis first to extract change and sync events before working in Music Sync.'
-                    : selectedAssetAnalysisReady
-                      ? 'Analysis is ready. Move into Cut Review to work with generated candidates.'
-                      : 'Run analysis to generate sidecars and cut candidates for this source asset.'}
-              </div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: '0 0 auto' }}>
                 {selectedAsset.mediaType === 'image' ? null : selectedAsset.assetRole === 'music' ? (
                   selectedAssetAnalysisReady ? (
                     <>
-                      <ToolbarButton primary onClick={() => setCurrentTab('music')}>Open Music Sync</ToolbarButton>
+                      <ToolbarButton primary onClick={() => setCurrentTab('music')}>Open Cue Timing</ToolbarButton>
                       <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
-                        Re-analyze
+                        Re-analyse
                       </ToolbarButton>
                     </>
                   ) : (
@@ -1173,14 +1215,14 @@ export function MediaView() {
                       onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
                       disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
                     >
-                      {processingAnalysis ? 'Processing…' : 'Analyze Music'}
+                      {processingAnalysis ? 'Processing…' : 'Analyse Music'}
                     </ToolbarButton>
                   )
                 ) : selectedAssetAnalysisReady ? (
                   <>
                     <ToolbarButton primary onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
                     <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
-                      Re-analyze
+                      Re-analyse
                     </ToolbarButton>
                   </>
                 ) : (
@@ -1189,7 +1231,7 @@ export function MediaView() {
                     onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
                     disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
                   >
-                    {processingAnalysis ? 'Processing…' : 'Analyze Selected'}
+                    {processingAnalysis ? 'Processing…' : 'Analyse Selected'}
                   </ToolbarButton>
                 )}
                 {selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? (
@@ -1203,74 +1245,7 @@ export function MediaView() {
             </div>
           )}
         </Panel>
-
-        <Panel title="Analysis Queue" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)', gap: 12, minHeight: 0 }}>
-          <div style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
-              <StatCard label="Ready" value={String(completedAnalysisCount)} tone={completedAnalysisCount > 0 ? 'success' : 'default'} />
-              <StatCard label="Remaining" value={String(pendingAnalysisCount)} tone={pendingAnalysisCount > 0 ? 'warn' : 'success'} />
-              <StatCard label="Queued" value={String(queuedAnalysisRows.length)} tone={queuedAnalysisRows.length > 0 ? 'warn' : 'success'} />
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <ToolbarButton primary onClick={() => void runAnalysis(pendingAnalysisAssetIds, 'all')} disabled={processingAnalysis || pendingAnalysisAssetIds.length === 0}>
-                {processingAnalysis ? 'Processing…' : pendingAnalysisAssetIds.length > 0 ? 'Analyze Remaining' : 'All Ready'}
-              </ToolbarButton>
-              {selectedAssetNeedsAnalysis ? (
-                <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
-                  Analyze Selected
-                </ToolbarButton>
-              ) : null}
-              <ToolbarButton onClick={() => setCurrentTab('cuts')} disabled={completedAnalysisCount === 0}>Open Cut Review</ToolbarButton>
-            </div>
-          </div>
-          <div style={{ display: 'grid', minHeight: 0 }}>
-            {queuedAnalysisRows.length > 0 ? (
-              <StudioDataGrid
-                rows={queuedAnalysisRows}
-                columns={analysisQueueColumns}
-                focusedRowId={selectedAnalysisRow?.id}
-                searchRef={mediaSearchRef}
-                onFocusRow={(row) => selectAsset(row.id)}
-                onRowOpen={(row) => selectAsset(row.id)}
-                onAction={(action, row) => {
-                  if (action === 'add') {
-                    void runAnalysis([row.id], 'selected');
-                  }
-                }}
-                rowHeight={54}
-                emptyMessage="No queued analysis"
-              />
-            ) : (
-              <div style={{ border: '1px dashed rgba(159, 225, 193, 0.24)', borderRadius: 18, minHeight: 180, display: 'grid', placeItems: 'center', padding: 20, background: 'linear-gradient(180deg, rgba(14, 30, 24, 0.32), rgba(11, 16, 14, 0.16))' }}>
-                <div style={{ maxWidth: 360, textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>All analyzable media is ready</div>
-                  <div style={{ color: muted, lineHeight: 1.6, marginBottom: 16 }}>
-                    The media workspace no longer keeps completed assets in the queue. Completed assets stay in the library and inspector, and reruns happen from the selected asset.
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <ToolbarButton primary onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
-                    {selectedAssetAnalysisReady && analyzableSelectedAssetIds.length > 0 ? (
-                      <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>Re-analyze Selected</ToolbarButton>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </Panel>
       </div>
     </div>
   );
-}
-
-interface AnalysisAssetRow {
-  id: string;
-  label: string;
-  mediaType: string;
-  analysisStatus: string;
-  durationMs: number;
-  sidecarCount: number;
-  changeEventCount: number;
-  syncEventCount: number;
-  path: string;
 }

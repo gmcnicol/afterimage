@@ -10,14 +10,20 @@ export function buttonStyle(primary = false): CSSProperties {
       ? 'linear-gradient(135deg, #9db1ca, #7285a6)'
       : 'linear-gradient(180deg, rgba(28, 33, 44, 0.96), rgba(19, 22, 30, 0.96))',
     color: primary ? '#0d1118' : '#f6f7f9',
-    borderRadius: 7,
-    padding: '10px 15px',
+    borderRadius: 0,
+    height: 28,
+    padding: '0 10px',
     boxSizing: 'border-box',
     maxWidth: '100%',
     whiteSpace: 'nowrap',
-    fontWeight: 700,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
+    fontSize: 12,
+    fontWeight: 500,
     letterSpacing: '0.01em',
-    boxShadow: primary ? '0 12px 24px rgba(114, 133, 166, 0.24)' : '0 10px 22px rgba(0, 0, 0, 0.16)',
+    boxShadow: 'none',
     cursor: 'pointer',
     transition: 'transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease, background 120ms ease'
   };
@@ -36,9 +42,10 @@ export function pillStyle(tone: 'default' | 'success' | 'warn' = 'default'): CSS
     alignItems: 'center',
     gap: 6,
     border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 6,
-    padding: '4px 10px',
-    fontSize: 12,
-    fontWeight: 700
+    borderRadius: 0,
+    padding: '3px 8px',
+    fontSize: 10,
+    fontWeight: 500,
+    lineHeight: 1
   };
 }

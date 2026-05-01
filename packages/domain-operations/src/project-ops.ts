@@ -71,6 +71,23 @@ export function setVariantMusicAsset(project: NormalizedProjectFile, variantId: 
   });
 }
 
+export function setProjectMusicAsset(project: NormalizedProjectFile, assetId: string): NormalizedProjectFile {
+  return normalizeProject({
+    ...project,
+    variants: project.variants.map((variant) => ({
+      ...variant,
+      musicAlignment: {
+        primaryAssetId: assetId,
+        analysisRefId: variant.musicAlignment?.analysisRefId,
+        syncMode: variant.musicAlignment?.syncMode ?? 'texture',
+        beatMarkers: variant.musicAlignment?.beatMarkers ?? [],
+        chapterPoints: variant.musicAlignment?.chapterPoints ?? [],
+        snapToBeatGrid: variant.musicAlignment?.snapToBeatGrid ?? true
+      }
+    }))
+  });
+}
+
 export function setVariantMusicSyncMode(project: NormalizedProjectFile, variantId: string, syncMode: SyncMode): NormalizedProjectFile {
   return normalizeProject({
     ...project,

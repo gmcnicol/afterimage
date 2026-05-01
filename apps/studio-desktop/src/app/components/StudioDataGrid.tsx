@@ -28,7 +28,7 @@ const studioGridTheme = themeQuartz.withParams({
   oddRowBackgroundColor: 'rgba(255, 255, 255, 0.025)',
   rowHoverColor: 'rgba(136, 160, 191, 0.12)',
   selectedRowBackgroundColor: 'rgba(136, 160, 191, 0.2)',
-  wrapperBorderRadius: 14,
+  wrapperBorderRadius: 0,
   fontFamily: '"IBM Plex Sans", "Aptos", "Segoe UI Variable Text", sans-serif',
   fontSize: 12,
   headerFontSize: 11,
@@ -261,30 +261,34 @@ export function StudioDataGrid<T extends { id: string }>({
         minWidth: 0,
         minHeight: 0,
         height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         overflow: 'hidden',
         border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 14,
+        borderRadius: 0,
         ...style
       }}
     >
-      <AgGridReact<T>
-        theme={studioGridTheme}
-        rowData={rows}
-        columnDefs={columns}
-        defaultColDef={defaultColDef}
-        getRowId={(params) => params.data.id}
-        onGridReady={handleGridReady}
-        onRowClicked={handleRowClicked}
-        onSortChanged={handleSortChanged}
-        rowHeight={rowHeight}
-        headerHeight={headerHeight}
-        rowClassRules={rowClassRules}
-        rowSelection={showGridSelection ? { mode: 'singleRow', checkboxes: false, enableClickSelection: true } : undefined}
-        suppressCellFocus
-        suppressMovableColumns
-        animateRows={false}
-        overlayNoRowsTemplate={`<span style="color:${muted};">${emptyMessage}</span>`}
-      />
+      <div style={{ width: '100%', height: '100%', minHeight: 0, minWidth: 0 }}>
+        <AgGridReact<T>
+          theme={studioGridTheme}
+          rowData={rows}
+          columnDefs={columns}
+          defaultColDef={defaultColDef}
+          getRowId={(params) => params.data.id}
+          onGridReady={handleGridReady}
+          onRowClicked={handleRowClicked}
+          onSortChanged={handleSortChanged}
+          rowHeight={rowHeight}
+          headerHeight={headerHeight}
+          rowClassRules={rowClassRules}
+          rowSelection={showGridSelection ? { mode: 'singleRow', checkboxes: false, enableClickSelection: true } : undefined}
+          suppressCellFocus
+          suppressMovableColumns
+          animateRows={false}
+          overlayNoRowsTemplate={`<span style="color:${muted};">${emptyMessage}</span>`}
+        />
+      </div>
     </div>
   );
 }

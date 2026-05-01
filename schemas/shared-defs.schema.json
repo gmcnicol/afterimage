@@ -60,7 +60,7 @@
     },
     "syncMode": {
       "type": "string",
-      "enum": ["texture", "pulse", "performance", "hybrid"]
+      "enum": ["texture", "pulse", "performance", "hybrid", "custom"]
     },
     "transitionStyle": {
       "type": "string",

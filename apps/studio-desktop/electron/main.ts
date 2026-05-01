@@ -110,6 +110,7 @@ function createStudioRouteRegistry() {
     'project.importTransitionMasks': (projectRoot) => projectService.importTransitionMasks(projectRoot),
     'project.importTransitionOverlays': (projectRoot) => projectService.importTransitionOverlays(projectRoot),
     'project.relinkAsset': (input) => projectService.relinkAsset(input),
+    'project.importCueFile': () => projectService.importCueFile(),
     'library.addRoot': (input) => libraryService.addRoot(input),
     'library.removeRoot': (rootId) => libraryService.removeRoot(rootId),
     'library.rescanRoot': (rootId) => libraryService.rescanRoot(rootId),

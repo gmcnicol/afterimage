@@ -42,6 +42,7 @@ export type {
   LibrarySearchResult
 } from './library.js';
 export type {
+  ImportCueFileResult,
   ProjectCommandMap,
   ProjectEventMap,
   ProjectQueryMap,
