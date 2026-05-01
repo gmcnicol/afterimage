@@ -21,7 +21,7 @@ import {
   type Variant
 } from '@afterimage/project-model';
 import { parseProject } from '@afterimage/schema-validators';
-import type { DesktopJob, RunExportRequest } from '@afterimage/studio-contracts';
+import type { DesktopJob, ExportRenderAgentInput, RunExportRequest } from '@afterimage/studio-contracts';
 import type { Logger } from '../logger.js';
 import { ensureArtifactDirs, resolveAvailableOutputPath } from './artifacts.js';
 import { createProgressRunner } from './progress.js';
@@ -117,132 +117,143 @@ function buildChunkedVariant(variant: Variant, chunkIndex: number, chunkStart: n
 export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue: EnqueueJob }) {
   function runExport(input: RunExportRequest): DesktopJob[] {
     const tools = resolveFfmpegTools();
-    return input.profileIds.map((profileId) => enqueue({
-      type: 'export',
-      target: profileId,
-      queueClass: 'heavy',
-      retryPayload: {
-        kind: 'export',
-        ...input,
-        profileIds: [profileId]
-      },
-      run: async (signal, report) => {
-        await ensureArtifactDirs(input.projectRoot);
-        const profile = getExportProfileById(profileId);
-        const sequence = input.sequenceId
-          ? getSequenceById(input.project, input.sequenceId)
-          : getDefaultSequence(input.project);
-        const variant = input.variantId
-          ? getVariantById(input.project, input.variantId)
-          : getDefaultVariant(input.project);
+    return input.profileIds.map((profileId) => {
+      const agentInput: ExportRenderAgentInput = {
+        project: input.project,
+        projectRoot: input.projectRoot,
+        outputPath: input.outputPath,
+        sequenceId: input.sequenceId,
+        variantId: input.variantId,
+        profileId
+      };
 
-        if (!sequence || !variant) {
-          throw new Error('Cannot resolve export timeline.');
-        }
+      return enqueue({
+        type: 'export',
+        target: agentInput.profileId,
+        queueClass: 'heavy',
+        retryPayload: {
+          kind: 'export',
+          ...input,
+          profileIds: [agentInput.profileId]
+        },
+        run: async (signal, report) => {
+          await ensureArtifactDirs(agentInput.projectRoot);
+          const profile = getExportProfileById(agentInput.profileId);
+          const sequence = agentInput.sequenceId
+            ? getSequenceById(agentInput.project, agentInput.sequenceId)
+            : getDefaultSequence(agentInput.project);
+          const variant = agentInput.variantId
+            ? getVariantById(agentInput.project, agentInput.variantId)
+            : getDefaultVariant(agentInput.project);
 
-        const baseOutputPath = `${input.outputPath}-${profile.id}.${profile.container}`;
-        const outputPath = await resolveAvailableOutputPath(baseOutputPath);
-        const durationMs = getTargetRenderDurationMs(input.project, variant);
-        const shouldChunk = shouldUseChunkedExportForVariant(input.project, variant, profile);
+          if (!sequence || !variant) {
+            throw new Error('Cannot resolve export timeline.');
+          }
 
-        if (!shouldChunk) {
-          const plan = buildExportPlan(input.project, {
-            outputPath,
-            profile,
-            sequenceId: sequence.id,
-            variantId: variant.id
-          }, tools);
-          report(`Rendering ${profile.name}`, 0.02);
-          await executeCommandSpec(plan.command, {
-            signal,
-            runner: createProgressRunner(plan.command, {
-              phaseLabel: `Rendering ${profile.name}`,
-              report,
-              durationMs,
-              startProgress: 0.02,
-              endProgress: 0.98
-            })
-          });
-        } else {
-          const chunkRanges = splitClipIndicesForChunkedExport(variant, {
-            maxDurationMs: 90_000,
-            maxSegments: 36
-          });
-          const tempRoot = join(input.projectRoot, '.afterimage', 'exports-temp', `${variant.id}-${profile.id}-${Date.now()}`);
-          await mkdir(tempRoot, { recursive: true });
+          const baseOutputPath = `${agentInput.outputPath}-${profile.id}.${profile.container}`;
+          const outputPath = await resolveAvailableOutputPath(baseOutputPath);
+          const durationMs = getTargetRenderDurationMs(agentInput.project, variant);
+          const shouldChunk = shouldUseChunkedExportForVariant(agentInput.project, variant, profile);
 
-          const chunkOutputPaths: string[] = [];
-
-          try {
-            for (const [chunkIndex, chunkRange] of chunkRanges.entries()) {
-              const chunkVariant = buildChunkedVariant(variant, chunkIndex, chunkRange.start, chunkRange.end);
-              const chunkProject = parseProject({
-                ...input.project,
-                assets: input.project.assets.map((asset) => ({
-                  ...asset,
-                  hasAudio: asset.assetRole === 'music' ? asset.hasAudio : false
-                })),
-                variants: input.project.variants.map((candidate) => candidate.id === variant.id ? chunkVariant : candidate)
-              });
-              const chunkOutputPath = join(tempRoot, `chunk-${String(chunkIndex + 1).padStart(3, '0')}.${profile.container}`);
-              const chunkDurationMs = getTargetRenderDurationMs(chunkProject, chunkVariant);
-              const chunkPlan = buildRenderPlan(chunkProject, {
-                outputPath: chunkOutputPath,
-                profile,
-                sequenceId: sequence.id,
-                variantId: chunkVariant.id
-              }, tools);
-
-              report(`Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`, 0.02 + ((chunkIndex / chunkRanges.length) * 0.8));
-              await executeCommandSpec(chunkPlan.command, {
-                signal,
-                runner: createProgressRunner(chunkPlan.command, {
-                  phaseLabel: `Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`,
-                  report,
-                  durationMs: chunkDurationMs,
-                  startProgress: 0.02 + ((chunkIndex / chunkRanges.length) * 0.8),
-                  endProgress: 0.02 + (((chunkIndex + 1) / chunkRanges.length) * 0.8)
-                })
-              });
-              chunkOutputPaths.push(chunkOutputPath);
-            }
-
-            const concatListPath = join(tempRoot, 'chunks.ffconcat');
-            await writeFile(concatListPath, buildConcatList(chunkOutputPaths), 'utf8');
-            const musicPath = variant.musicAlignment?.primaryAssetId
-              ? input.project.assets.find((asset) => asset.id === variant.musicAlignment?.primaryAssetId)?.path.absolutePath
-              : undefined;
-            const finalizePlan = buildFinalizeRenderPlan({
-              concatListPath,
+          if (!shouldChunk) {
+            const plan = buildExportPlan(agentInput.project, {
               outputPath,
               profile,
-              durationMs,
-              musicPath
+              sequenceId: sequence.id,
+              variantId: variant.id
             }, tools);
-
-            report(`Finalizing ${profile.name}`, 0.84);
-            await executeCommandSpec(finalizePlan.command, {
+            report(`Rendering ${profile.name}`, 0.02);
+            await executeCommandSpec(plan.command, {
               signal,
-              runner: createProgressRunner(finalizePlan.command, {
-                phaseLabel: `Finalizing ${profile.name}`,
+              runner: createProgressRunner(plan.command, {
+                phaseLabel: `Rendering ${profile.name}`,
                 report,
                 durationMs,
-                startProgress: 0.84,
+                startProgress: 0.02,
                 endProgress: 0.98
               })
             });
-          } finally {
-            await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
-          }
-        }
+          } else {
+            const chunkRanges = splitClipIndicesForChunkedExport(variant, {
+              maxDurationMs: 90_000,
+              maxSegments: 36
+            });
+            const tempRoot = join(agentInput.projectRoot, '.afterimage', 'exports-temp', `${variant.id}-${profile.id}-${Date.now()}`);
+            await mkdir(tempRoot, { recursive: true });
 
-        await logger.log('info', 'Rendered export profile.', outputPath);
-        return {
-          kind: 'export',
-          outputPath
-        };
-      }
-    }));
+            const chunkOutputPaths: string[] = [];
+
+            try {
+              for (const [chunkIndex, chunkRange] of chunkRanges.entries()) {
+                const chunkVariant = buildChunkedVariant(variant, chunkIndex, chunkRange.start, chunkRange.end);
+                const chunkProject = parseProject({
+                  ...agentInput.project,
+                  assets: agentInput.project.assets.map((asset) => ({
+                    ...asset,
+                    hasAudio: asset.assetRole === 'music' ? asset.hasAudio : false
+                  })),
+                  variants: agentInput.project.variants.map((candidate) => candidate.id === variant.id ? chunkVariant : candidate)
+                });
+                const chunkOutputPath = join(tempRoot, `chunk-${String(chunkIndex + 1).padStart(3, '0')}.${profile.container}`);
+                const chunkDurationMs = getTargetRenderDurationMs(chunkProject, chunkVariant);
+                const chunkPlan = buildRenderPlan(chunkProject, {
+                  outputPath: chunkOutputPath,
+                  profile,
+                  sequenceId: sequence.id,
+                  variantId: chunkVariant.id
+                }, tools);
+
+                report(`Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`, 0.02 + ((chunkIndex / chunkRanges.length) * 0.8));
+                await executeCommandSpec(chunkPlan.command, {
+                  signal,
+                  runner: createProgressRunner(chunkPlan.command, {
+                    phaseLabel: `Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`,
+                    report,
+                    durationMs: chunkDurationMs,
+                    startProgress: 0.02 + ((chunkIndex / chunkRanges.length) * 0.8),
+                    endProgress: 0.02 + (((chunkIndex + 1) / chunkRanges.length) * 0.8)
+                  })
+                });
+                chunkOutputPaths.push(chunkOutputPath);
+              }
+
+              const concatListPath = join(tempRoot, 'chunks.ffconcat');
+              await writeFile(concatListPath, buildConcatList(chunkOutputPaths), 'utf8');
+              const musicPath = variant.musicAlignment?.primaryAssetId
+                ? agentInput.project.assets.find((asset) => asset.id === variant.musicAlignment?.primaryAssetId)?.path.absolutePath
+                : undefined;
+              const finalizePlan = buildFinalizeRenderPlan({
+                concatListPath,
+                outputPath,
+                profile,
+                durationMs,
+                musicPath
+              }, tools);
+
+              report(`Finalizing ${profile.name}`, 0.84);
+              await executeCommandSpec(finalizePlan.command, {
+                signal,
+                runner: createProgressRunner(finalizePlan.command, {
+                  phaseLabel: `Finalizing ${profile.name}`,
+                  report,
+                  durationMs,
+                  startProgress: 0.84,
+                  endProgress: 0.98
+                })
+              });
+            } finally {
+              await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
+            }
+          }
+
+          await logger.log('info', 'Rendered export profile.', outputPath);
+          return {
+            kind: 'export',
+            outputPath
+          };
+        }
+      });
+    });
   }
 
   return { runExport };

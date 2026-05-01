@@ -2,11 +2,12 @@ import type {
   DesktopJob,
   RunAnalysisRequest,
   RunExportRequest,
-  RunPreviewRequest
+  RunPreviewRequest,
+  StudioAgentOutput
 } from '@afterimage/studio-contracts';
 
 export type QueueClass = 'analysis' | 'heavy';
-export type JobResult = NonNullable<DesktopJob['result']>;
+export type JobResult = StudioAgentOutput;
 export type RetryPayload =
   | ({ kind: 'analysis' } & RunAnalysisRequest)
   | ({ kind: 'preview' } & RunPreviewRequest)
