@@ -27,6 +27,12 @@ const shellCss = `
       linear-gradient(180deg, #090b10 0%, #0c0f14 48%, #0a0d12 100%);
   }
 
+  .studio-shell *,
+  .studio-shell *::before,
+  .studio-shell *::after {
+    box-sizing: border-box;
+  }
+
   .studio-shell__frame {
     display: grid;
     grid-template-columns: 332px minmax(0, 1fr);
@@ -45,7 +51,7 @@ const shellCss = `
 
   .studio-shell__main {
     display: grid;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 12px;
     min-width: 0;
     min-height: 0;
@@ -54,13 +60,28 @@ const shellCss = `
 
   .studio-scrollable {
     overflow: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(143, 161, 192, 0.58) rgba(255, 255, 255, 0.04);
   }
 
   .studio-scrollable::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+    width: 10px;
+    height: 10px;
+  }
+
+  .studio-scrollable::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+  }
+
+  .studio-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(143, 161, 192, 0.58);
+    border: 2px solid rgba(12, 15, 21, 0.95);
+    border-radius: 999px;
+  }
+
+  .studio-scrollable::-webkit-scrollbar-corner {
+    background: transparent;
   }
 
   .studio-surface {
@@ -233,7 +254,7 @@ const shellCss = `
   }
 
   .studio-nav__badge {
-    border-radius: 999px;
+    border-radius: 6px;
     padding: 4px 9px;
     font-size: 11px;
     font-weight: 700;
@@ -249,7 +270,7 @@ const shellCss = `
 
   .studio-nav__status {
     justify-self: start;
-    border-radius: 999px;
+    border-radius: 6px;
     padding: 4px 9px;
     font-size: 11px;
     font-weight: 700;
@@ -321,7 +342,7 @@ const shellCss = `
     align-items: center;
     gap: 8px;
     padding: 7px 10px;
-    border-radius: 999px;
+    border-radius: 7px;
     background: rgba(114, 133, 166, 0.16);
     border: 1px solid rgba(136, 160, 191, 0.16);
     color: ${muted};
@@ -341,23 +362,204 @@ const shellCss = `
   }
 
   .studio-jobs {
-    padding: 12px 16px;
-    display: grid;
-    gap: 12px;
+    min-width: 0;
+    padding: 6px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 34px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(9, 11, 16, 0.92);
   }
 
   .studio-jobs__header {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
     align-items: center;
-    flex-wrap: wrap;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .studio-jobs__title {
+    color: rgba(245, 246, 248, 0.62);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .studio-jobs__count {
+    color: ${muted};
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .studio-jobs__list {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+    overflow: auto;
+    scrollbar-width: none;
+    flex: 1 1 auto;
+  }
+
+  .studio-jobs__list::-webkit-scrollbar {
+    display: none;
   }
 
   .studio-main-surface {
     min-width: 0;
     min-height: 0;
     overflow: hidden;
+  }
+
+  .catalog-browser {
+    display: grid;
+    grid-template-columns: minmax(420px, 0.95fr) minmax(520px, 1.05fr);
+    gap: 14px;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .catalog-results {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .catalog-inspector {
+    min-width: 0;
+    min-height: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(8, 10, 14, 0.42);
+    overflow: hidden;
+  }
+
+  .catalog-inspector__content {
+    display: grid;
+    grid-template-rows: minmax(190px, 0.36fr) auto minmax(300px, 0.64fr);
+    gap: 12px;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .catalog-preview {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .catalog-asset-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .catalog-scenes {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .catalog-cut-checkbox {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #9fe1c1;
+    cursor: pointer;
+  }
+
+  .job-row {
+    min-width: 0;
+    max-width: 440px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    color: #f6f7f9;
+  }
+
+  .job-row__main {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .job-row__topline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .job-row__type {
+    color: #f6f7f9;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .job-row__target {
+    color: ${muted};
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 260px;
+  }
+
+  .job-row__status {
+    color: ${muted};
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .job-row__status.status-running {
+    color: #9fe1c1;
+  }
+
+  .job-row__status.status-failed,
+  .job-row__status.status-cancelled {
+    color: #ccbdf0;
+  }
+
+  .job-row__progress {
+    width: 46px;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+  }
+
+  .job-row__progress-bar {
+    height: 100%;
+    border-radius: inherit;
+    background: #9fe1c1;
+  }
+
+  .job-row__actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
   }
 
   .studio-notifications {
@@ -372,26 +574,33 @@ const shellCss = `
 
   .studio-notification {
     text-align: left;
-    border-radius: 16px;
-    padding: 12px 16px;
-    color: #f6f7f9;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #f8fafc;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: #111827;
   }
 
   .studio-notification.tone-success {
-    border-color: rgba(123, 185, 157, 0.35);
-    background: linear-gradient(135deg, rgba(65, 108, 95, 0.32), rgba(255, 255, 255, 0.03));
+    border-color: #16a34a;
+    background: #052e1b;
+    color: #dcfce7;
   }
 
   .studio-notification.tone-warn {
-    border-color: rgba(166, 144, 210, 0.35);
-    background: linear-gradient(135deg, rgba(97, 85, 130, 0.26), rgba(255, 255, 255, 0.03));
+    border-color: #f97316;
+    background: #431407;
+    color: #ffedd5;
   }
 
   .studio-notification.tone-info {
-    border-color: rgba(136, 160, 191, 0.35);
-    background: linear-gradient(135deg, rgba(86, 109, 140, 0.22), rgba(255, 255, 255, 0.03));
+    border-color: #60a5fa;
+    background: #0f172a;
+    color: #dbeafe;
   }
 
   @media (max-width: 1260px) {
@@ -423,6 +632,20 @@ const shellCss = `
     .studio-hero__actions {
       justify-content: flex-start;
     }
+
+    .catalog-browser {
+      grid-template-columns: 1fr;
+      min-height: 900px;
+      overflow: visible;
+    }
+
+    .catalog-results {
+      min-height: 360px;
+    }
+
+    .catalog-inspector {
+      min-height: 620px;
+    }
   }
 
   @media (max-width: 760px) {
@@ -432,6 +655,14 @@ const shellCss = `
 
     .studio-shell__meta-grid {
       grid-template-columns: 1fr;
+    }
+
+    .catalog-asset-summary {
+      grid-template-columns: 1fr;
+    }
+
+    .catalog-inspector__content {
+      grid-template-rows: minmax(200px, 0.38fr) auto minmax(300px, 0.62fr);
     }
   }
 `;
@@ -485,15 +716,15 @@ const tabMeta: TabMeta[] = [
     id: 'media',
     label: 'Media',
     group: 'Set Up',
-    description: 'Import assets, run analysis, and verify readiness before review.',
+    description: 'Import project media directly or pull reusable assets from the catalogue.',
     guidance: 'Bring in source material first, run analysis here, then move on once statuses are ready.'
   },
   {
     id: 'catalog',
-    label: 'Catalog',
+    label: 'Catalogue',
     group: 'Set Up',
-    description: 'Manage global media folders and import selected catalog assets.',
-    guidance: 'Use the catalog for reusable footage, masks, overlays, and music that should live outside one project.'
+    description: 'Import reusable footage, transitions, and overlays into the current project.',
+    guidance: 'Manage global folders here, then mark the cuts or assets that should come into Media.'
   },
   {
     id: 'cuts',
@@ -752,7 +983,7 @@ function Sidebar() {
   const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
   const groupedTabs = useMemo(
     () => ({
-      'Set Up': tabMeta.filter((tab) => tab.group === 'Set Up'),
+      'Set Up': tabMeta.filter((tab) => tab.group === 'Set Up' && tab.id !== 'catalog'),
       Build: tabMeta.filter((tab) => tab.group === 'Build'),
       Deliver: tabMeta.filter((tab) => tab.group === 'Deliver')
     }),
@@ -771,7 +1002,6 @@ function Sidebar() {
           <div className="studio-shell__path">{resolvedProjectFilePath ?? 'Project file has not been saved yet.'}</div>
           <div className="studio-shell__meta-row">
             <span style={pillStyle(dirty ? 'warn' : 'success')}>{dirty ? 'Unsaved edits' : 'Project saved'}</span>
-            {metrics.activeJobCount > 0 ? <span style={pillStyle()}>{metrics.activeJobCount} active jobs</span> : null}
             {metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? (
               <span style={pillStyle('warn')}>{metrics.warningCount + metrics.missingMediaCount} issues</span>
             ) : null}
@@ -791,13 +1021,14 @@ function Sidebar() {
             {tabs.map((tab) => {
               const status = getTabStatus(tab.id, metrics);
               const badge = getTabBadge(tab.id, metrics);
+              const isCurrent = tab.id === currentTab || (tab.id === 'media' && currentTab === 'catalog');
               return (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setCurrentTab(tab.id)}
-                  aria-current={tab.id === currentTab ? 'page' : undefined}
-                  className={`studio-nav__item${tab.id === currentTab ? ' is-current' : ''}`}
+                  aria-current={isCurrent ? 'page' : undefined}
+                  className={`studio-nav__item${isCurrent ? ' is-current' : ''}`}
                 >
                   <div className="studio-nav__topline">
                     <div className="studio-nav__title">
@@ -833,6 +1064,7 @@ function Header() {
   const currentMeta = tabMeta.find((tab) => tab.id === currentTab) ?? tabMeta[0];
   const projectSaved = Boolean(resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName));
   const nextStep = getNextStep(metrics, projectSaved);
+  const showProjectContext = currentTab !== 'catalog';
 
   const saveProject = async () => {
     if (savingProject) {
@@ -864,17 +1096,18 @@ function Header() {
           <p>
             {currentMeta.description} {currentMeta.guidance}
           </p>
-          <div className="studio-hero__context">
-            <span style={pillStyle(dirty ? 'warn' : 'success')}>{dirty ? 'Unsaved project' : 'Saved project'}</span>
-            <span style={pillStyle()}>{project.name}</span>
-            <span style={pillStyle()}>{metrics.variantCount} variants</span>
-            <span style={pillStyle()}>{metrics.activeJobCount} active jobs</span>
-            {metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? (
-              <span style={pillStyle('warn')}>{metrics.warningCount + metrics.missingMediaCount} diagnostics alerts</span>
-            ) : (
-              <span style={pillStyle('success')}>Diagnostics clean</span>
-            )}
-          </div>
+          {showProjectContext ? (
+            <div className="studio-hero__context">
+              <span style={pillStyle(dirty ? 'warn' : 'success')}>{dirty ? 'Unsaved project' : 'Saved project'}</span>
+              <span style={pillStyle()}>{project.name}</span>
+              <span style={pillStyle()}>{metrics.variantCount} variants</span>
+              {metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? (
+                <span style={pillStyle('warn')}>{metrics.warningCount + metrics.missingMediaCount} diagnostics alerts</span>
+              ) : (
+                <span style={pillStyle('success')}>Diagnostics clean</span>
+              )}
+            </div>
+          ) : null}
         </div>
 
         <div className="studio-hero__actions">
@@ -900,25 +1133,30 @@ function Header() {
 
 function ActiveJobsPanel() {
   const jobs = useJobsStore((state) => state.jobs);
-  const activeJobs = jobs.filter((job) => job.status === 'queued' || job.status === 'running');
-
-  if (activeJobs.length === 0) {
-    return null;
-  }
+  const activeJobs = jobs
+    .filter((job) => job.status === 'queued' || job.status === 'running')
+    .sort((left, right) => {
+      const rank = (job: typeof left) => job.status === 'running' ? 0 : 1;
+      const started = (job: typeof left) => Date.parse(job.startedAt ?? '') || 0;
+      return rank(left) - rank(right)
+        || started(left) - started(right)
+        || left.id.localeCompare(right.id);
+    });
 
   return (
-    <section className="studio-surface studio-jobs">
+    <section className="studio-jobs" aria-label="Background jobs">
       <div className="studio-jobs__header">
-        <div>
-          <div className="studio-shell__eyebrow">Background Work</div>
-          <div style={{ color: muted, marginTop: 4 }}>{activeJobs.length} queued or running jobs are shaping the current project state.</div>
-        </div>
-        <span style={pillStyle()}>{activeJobs.map((job) => job.type).join(' • ')}</span>
+        <span className="studio-jobs__title">Jobs</span>
+        <span className="studio-jobs__count">{activeJobs.length > 0 ? `${activeJobs.length} active` : 'idle'}</span>
       </div>
-      <div className="studio-scrollable" style={{ display: 'grid', gap: 10, maxHeight: 180 }}>
-        {activeJobs.map((job) => (
-          <JobRow key={job.id} job={job} />
-        ))}
+      <div className="studio-jobs__list">
+        {activeJobs.length > 0 ? (
+          activeJobs.map((job) => (
+            <JobRow key={job.id} job={job} />
+          ))
+        ) : (
+          <span style={{ color: muted, fontSize: 11 }}>No background work</span>
+        )}
       </div>
     </section>
   );
@@ -938,10 +1176,10 @@ export function App() {
           <Sidebar />
           <main className="studio-shell__main">
             <Header />
-            <ActiveJobsPanel />
             <div className="studio-main-surface">
               <ActiveView />
             </div>
+            <ActiveJobsPanel />
           </main>
         </div>
       </div>

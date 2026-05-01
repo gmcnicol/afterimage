@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useEffectEvent } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 import { getDefaultVariant } from '@afterimage/project-model';
 import { getDesktopApi } from '../../lib/desktop-api';
 import { useProjectSessionStore } from '../../stores/project-session-store';
@@ -39,6 +39,19 @@ export function useKeyboardShortcuts(): void {
   });
 
   useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) {
+        return false;
+      }
+
+      const tagName = target.tagName;
+      return target.isContentEditable
+        || tagName === 'INPUT'
+        || tagName === 'TEXTAREA'
+        || tagName === 'SELECT'
+        || target.closest('[contenteditable="true"], .ag-cell-inline-editing') !== null;
+    };
+
     const handler = (event: KeyboardEvent) => {
       const isMeta = event.metaKey || event.ctrlKey;
 
@@ -63,6 +76,26 @@ export function useKeyboardShortcuts(): void {
             useProjectSessionStore.getState().setSession(session);
           }
         });
+      }
+
+      if (isMeta && event.key === 'Enter') {
+        event.preventDefault();
+        void api.jobs.runExport({
+          project,
+          projectRoot: projectRoot ?? '.',
+          outputPath: `${projectRoot ?? '.'}/exports/${project.id}`,
+          profileIds: getEnabledExportProfileIds(project.exportSelections),
+          selections: project.exportSelections
+        });
+        setCurrentTab('export');
+      }
+
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      if (isEditableTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
       }
 
       if (event.key.toLowerCase() === 'a' && selectedCutId) {
@@ -91,24 +124,6 @@ export function useKeyboardShortcuts(): void {
         }
       }
 
-      if (isMeta && event.key === 'Enter') {
-        event.preventDefault();
-        void api.jobs.runExport({
-          project,
-          projectRoot: projectRoot ?? '.',
-          outputPath: `${projectRoot ?? '.'}/exports/${project.id}`,
-          profileIds: getEnabledExportProfileIds(project.exportSelections),
-          selections: project.exportSelections
-        });
-        setCurrentTab('export');
-      }
-
-      if (event.key === ' ' && currentTab !== 'cuts') {
-        event.preventDefault();
-        startTransition(() => {
-          setCurrentTab(currentTab === 'sequence' ? 'cuts' : 'sequence');
-        });
-      }
     };
 
     window.addEventListener('keydown', handler);

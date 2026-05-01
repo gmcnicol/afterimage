@@ -296,10 +296,13 @@ export interface SequenceClip {
   sourceStartMs: number;
   durationMs: number;
   overlayAssetId?: string;
+  overlayCutId?: string;
   transition?: TransitionStyle;
   transitionDurationMs?: number;
   transitionAssetId?: string;
+  transitionCutId?: string;
   transitionOverlayAssetId?: string;
+  transitionOverlayCutId?: string;
   presetId?: string;
   stackOverrideId?: string;
   tags?: string[];
@@ -860,10 +863,13 @@ export function normalizeSequenceClip(clip: SequenceClip): SequenceClip {
   return {
     ...clip,
     overlayAssetId: clip.overlayAssetId,
+    overlayCutId: clip.overlayCutId,
     transition: clip.transition ?? 'cut',
     transitionDurationMs: clip.transition === 'crossfade' || clip.transition === 'mask'
       ? normalizeNumber(clip.transitionDurationMs, 250)
       : clip.transitionDurationMs,
+    transitionCutId: clip.transitionCutId,
+    transitionOverlayCutId: clip.transitionOverlayCutId,
     tags: normalizeStringArray(clip.tags)
   };
 }
@@ -1080,6 +1086,9 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
       if (clip.overlayAssetId && !assetIds.has(clip.overlayAssetId)) {
         pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.overlayAssetId`, `Sequence clip "${clip.id}" references missing overlay asset "${clip.overlayAssetId}".`);
       }
+      if (clip.overlayCutId && !cutIds.has(clip.overlayCutId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.overlayCutId`, `Sequence clip "${clip.id}" references missing overlay cut "${clip.overlayCutId}".`);
+      }
       if (clip.transition === 'mask' && !clip.transitionAssetId) {
         issues.push({
           code: 'missing-reference',
@@ -1090,8 +1099,14 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
       if (clip.transitionAssetId && !assetIds.has(clip.transitionAssetId)) {
         pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionAssetId`, `Sequence clip "${clip.id}" references missing transition asset "${clip.transitionAssetId}".`);
       }
+      if (clip.transitionCutId && !cutIds.has(clip.transitionCutId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionCutId`, `Sequence clip "${clip.id}" references missing transition cut "${clip.transitionCutId}".`);
+      }
       if (clip.transitionOverlayAssetId && !assetIds.has(clip.transitionOverlayAssetId)) {
         pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionOverlayAssetId`, `Sequence clip "${clip.id}" references missing transition overlay asset "${clip.transitionOverlayAssetId}".`);
+      }
+      if (clip.transitionOverlayCutId && !cutIds.has(clip.transitionOverlayCutId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionOverlayCutId`, `Sequence clip "${clip.id}" references missing transition overlay cut "${clip.transitionOverlayCutId}".`);
       }
       if (clip.cutId && !cutIds.has(clip.cutId)) {
         pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.cutId`, `Sequence clip "${clip.id}" references missing cut "${clip.cutId}".`);

@@ -28,12 +28,15 @@ const api: DesktopApi = {
   },
   library: {
     addRoot: (input) => ipcRenderer.invoke('library:addRoot', input),
+    removeRoot: (rootId) => ipcRenderer.invoke('library:removeRoot', rootId),
     rescanRoot: (rootId) => ipcRenderer.invoke('library:rescanRoot', rootId),
     rescanAll: () => ipcRenderer.invoke('library:rescanAll'),
+    clearAndRescanAll: () => ipcRenderer.invoke('library:clearAndRescanAll'),
     listRoots: () => ipcRenderer.invoke('library:listRoots'),
     listDirectories: (rootId) => ipcRenderer.invoke('library:listDirectories', rootId),
     searchAssets: (input) => ipcRenderer.invoke('library:searchAssets', input),
-    importAssets: (input) => ipcRenderer.invoke('library:importAssets', input)
+    importAssets: (input) => ipcRenderer.invoke('library:importAssets', input),
+    removeAssets: (input) => ipcRenderer.invoke('library:removeAssets', input)
   },
   jobs: {
     list: () => ipcRenderer.invoke('jobs:list'),

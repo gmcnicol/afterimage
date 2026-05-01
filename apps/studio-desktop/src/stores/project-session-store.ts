@@ -15,10 +15,13 @@ import {
   removeClip,
   randomizeFoundryTransitions,
   randomizeFoundryOverlays,
+  setClipOverlayCut,
   setClipOverlayAsset,
   setClipTransition,
   setClipTransitionAsset,
+  setClipTransitionCut,
   setClipTransitionDuration,
+  setClipTransitionOverlayCut,
   setClipTransitionOverlayAsset,
   trimClip
 } from '../operations/sequence-ops';
@@ -75,17 +78,20 @@ interface ProjectSessionState {
   toggleCutFavorite: (cutId: string) => void;
   trimCut: (cutId: string, startMs: number, endMs: number) => void;
   addCutToBin: (cutId: string, binId: string) => void;
-  addCutToSequence: (cutId: string) => void;
+  addCutToSequence: (cutId: string, options?: { sequenceId?: string; variantId?: string }) => void;
   buildVariantFromReviewedCuts: (variantId: string, mode?: SequenceBuildMode) => void;
   buildNewVariantFromReviewedCuts: (variantId: string, mode?: SequenceBuildMode) => void;
   moveClip: (variantId: string, clipId: string, direction: -1 | 1) => void;
   removeClip: (variantId: string, clipId: string) => void;
   trimClip: (variantId: string, clipId: string, deltaMs: number) => void;
   setClipOverlayAsset: (variantId: string, clipId: string, assetId?: string) => void;
+  setClipOverlayCut: (variantId: string, clipId: string, cutId?: string) => void;
   setClipTransition: (variantId: string, clipId: string, transition: TransitionStyle) => void;
   setClipTransitionDuration: (variantId: string, clipId: string, durationMs: number) => void;
   setClipTransitionAsset: (variantId: string, clipId: string, assetId?: string) => void;
+  setClipTransitionCut: (variantId: string, clipId: string, cutId?: string) => void;
   setClipTransitionOverlayAsset: (variantId: string, clipId: string, assetId?: string) => void;
+  setClipTransitionOverlayCut: (variantId: string, clipId: string, cutId?: string) => void;
   randomizeFoundryTransitions: (variantId: string) => void;
   randomizeFoundryOverlays: (variantId: string) => void;
   duplicateVariant: (variantId: string) => void;
@@ -181,9 +187,9 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       dirty: true
     }));
   },
-  addCutToSequence: (cutId) => {
+  addCutToSequence: (cutId, options) => {
     set((state) => markDirty({
-      project: addCutToSequence(state.project, cutId)
+      project: addCutToSequence(state.project, cutId, options)
     }));
   },
   buildVariantFromReviewedCuts: (variantId, mode) => {
@@ -216,6 +222,11 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       project: setClipOverlayAsset(state.project, variantId, clipId, assetId)
     }));
   },
+  setClipOverlayCut: (variantId, clipId, cutId) => {
+    set((state) => markDirty({
+      project: setClipOverlayCut(state.project, variantId, clipId, cutId)
+    }));
+  },
   setClipTransition: (variantId, clipId, transition) => {
     set((state) => markDirty({
       project: setClipTransition(state.project, variantId, clipId, transition)
@@ -231,9 +242,19 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       project: setClipTransitionAsset(state.project, variantId, clipId, assetId)
     }));
   },
+  setClipTransitionCut: (variantId, clipId, cutId) => {
+    set((state) => markDirty({
+      project: setClipTransitionCut(state.project, variantId, clipId, cutId)
+    }));
+  },
   setClipTransitionOverlayAsset: (variantId, clipId, assetId) => {
     set((state) => markDirty({
       project: setClipTransitionOverlayAsset(state.project, variantId, clipId, assetId)
+    }));
+  },
+  setClipTransitionOverlayCut: (variantId, clipId, cutId) => {
+    set((state) => markDirty({
+      project: setClipTransitionOverlayCut(state.project, variantId, clipId, cutId)
     }));
   },
   randomizeFoundryTransitions: (variantId) => {

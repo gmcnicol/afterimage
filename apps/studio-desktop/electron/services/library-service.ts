@@ -21,6 +21,7 @@ import type {
   LibraryAsset,
   LibraryDirectory,
   LibraryImportAssetsRequest,
+  LibraryRemoveAssetsRequest,
   LibraryRoot,
   LibraryScanStatus,
   LibrarySearchRequest,
@@ -97,6 +98,15 @@ const videoExtensions = new Set(['.mp4', '.mov', '.m4v', '.mkv', '.webm', '.avi'
 const audioExtensions = new Set(['.wav', '.mp3', '.aif', '.aiff', '.flac', '.m4a']);
 const imageExtensions = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
 const supportedExtensions = new Set([...videoExtensions, ...audioExtensions, ...imageExtensions]);
+const ignoredDirectoryNames = new Set([
+  '.git',
+  '.turbo',
+  'coverage',
+  'dist',
+  'dist-electron',
+  'node_modules',
+  'release'
+]);
 
 function stableHash(value: string): string {
   let hash = 0;
@@ -124,6 +134,29 @@ function inferMediaType(filePath: string, role: AssetRole): MediaType {
     return 'image';
   }
   return 'video';
+}
+
+function isIgnoredDirectory(directoryPath: string): boolean {
+  return ignoredDirectoryNames.has(path.basename(directoryPath).toLowerCase());
+}
+
+function isSupportedForRole(filePath: string, role: AssetRole): boolean {
+  const extension = path.extname(filePath).toLowerCase();
+  if (role === 'source') {
+    return videoExtensions.has(extension);
+  }
+  if (role === 'transition-mask' || role === 'transition-overlay') {
+    return videoExtensions.has(extension) || imageExtensions.has(extension);
+  }
+  if (role === 'music') {
+    return audioExtensions.has(extension);
+  }
+  return supportedExtensions.has(extension);
+}
+
+function pathsOverlap(leftPath: string, rightPath: string): boolean {
+  const relative = path.relative(leftPath, rightPath);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
 function firstVideoStream(probe: ProbeMetadata) {
@@ -159,6 +192,26 @@ function buildAssetId(asset: Pick<LibraryAsset, 'assetRole' | 'path' | 'filename
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function resolveScannedAnalysisStatus(input: {
+  mediaType: MediaType;
+  existing?: Pick<AssetRow, 'hash_key' | 'analysis_status'>;
+  hashKey: string;
+}): AnalysisStatus {
+  if (input.mediaType === 'image') {
+    return 'completed';
+  }
+
+  if (!input.existing || input.existing.hash_key !== input.hashKey) {
+    return 'pending';
+  }
+
+  if (input.existing.analysis_status === 'completed' || input.existing.analysis_status === 'pending') {
+    return input.existing.analysis_status as AnalysisStatus;
+  }
+
+  return 'pending';
 }
 
 function rootFromRow(row: RootRow): LibraryRoot {
@@ -416,7 +469,7 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
       for (const entry of entries) {
         if (entry.isFile()) {
           fileCount += 1;
-          if (supportedExtensions.has(path.extname(entry.name).toLowerCase())) {
+          if (isSupportedForRole(path.join(directoryPath, entry.name), root.role)) {
             supportedFileCount += 1;
           }
         }
@@ -438,10 +491,13 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
       for (const entry of entries) {
         const absolutePath = path.join(directoryPath, entry.name);
         if (entry.isDirectory()) {
+          if (isIgnoredDirectory(absolutePath)) {
+            continue;
+          }
           await scanDirectory(absolutePath);
           continue;
         }
-        if (!entry.isFile() || !supportedExtensions.has(path.extname(entry.name).toLowerCase())) {
+        if (!entry.isFile() || !isSupportedForRole(absolutePath, root.role)) {
           continue;
         }
 
@@ -450,11 +506,7 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
         const assetId = `catalog-${stableHash(`${root.role}:${absolutePath}`)}`;
         const hashKey = `${fileStat.size}:${Math.trunc(fileStat.mtimeMs)}`;
         const existing = db.prepare('SELECT hash_key, analysis_status FROM library_assets WHERE id = ?').get(assetId) as Pick<AssetRow, 'hash_key' | 'analysis_status'> | undefined;
-        const analysisStatus: AnalysisStatus = mediaType === 'image'
-          ? 'completed'
-          : existing && existing.hash_key === hashKey && existing.analysis_status !== 'failed'
-            ? existing.analysis_status as AnalysisStatus
-            : 'pending';
+        const analysisStatus = resolveScannedAnalysisStatus({ mediaType, existing, hashKey });
 
         db.prepare(`
           INSERT INTO library_assets (
@@ -581,12 +633,30 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
     const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM library_assets a ${whereSql}`).get(...params) as unknown as { total: number };
     const limit = Math.max(1, Math.min(input.limit ?? 200, 500));
     const offset = Math.max(0, input.offset ?? 0);
+    const sortDirection = input.sortDirection === 'desc' ? 'DESC' : 'ASC';
+    const sortExpression = (() => {
+      switch (input.sortBy) {
+        case 'role':
+          return 'a.asset_role COLLATE NOCASE';
+        case 'type':
+          return 'a.media_type COLLATE NOCASE';
+        case 'cuts':
+          return "COALESCE(json_extract(r.summary, '$.sceneCount'), 0)";
+        case 'duration':
+          return 'COALESCE(a.duration_ms, -1)';
+        case 'analysis':
+          return 'a.analysis_status COLLATE NOCASE';
+        case 'filename':
+        default:
+          return 'a.filename COLLATE NOCASE';
+      }
+    })();
     const rows = db.prepare(`
       SELECT a.*, r.id AS analysis_ref_id, r.path AS analysis_path, r.thumbnail_manifest_path, r.waveform_path, r.summary AS analysis_summary
       FROM library_assets a
       LEFT JOIN library_analysis_refs r ON r.asset_id = a.id
       ${whereSql}
-      ORDER BY a.updated_at DESC, a.filename COLLATE NOCASE
+      ORDER BY ${sortExpression} ${sortDirection}, a.filename COLLATE NOCASE ASC, a.id ASC
       LIMIT ? OFFSET ?
     `).all(...params, limit, offset) as unknown as AssetRow[];
 
@@ -594,6 +664,28 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
       assets: rows.map(assetFromRow),
       total: totalRow.total
     };
+  }
+
+  function clearCatalogRows(): void {
+    const timestamp = nowIso();
+    db.exec('BEGIN');
+    try {
+      db.prepare('DELETE FROM library_analysis_refs').run();
+      db.prepare('DELETE FROM library_assets').run();
+      db.prepare('DELETE FROM library_directories').run();
+      db.prepare(`
+        UPDATE library_roots
+        SET last_scan_status = 'pending',
+            last_scan_started_at = NULL,
+            last_scan_ended_at = NULL,
+            last_scan_error = NULL,
+            updated_at = ?
+      `).run(timestamp);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   return {
@@ -608,6 +700,16 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
       }
 
       const rootPath = result.filePaths[0];
+      if (isIgnoredDirectory(rootPath)) {
+        throw new Error(`Choose a media folder, not "${path.basename(rootPath)}".`);
+      }
+
+      const existingRoots = listRoots();
+      const overlappingRoot = existingRoots.find((root) => root.path !== rootPath && (pathsOverlap(root.path, rootPath) || pathsOverlap(rootPath, root.path)));
+      if (overlappingRoot) {
+        throw new Error(`Catalog folder overlaps an existing ${overlappingRoot.role} root: ${overlappingRoot.path}`);
+      }
+
       const timestamp = nowIso();
       const rootId = `root-${stableHash(`${input.role}:${rootPath}`)}`;
       db.prepare(`
@@ -634,6 +736,28 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
 
       return scanRoot(rootId);
     },
+    removeRoot(rootId: string): boolean {
+      const root = db.prepare('SELECT id FROM library_roots WHERE id = ?').get(rootId) as Pick<RootRow, 'id'> | undefined;
+      if (!root) {
+        return false;
+      }
+
+      db.exec('BEGIN');
+      try {
+        db.prepare(`
+          DELETE FROM library_analysis_refs
+          WHERE asset_id IN (SELECT id FROM library_assets WHERE root_id = ?)
+        `).run(rootId);
+        db.prepare('DELETE FROM library_assets WHERE root_id = ?').run(rootId);
+        db.prepare('DELETE FROM library_directories WHERE root_id = ?').run(rootId);
+        db.prepare('DELETE FROM library_roots WHERE id = ?').run(rootId);
+        db.exec('COMMIT');
+        return true;
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
+    },
     async rescanRoot(rootId: string): Promise<LibraryRoot> {
       if (runLibraryJob) {
         const root = getRoot(rootId);
@@ -654,6 +778,11 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
     async rescanAll(): Promise<LibraryRoot[]> {
       const roots = listRoots();
       return Promise.all(roots.map((root) => this.rescanRoot(root.id)));
+    },
+    async clearAndRescanAll(): Promise<LibraryRoot[]> {
+      clearCatalogRows();
+      await logger.log('warn', 'Cleared media library catalog before full rescan.', `${listRoots().length} root(s) queued.`);
+      return this.rescanAll();
     },
     listRoots,
     listDirectories(rootId?: string): LibraryDirectory[] {
@@ -695,6 +824,22 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
           tags: asset.assetRole === 'music' ? ['music'] : []
         } satisfies MediaAsset;
       });
+    },
+    removeAssets(input: LibraryRemoveAssetsRequest): number {
+      if (input.assetIds.length === 0) {
+        return 0;
+      }
+      const placeholders = input.assetIds.map(() => '?').join(', ');
+      db.exec('BEGIN');
+      try {
+        db.prepare(`DELETE FROM library_analysis_refs WHERE asset_id IN (${placeholders})`).run(...input.assetIds);
+        const result = db.prepare(`DELETE FROM library_assets WHERE id IN (${placeholders})`).run(...input.assetIds);
+        db.exec('COMMIT');
+        return Number(result.changes);
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
     },
     close(): void {
       db.close();

@@ -519,7 +519,9 @@ function resequenceClips(clips: SequenceClip[]): SequenceClip[] {
       transition: 'cut' as const,
       transitionDurationMs: undefined,
       transitionAssetId: undefined,
-      transitionOverlayAssetId: undefined
+      transitionCutId: undefined,
+      transitionOverlayAssetId: undefined,
+      transitionOverlayCutId: undefined
     };
   });
 }
@@ -563,7 +565,9 @@ function extendClipsToMusicDuration(
       transition: 'cut' as const,
       transitionDurationMs: undefined,
       transitionAssetId: undefined,
-      transitionOverlayAssetId: undefined
+      transitionCutId: undefined,
+      transitionOverlayAssetId: undefined,
+      transitionOverlayCutId: undefined
     });
     poolCursor += 1;
   }
@@ -727,7 +731,9 @@ export function removeClip(project: NormalizedProjectFile, variantId: string, cl
       transition: 'cut' as const,
       transitionDurationMs: undefined,
       transitionAssetId: undefined,
-      transitionOverlayAssetId: undefined
+      transitionCutId: undefined,
+      transitionOverlayAssetId: undefined,
+      transitionOverlayCutId: undefined
     };
   });
 
@@ -774,7 +780,9 @@ export function setClipTransition(
             transition,
             transitionDurationMs: undefined,
             transitionAssetId: undefined,
-            transitionOverlayAssetId: undefined
+            transitionCutId: undefined,
+            transitionOverlayAssetId: undefined,
+            transitionOverlayCutId: undefined
           };
         }
 
@@ -783,7 +791,9 @@ export function setClipTransition(
           transition,
           transitionDurationMs: Math.max(100, clip.transitionDurationMs ?? 600),
           transitionAssetId: transition === 'mask' ? clip.transitionAssetId : undefined,
-          transitionOverlayAssetId: transition === 'mask' ? clip.transitionOverlayAssetId : undefined
+          transitionCutId: transition === 'mask' ? clip.transitionCutId : undefined,
+          transitionOverlayAssetId: transition === 'mask' ? clip.transitionOverlayAssetId : undefined,
+          transitionOverlayCutId: transition === 'mask' ? clip.transitionOverlayCutId : undefined
         };
       })
     } : variant)
@@ -820,7 +830,29 @@ export function setClipTransitionAsset(
       ...variant,
       clips: variant.clips.map((clip) => clip.id === clipId ? {
         ...clip,
-        transitionAssetId: assetId || undefined
+        transitionAssetId: assetId || undefined,
+        transitionCutId: undefined
+      } : clip)
+    } : variant)
+  });
+}
+
+export function setClipTransitionCut(
+  project: NormalizedProjectFile,
+  variantId: string,
+  clipId: string,
+  cutId?: string
+): NormalizedProjectFile {
+  const cut = cutId ? getCutCandidateById(project, cutId) : undefined;
+
+  return normalizeProject({
+    ...project,
+    variants: project.variants.map((variant) => variant.id === variantId ? {
+      ...variant,
+      clips: variant.clips.map((clip) => clip.id === clipId ? {
+        ...clip,
+        transitionAssetId: cut?.assetId ?? undefined,
+        transitionCutId: cut?.id
       } : clip)
     } : variant)
   });
@@ -838,7 +870,29 @@ export function setClipTransitionOverlayAsset(
       ...variant,
       clips: variant.clips.map((clip) => clip.id === clipId ? {
         ...clip,
-        transitionOverlayAssetId: assetId || undefined
+        transitionOverlayAssetId: assetId || undefined,
+        transitionOverlayCutId: undefined
+      } : clip)
+    } : variant)
+  });
+}
+
+export function setClipTransitionOverlayCut(
+  project: NormalizedProjectFile,
+  variantId: string,
+  clipId: string,
+  cutId?: string
+): NormalizedProjectFile {
+  const cut = cutId ? getCutCandidateById(project, cutId) : undefined;
+
+  return normalizeProject({
+    ...project,
+    variants: project.variants.map((variant) => variant.id === variantId ? {
+      ...variant,
+      clips: variant.clips.map((clip) => clip.id === clipId ? {
+        ...clip,
+        transitionOverlayAssetId: cut?.assetId ?? undefined,
+        transitionOverlayCutId: cut?.id
       } : clip)
     } : variant)
   });
@@ -856,7 +910,29 @@ export function setClipOverlayAsset(
       ...variant,
       clips: variant.clips.map((clip) => clip.id === clipId ? {
         ...clip,
-        overlayAssetId: assetId || undefined
+        overlayAssetId: assetId || undefined,
+        overlayCutId: undefined
+      } : clip)
+    } : variant)
+  });
+}
+
+export function setClipOverlayCut(
+  project: NormalizedProjectFile,
+  variantId: string,
+  clipId: string,
+  cutId?: string
+): NormalizedProjectFile {
+  const cut = cutId ? getCutCandidateById(project, cutId) : undefined;
+
+  return normalizeProject({
+    ...project,
+    variants: project.variants.map((variant) => variant.id === variantId ? {
+      ...variant,
+      clips: variant.clips.map((clip) => clip.id === clipId ? {
+        ...clip,
+        overlayAssetId: cut?.assetId ?? undefined,
+        overlayCutId: cut?.id
       } : clip)
     } : variant)
   });
@@ -934,7 +1010,9 @@ export function randomizeFoundryTransitions(
             transition: 'cut',
             transitionDurationMs: undefined,
             transitionAssetId: undefined,
-            transitionOverlayAssetId: undefined
+            transitionCutId: undefined,
+            transitionOverlayAssetId: undefined,
+            transitionOverlayCutId: undefined
           };
         }
 
@@ -944,7 +1022,9 @@ export function randomizeFoundryTransitions(
             transition: 'cut',
             transitionDurationMs: undefined,
             transitionAssetId: undefined,
-            transitionOverlayAssetId: undefined
+            transitionCutId: undefined,
+            transitionOverlayAssetId: undefined,
+            transitionOverlayCutId: undefined
           };
         }
 
@@ -960,7 +1040,9 @@ export function randomizeFoundryTransitions(
           transition: 'mask',
           transitionDurationMs: durationMs,
           transitionAssetId: maskAsset.id,
-          transitionOverlayAssetId: undefined
+          transitionCutId: undefined,
+          transitionOverlayAssetId: undefined,
+          transitionOverlayCutId: undefined
         };
       })
     } : candidate)
@@ -1009,14 +1091,16 @@ export function randomizeFoundryOverlays(
         if (!activeOverlaySlots.has(index)) {
           return {
             ...clip,
-            overlayAssetId: undefined
+            overlayAssetId: undefined,
+            overlayCutId: undefined
           };
         }
 
         const overlayAsset = activeOverlayAssets[Math.floor(rng() * activeOverlayAssets.length)];
         return {
           ...clip,
-          overlayAssetId: overlayAsset.id
+          overlayAssetId: overlayAsset.id,
+          overlayCutId: undefined
         };
       })
     } : candidate)
