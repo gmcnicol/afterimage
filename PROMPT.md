@@ -2,17 +2,21 @@
 
 You are working in this repository as a fresh Codex context.
 
+Do ONE TASK only in this run. If there is an in-progress task, continue that one task only. Otherwise, select one eligible backlog task only. Do not start or complete any second task, even if other tasks are nearby, already complete, or easy to finish.
+
 ## Required Setup
 
 1. Read `TASKS.md` first.
 2. Review enough of the project to understand the task area before editing.
-3. Pick exactly one task to work on.
+3. Pick exactly one non-done task to work on.
 
 ## Task Selection
 
-- If any task has `status: in-progress`, pick that task and continue it.
-- Otherwise, pick the highest-priority `status: backlog` task whose dependencies are complete.
+- Ignore every task with `status: done`; completed tasks are historical context only.
+- If any task has `status: in-progress`, pick that task and continue it. Do not also start a backlog task in the same run.
+- Otherwise, pick one highest-priority `status: backlog` task whose dependencies are complete.
 - Do not start multiple tasks.
+- Do not mark more than one task `status: done` in a single run.
 - Do not do opportunistic cleanup outside the selected task.
 
 ## Before Starting

@@ -52,7 +52,7 @@ for ((iteration = 1; iteration <= max_iterations; iteration += 1)); do
     cat "$prompt_file"
     printf '\n\n## Ralph Runner Context\n\n'
     printf 'This is automated Ralph iteration %s of %s.\n' "$iteration" "$max_iterations"
-    printf 'Follow PROMPT.md exactly: select one task only, mark it in-progress before work, and update TASKS.md at the end.\n'
+    printf 'Follow PROMPT.md exactly: do ONE TASK only; continue one in-progress task if present, otherwise select one backlog task, mark it in-progress before work, and update TASKS.md at the end.\n'
   } | codex \
     --sandbox danger-full-access \
     --ask-for-approval never \
