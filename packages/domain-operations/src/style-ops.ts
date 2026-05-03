@@ -9,6 +9,7 @@ import {
   type FilterInstance,
   type JsonPrimitive,
   type NormalizedProjectFile,
+  type Preset,
   type SupportedFilterType
 } from '@afterimage/project-model';
 
@@ -209,8 +210,12 @@ export function safeRandomizeStack(project: NormalizedProjectFile, stackId: stri
 
 export function applyPresetToStack(project: NormalizedProjectFile, presetId: string, stackId: string): NormalizedProjectFile {
   const preset = getPresetById(project, presetId);
+  return preset ? applyPresetDefinitionToStack(project, preset, stackId) : project;
+}
+
+export function applyPresetDefinitionToStack(project: NormalizedProjectFile, preset: Preset, stackId: string): NormalizedProjectFile {
   const stack = getFilterStackById(project, stackId);
-  if (!preset || !stack) {
+  if (!stack) {
     return project;
   }
 

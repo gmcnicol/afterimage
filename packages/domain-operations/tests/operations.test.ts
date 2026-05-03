@@ -21,7 +21,7 @@ import {
 } from '../src/sequence-ops';
 import { addAutomationLane, addLaneKeyframe, updateAutomationLaneTarget } from '../src/automation-ops';
 import { mergeImportedAssets, toggleExportProfile } from '../src/project-ops';
-import { addFilterToStack, applyPresetToStack, safeRandomizeFilter, updateFilterParameter } from '../src/style-ops';
+import { addFilterToStack, applyPresetDefinitionToStack, applyPresetToStack, safeRandomizeFilter, updateFilterParameter } from '../src/style-ops';
 import { importCatalogAssetIntoProject, materializeAnalysisCuts } from '../src/catalog-ops';
 
 function makeProject() {
@@ -1294,5 +1294,24 @@ describe('@afterimage/domain-operations', () => {
 
     expect(project.filterStacks[0].filters[0].type).toBe('glitch-bands');
     expect(project.filterStacks[0].filters[0].parameters?.strength).toBe(0.3);
+  });
+
+  it('applies provided preset definitions without embedding them in the project', () => {
+    const project = applyPresetDefinitionToStack(makeProject(), {
+      id: 'preset-library-test',
+      name: 'Library Test',
+      family: 'vhs',
+      filters: [
+        {
+          type: 'blur',
+          amount: 0.4
+        }
+      ]
+    }, 'stack-sequence-main');
+
+    expect(project.presets).toHaveLength(0);
+    expect(project.filterStacks[0].family).toBe('vhs');
+    expect(project.filterStacks[0].filters[0].type).toBe('blur');
+    expect(project.filterStacks[0].filters[0].parameters?.radius).toBe(0.4);
   });
 });

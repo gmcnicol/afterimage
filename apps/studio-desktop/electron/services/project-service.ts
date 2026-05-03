@@ -5,6 +5,7 @@ import type { Dialog, Shell } from 'electron';
 import { executeCommandSpec, resolveFfmpegTools } from '@afterimage/ffmpeg-compiler';
 import { parseFfprobeOutput } from '@afterimage/media-analysis';
 import * as domainOps from '@afterimage/domain-operations';
+import { loadPresetLibrary } from '@afterimage/preset-library';
 import {
   createEmptyProject,
   getDefaultFilterParameters,
@@ -372,7 +373,13 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return domainOps.updateFilterParameter(project, operation.stackId, operation.filterId, operation.key, operation.value);
       case 'applyPresetToSequenceStack': {
         const stackId = operation.stackId ?? project.variants[0]?.stackId;
-        return stackId ? domainOps.applyPresetToStack(project, operation.presetId, stackId) : project;
+        if (!stackId) {
+          return project;
+        }
+        const libraryPreset = loadPresetLibrary().byId[operation.presetId];
+        return libraryPreset
+          ? domainOps.applyPresetDefinitionToStack(project, libraryPreset, stackId)
+          : domainOps.applyPresetToStack(project, operation.presetId, stackId);
       }
       case 'safeRandomizeFilter':
         return domainOps.safeRandomizeFilter(project, operation.stackId, operation.filterId);
