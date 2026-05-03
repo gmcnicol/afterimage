@@ -137,6 +137,8 @@ export interface RenderProfile {
   videoProfile?: '3';
   crf?: number;
   videoPreset?: 'medium' | 'fast' | 'slow';
+  videoMaxrateKbps?: number;
+  videoBufsizeKbps?: number;
   audioBitrateKbps?: number;
 }
 
@@ -873,6 +875,12 @@ function applyEncoderArgs(
       '-preset', constrained ? 'fast' : (profile.videoPreset ?? 'medium'),
       '-crf', String(profile.crf ?? 18)
     );
+    if (profile.videoMaxrateKbps) {
+      args.push('-maxrate', `${profile.videoMaxrateKbps}k`);
+    }
+    if (profile.videoBufsizeKbps) {
+      args.push('-bufsize', `${profile.videoBufsizeKbps}k`);
+    }
     return;
   }
 
@@ -1392,6 +1400,12 @@ export function buildFinalizeRenderPlan(
       '-preset', request.profile.videoPreset ?? 'medium',
       '-crf', String(request.profile.crf ?? 18)
     );
+    if (request.profile.videoMaxrateKbps) {
+      args.push('-maxrate', `${request.profile.videoMaxrateKbps}k`);
+    }
+    if (request.profile.videoBufsizeKbps) {
+      args.push('-bufsize', `${request.profile.videoBufsizeKbps}k`);
+    }
   } else if (request.profile.videoCodec === 'prores_ks') {
     args.push('-profile:v', request.profile.videoProfile ?? '3');
   }
@@ -1435,6 +1449,8 @@ export function buildExportPlan(
     videoProfile: request.profile.videoProfile,
     crf: request.profile.crf,
     videoPreset: request.profile.videoPreset,
+    videoMaxrateKbps: request.profile.videoMaxrateKbps,
+    videoBufsizeKbps: request.profile.videoBufsizeKbps,
     audioBitrateKbps: request.profile.audioBitrateKbps
   }, tools) as RenderPlan;
 }

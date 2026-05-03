@@ -9,6 +9,7 @@ import {
   buildAnalysisPlan,
   buildAudioChangeAnalysisPlan,
   buildExportPlan,
+  buildFinalizeRenderPlan,
   buildPreviewPlan,
   buildRenderPlan,
   buildThumbnailPlan,
@@ -220,6 +221,10 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "medium",
             "-crf",
             "18",
+            "-maxrate",
+            "12000k",
+            "-bufsize",
+            "24000k",
             "-map",
             "[amusic]",
             "-c:a",
@@ -518,6 +523,23 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(plan.command.args).toContain('-stream_loop');
     expect(plan.command.args).toContain('fixtures/overlays/foam-overlay.mp4');
     expect(command).toContain("blend=c0_expr='min(255,A+B*0.28)':c1_expr='A':c2_expr='A'");
+  });
+
+  it('carries x264 bitrate ceilings through export and chunk finalization plans', () => {
+    const profile = getExportProfileById('landscape-master');
+    const exportArgs = buildExportPlan(project, {
+      outputPath: 'exports/studio-fixture.mp4',
+      profile
+    }).command.args;
+    const finalizeArgs = buildFinalizeRenderPlan({
+      concatListPath: '.afterimage/render/chunks.txt',
+      outputPath: 'exports/studio-fixture.mp4',
+      profile,
+      durationMs: 5000
+    }).command.args;
+
+    expect(exportArgs).toEqual(expect.arrayContaining(['-maxrate', '12000k', '-bufsize', '24000k']));
+    expect(finalizeArgs).toEqual(expect.arrayContaining(['-maxrate', '12000k', '-bufsize', '24000k']));
   });
 
   it('trims overlay and transition assets from selected cut starts', () => {
