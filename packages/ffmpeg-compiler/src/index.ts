@@ -381,7 +381,7 @@ function compileFilterExpression(filter: FilterInstance): string {
     case 'bloom-soft':
       return `gblur=sigma=${formatDecimal(0.4 + (effectiveAmount * 4))}`;
     case 'glitch-bands':
-      return `noise=alls=${formatDecimal(4 + (effectiveAmount * 24), 1)}:allf=t`;
+      return `noise=alls=${formatDecimal(10 + (effectiveAmount * 70), 1)}:allf=t+u`;
     case 'blur':
       return `gblur=sigma=${formatDecimal(0.4 + (effectiveAmount * 5))}`;
     case 'contrast':

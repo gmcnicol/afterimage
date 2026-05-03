@@ -400,6 +400,34 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(plan.command.args.join(' ')).toContain('fade=t=out:st=3.000:d=2.000');
   });
 
+  it('compiles signal breakup as visible temporal noise', () => {
+    const plan = buildPreviewPlan(parseProject({
+      ...fixtureProject,
+      filterStacks: [
+        {
+          ...fixtureProject.filterStacks[0],
+          filters: [
+            {
+              id: 'filter-signal-breakup',
+              type: 'glitch-bands',
+              enabled: true,
+              orderIndex: 0,
+              parameters: {
+                strength: 1
+              },
+              mix: 1
+            }
+          ]
+        }
+      ],
+      automationLanes: []
+    }), {
+      outputPath: '.afterimage/preview/variant-signal-breakup.mp4'
+    });
+
+    expect(plan.command.args.join(' ')).toContain('noise=alls=80.0:allf=t+u');
+  });
+
   it('builds asset-backed mask transitions with optional overlay assets', () => {
     const plan = buildPreviewPlan(parseProject({
       ...fixtureProject,

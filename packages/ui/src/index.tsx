@@ -88,6 +88,7 @@ export function Panel(props: PropsWithChildren<{
         style={{
           minWidth: 0,
           minHeight: 0,
+          flex: 1,
           overflow: 'hidden',
           ...props.bodyStyle
         }}
