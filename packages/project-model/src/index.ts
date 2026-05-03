@@ -543,15 +543,15 @@ const SUPPORTED_FILTER_DEFINITIONS = [
   },
   {
     type: 'glitch-bands',
-    label: 'Glitch Bands',
+    label: 'Signal Breakup',
     ffmpegGroup: 'noise',
     parameters: [
       {
         key: 'strength',
-        label: 'Strength',
+        label: 'Breakup',
         min: 0,
         max: 1,
-        defaultValue: 0.22,
+        defaultValue: 0.45,
         step: 0.01
       }
     ]

@@ -57,9 +57,9 @@ export const supportedFilterDefinitions = [
   },
   {
     type: 'glitch-bands',
-    label: 'Glitch Bands',
+    label: 'Signal Breakup',
     ffmpegGroup: 'noise',
-    parameters: [{ key: 'strength', label: 'Strength', min: 0, max: 1, defaultValue: 0.22, step: 0.01 }]
+    parameters: [{ key: 'strength', label: 'Breakup', min: 0, max: 1, defaultValue: 0.45, step: 0.01 }]
   },
   {
     type: 'chroma-bleed',

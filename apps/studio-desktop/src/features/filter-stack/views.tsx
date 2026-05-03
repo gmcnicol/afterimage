@@ -77,10 +77,11 @@ export function StyleView() {
   const randomizeStack = useProjectSessionStore((state) => state.safeRandomizeStack);
   const pendingFilterAddStackIdRef = useRef<string | undefined>(undefined);
   const stack = useMemo(() => getStackForCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
+  const stackFilters = stack?.filters ?? [];
   const presets = useMemo(() => loadPresetLibrary().presets, []);
   const selectedFilter = useMemo(
-    () => stack?.filters.find((filter) => filter.id === selectedFilterId) ?? stack?.filters[0],
-    [selectedFilterId, stack]
+    () => stackFilters.find((filter) => filter.id === selectedFilterId) ?? stackFilters[0],
+    [selectedFilterId, stackFilters]
   );
   const selectedFilterDefinition = getFilterDefinition(selectedFilter?.type ?? '');
   const filterColumns = useMemo<ColDef<FilterInstance>[]>(() => [
@@ -88,7 +89,7 @@ export function StyleView() {
       field: 'type',
       headerName: 'Filter',
       minWidth: 160,
-      cellRenderer: ({ data }: { data?: FilterInstance }) => data ? <strong>{formatFilterInstanceLabel(data, stack?.filters ?? [])}</strong> : null
+      cellRenderer: ({ data }: { data?: FilterInstance }) => data ? <strong>{formatFilterInstanceLabel(data, stackFilters)}</strong> : null
     },
     { field: 'mix', headerName: 'Mix', width: 90, valueFormatter: ({ value }) => Number(value ?? 1).toFixed(2) },
     { field: 'enabled', headerName: 'State', width: 110, valueFormatter: ({ value }) => value === false ? 'bypassed' : 'enabled' },
@@ -106,7 +107,7 @@ export function StyleView() {
         </div>
       ) : null
     }
-  ], [moveFilter, randomizeFilter, removeFilter, stack, toggleFilter]);
+  ], [moveFilter, randomizeFilter, removeFilter, stack, stackFilters, toggleFilter]);
   const presetColumns = useMemo<ColDef<(typeof presets)[number]>[]>(() => [
     { field: 'name', headerName: 'Preset', minWidth: 170, cellRenderer: ({ value }: { value?: string }) => <strong>{value}</strong> },
     { field: 'family', headerName: 'Family', width: 120, cellRenderer: ({ value }: { value?: string }) => <span style={pillStyle()}>{value}</span> },
@@ -145,8 +146,8 @@ export function StyleView() {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16, height: '100%', minHeight: 0 }}>
-      <Panel title="Style Stack" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(620px, 1fr) minmax(320px, 380px)', gap: 16, height: '100%', minHeight: 0 }}>
+      <Panel title="Style Stack" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(220px, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           {supportedFilterDefinitions.map((definition) => (
             <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => handleAddFilter(definition.type)} disabled={!stack}>
@@ -155,8 +156,25 @@ export function StyleView() {
           ))}
           <ToolbarButton onClick={() => stack && randomizeStack(stack.id)}>Randomize Stack</ToolbarButton>
         </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          padding: '9px 0',
+          marginBottom: 10,
+          color: muted,
+          fontSize: 12,
+          textTransform: 'uppercase',
+          letterSpacing: 0,
+          fontWeight: 700
+        }}>
+          <span>Filters In Stack</span>
+          <span>{stackFilters.length}</span>
+        </div>
         <StudioDataGrid
-          rows={stack?.filters ?? []}
+          rows={stackFilters}
           columns={filterColumns}
           focusedRowId={selectedFilter?.id}
           onFocusRow={(filter) => selectFilter(filter.id)}
@@ -166,12 +184,12 @@ export function StyleView() {
         />
       </Panel>
 
-      <div style={{ display: 'grid', gap: 16, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(180px, 1fr)', gap: 16, minHeight: 0, alignContent: 'stretch' }}>
         <Panel title="Filter Editor" bodyStyle={{ minHeight: 0 }}>
           {stack && selectedFilter && selectedFilterDefinition ? (
-            <div style={{ display: 'grid', gap: 16 }}>
+            <div style={{ display: 'grid', gap: 12 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 18 }}>{selectedFilterDefinition.label}</div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{selectedFilterDefinition.label}</div>
                 <div style={{ color: muted, fontSize: 13 }}>
                   {formatFilterInstanceLabel(selectedFilter, stack.filters)} · Position {(selectedFilter.orderIndex ?? stack.filters.findIndex((filter) => filter.id === selectedFilter.id)) + 1}
                 </div>
