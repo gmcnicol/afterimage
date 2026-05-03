@@ -25,6 +25,8 @@ export interface ExportProfileDefinition {
   videoProfile?: '3';
   crf?: number;
   videoPreset?: 'medium' | 'fast' | 'slow';
+  videoMaxrateKbps?: number;
+  videoBufsizeKbps?: number;
   audioBitrateKbps?: number;
   namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}';
 }
@@ -43,6 +45,8 @@ export const exportProfiles = [
     pixelFormat: 'yuv420p',
     crf: 18,
     videoPreset: 'medium',
+    videoMaxrateKbps: 12_000,
+    videoBufsizeKbps: 24_000,
     audioBitrateKbps: 256,
     namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}'
   },
@@ -59,6 +63,8 @@ export const exportProfiles = [
     pixelFormat: 'yuv420p',
     crf: 18,
     videoPreset: 'medium',
+    videoMaxrateKbps: 12_000,
+    videoBufsizeKbps: 24_000,
     audioBitrateKbps: 256,
     namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}'
   },
@@ -75,6 +81,8 @@ export const exportProfiles = [
     pixelFormat: 'yuv420p',
     crf: 20,
     videoPreset: 'medium',
+    videoMaxrateKbps: 8_000,
+    videoBufsizeKbps: 16_000,
     audioBitrateKbps: 192,
     namingRule: '{projectSlug}-{sequenceSlug}-{variantSlug}-{profileId}.{ext}'
   },
