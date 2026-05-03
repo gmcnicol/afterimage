@@ -101,4 +101,26 @@ describe('project service operations', () => {
       await cleanup();
     }
   });
+
+  it('applies configured preset-library presets through the service boundary', async () => {
+    const { service, cleanup } = await createService();
+
+    try {
+      const project = createEmptyProject({ id: 'project-style-preset-service', name: 'Style Preset Service' });
+      const updated = service.applyProjectOperation({
+        project,
+        operation: {
+          type: 'applyPresetToSequenceStack',
+          presetId: 'preset-glitch-overclock',
+          stackId: 'stack-sequence-main'
+        }
+      });
+
+      expect(updated.filterStacks[0].family).toBe('glitch');
+      expect(updated.filterStacks[0].filters.map((filter) => filter.type)).toEqual(['glitch-bands', 'chroma-bleed']);
+      expect(updated.filterStacks[0].filters[0].parameters?.strength).toBe(0.22);
+    } finally {
+      await cleanup();
+    }
+  });
 });
