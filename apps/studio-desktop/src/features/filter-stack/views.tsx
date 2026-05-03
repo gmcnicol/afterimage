@@ -88,13 +88,28 @@ export function StyleView() {
     {
       field: 'type',
       headerName: 'Filter',
-      minWidth: 180,
+      minWidth: 170,
       flex: 1,
       cellRenderer: ({ data }: { data?: FilterInstance }) => data ? <strong>{formatFilterInstanceLabel(data, stackFilters)}</strong> : null
     },
-    { field: 'mix', headerName: 'Mix', width: 64, flex: 0, valueFormatter: ({ value }) => Number(value ?? 1).toFixed(2) },
-    { field: 'enabled', headerName: 'On', width: 56, flex: 0, valueFormatter: ({ value }) => value === false ? 'off' : 'on' }
-  ], [stackFilters]);
+    { field: 'mix', headerName: 'Mix', width: 58, flex: 0, valueFormatter: ({ value }) => Number(value ?? 1).toFixed(2) },
+    { field: 'enabled', headerName: 'On', width: 50, flex: 0, valueFormatter: ({ value }) => value === false ? 'off' : 'on' },
+    {
+      headerName: 'Actions',
+      width: 322,
+      flex: 0,
+      sortable: false,
+      cellRenderer: ({ data, node }: { data?: FilterInstance; node?: { rowIndex: number | null } }) => data && stack ? (
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', height: '100%' }}>
+          <ToolbarButton onClick={() => moveFilter(stack.id, data.id, -1)} disabled={(node?.rowIndex ?? 0) === 0} style={{ height: 24, minHeight: 24, padding: '0 7px', fontSize: 11 }}>Up</ToolbarButton>
+          <ToolbarButton onClick={() => moveFilter(stack.id, data.id, 1)} disabled={(node?.rowIndex ?? 0) === stack.filters.length - 1} style={{ height: 24, minHeight: 24, padding: '0 7px', fontSize: 11 }}>Down</ToolbarButton>
+          <ToolbarButton onClick={() => toggleFilter(stack.id, data.id)} style={{ height: 24, minHeight: 24, padding: '0 7px', fontSize: 11 }}>{data.enabled === false ? 'Enable' : 'Bypass'}</ToolbarButton>
+          <ToolbarButton onClick={() => randomizeFilter(stack.id, data.id)} style={{ height: 24, minHeight: 24, padding: '0 7px', fontSize: 11 }}>Randomise</ToolbarButton>
+          <ToolbarButton onClick={() => removeFilter(stack.id, data.id)} style={{ height: 24, minHeight: 24, padding: '0 7px', fontSize: 11 }}>Remove</ToolbarButton>
+        </div>
+      ) : null
+    }
+  ], [moveFilter, randomizeFilter, removeFilter, stack, stackFilters, toggleFilter]);
   const presetColumns = useMemo<ColDef<(typeof presets)[number]>[]>(() => [
     { field: 'name', headerName: 'Preset', minWidth: 150, flex: 0.9, cellRenderer: ({ value }: { value?: string }) => <strong>{value}</strong> },
     { field: 'family', headerName: 'Family', width: 120, flex: 0, cellRenderer: ({ value }: { value?: string }) => <span style={pillStyle()}>{value}</span> },
@@ -133,103 +148,81 @@ export function StyleView() {
     pendingFilterAddStackIdRef.current = stack.id;
     addFilter(filterType, stack.id);
   };
-  const selectedFilterIndex = selectedFilter ? stackFilters.findIndex((filter) => filter.id === selectedFilter.id) : -1;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(420px, 560px) minmax(520px, 1fr)', gap: 16, height: '100%', minHeight: 0 }}>
-      <Panel title="Style Stack" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto minmax(220px, 1fr)', minHeight: 0 }}>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-          {supportedFilterDefinitions.map((definition) => (
-            <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => handleAddFilter(definition.type)} disabled={!stack}>
-              Add {definition.label}
-            </ToolbarButton>
-          ))}
-          <ToolbarButton onClick={() => stack && randomizeStack(stack.id)}>Randomise Stack</ToolbarButton>
-        </div>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          padding: '9px 0',
-          marginBottom: 10,
-          color: muted,
-          fontSize: 12,
-          textTransform: 'uppercase',
-          letterSpacing: 0,
-          fontWeight: 700
-        }}>
-          <span>Filters In Stack</span>
-          <span>{stackFilters.length}</span>
-        </div>
-        <StudioDataGrid
-          rows={stackFilters}
-          columns={filterColumns}
-          focusedRowId={selectedFilter?.id}
-          onFocusRow={(filter) => selectFilter(filter.id)}
-          onRowOpen={(filter) => selectFilter(filter.id)}
-          rowHeight={36}
-          headerHeight={32}
-          emptyMessage="No filters in this stack"
-        />
-      </Panel>
-
-      <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(220px, 1fr)', gap: 16, minHeight: 0 }}>
-        <Panel title="Filter Editor" bodyStyle={{ minHeight: 0 }}>
-          {stack && selectedFilter && selectedFilterDefinition ? (
-            <div style={{ display: 'grid', gap: 12 }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{selectedFilterDefinition.label}</div>
-                <div style={{ color: muted, fontSize: 13 }}>
-                  {formatFilterInstanceLabel(selectedFilter, stack.filters)} · Position {(selectedFilter.orderIndex ?? selectedFilterIndex) + 1}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <ToolbarButton onClick={() => moveFilter(stack.id, selectedFilter.id, -1)} disabled={selectedFilterIndex <= 0}>Up</ToolbarButton>
-                <ToolbarButton onClick={() => moveFilter(stack.id, selectedFilter.id, 1)} disabled={selectedFilterIndex < 0 || selectedFilterIndex === stackFilters.length - 1}>Down</ToolbarButton>
-                <ToolbarButton onClick={() => toggleFilter(stack.id, selectedFilter.id)}>{selectedFilter.enabled === false ? 'Enable' : 'Bypass'}</ToolbarButton>
-                <ToolbarButton onClick={() => randomizeFilter(stack.id, selectedFilter.id)}>Randomise</ToolbarButton>
-                <ToolbarButton onClick={() => removeFilter(stack.id, selectedFilter.id)}>Remove</ToolbarButton>
-              </div>
-              <label style={{ display: 'grid', gap: 8 }}>
-                <span style={{ color: muted, fontSize: 13 }}>Mix</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={Number(selectedFilter.mix ?? 1)}
-                  onChange={(event) => setFilterMix(stack.id, selectedFilter.id, Number(event.target.value))}
-                />
-                <span style={{ color: muted, fontSize: 12 }}>{Number(selectedFilter.mix ?? 1).toFixed(2)}</span>
-              </label>
-              {selectedFilterDefinition.parameters.map((parameter) => (
-                <label key={parameter.key} style={{ display: 'grid', gap: 8 }}>
-                  <span style={{ color: muted, fontSize: 13 }}>{parameter.label}</span>
-                  <input
-                    type="range"
-                    min={parameter.min}
-                    max={parameter.max}
-                    step={parameter.step}
-                    value={Number(selectedFilter.parameters?.[parameter.key] ?? parameter.defaultValue)}
-                    onChange={(event) => setFilterParameter(stack.id, selectedFilter.id, parameter.key, Number(event.target.value))}
-                  />
-                  <span style={{ color: muted, fontSize: 12 }}>
-                    {Number(selectedFilter.parameters?.[parameter.key] ?? parameter.defaultValue).toFixed(2)}
-                  </span>
-                </label>
-              ))}
-            </div>
-          ) : (
-            <div style={{ color: muted }}>Select a supported filter to edit its authored parameters.</div>
-          )}
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(720px, 1fr) minmax(300px, 360px)', gap: 16, height: '100%', minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(150px, 190px) minmax(240px, 1fr)', gap: 16, minHeight: 0 }}>
+        <Panel title="Style Stack" bodyStyle={{ minHeight: 0 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {supportedFilterDefinitions.map((definition) => (
+              <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => handleAddFilter(definition.type)} disabled={!stack}>
+                Add {definition.label}
+              </ToolbarButton>
+            ))}
+            <ToolbarButton onClick={() => stack && randomizeStack(stack.id)}>Randomise Stack</ToolbarButton>
+          </div>
         </Panel>
 
         <Panel title="Preset Families" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
           <StudioDataGrid rows={presets} columns={presetColumns} rowHeight={36} headerHeight={32} emptyMessage="No presets available" />
         </Panel>
+
+        <Panel title={`Filters In Stack (${stackFilters.length})`} bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+          <StudioDataGrid
+            rows={stackFilters}
+            columns={filterColumns}
+            focusedRowId={selectedFilter?.id}
+            onFocusRow={(filter) => selectFilter(filter.id)}
+            onRowOpen={(filter) => selectFilter(filter.id)}
+            rowHeight={36}
+            headerHeight={32}
+            emptyMessage="No filters in this stack"
+          />
+        </Panel>
       </div>
+
+      <Panel title="Filter Editor" bodyStyle={{ minHeight: 0 }}>
+        {stack && selectedFilter && selectedFilterDefinition ? (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{selectedFilterDefinition.label}</div>
+              <div style={{ color: muted, fontSize: 13 }}>
+                {formatFilterInstanceLabel(selectedFilter, stack.filters)} · Position {(selectedFilter.orderIndex ?? stackFilters.findIndex((filter) => filter.id === selectedFilter.id)) + 1}
+              </div>
+            </div>
+            <label style={{ display: 'grid', gap: 8 }}>
+              <span style={{ color: muted, fontSize: 13 }}>Mix</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={Number(selectedFilter.mix ?? 1)}
+                onChange={(event) => setFilterMix(stack.id, selectedFilter.id, Number(event.target.value))}
+              />
+              <span style={{ color: muted, fontSize: 12 }}>{Number(selectedFilter.mix ?? 1).toFixed(2)}</span>
+            </label>
+            {selectedFilterDefinition.parameters.map((parameter) => (
+              <label key={parameter.key} style={{ display: 'grid', gap: 8 }}>
+                <span style={{ color: muted, fontSize: 13 }}>{parameter.label}</span>
+                <input
+                  type="range"
+                  min={parameter.min}
+                  max={parameter.max}
+                  step={parameter.step}
+                  value={Number(selectedFilter.parameters?.[parameter.key] ?? parameter.defaultValue)}
+                  onChange={(event) => setFilterParameter(stack.id, selectedFilter.id, parameter.key, Number(event.target.value))}
+                />
+                <span style={{ color: muted, fontSize: 12 }}>
+                  {Number(selectedFilter.parameters?.[parameter.key] ?? parameter.defaultValue).toFixed(2)}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <div style={{ color: muted }}>Select a supported filter to edit its authored parameters.</div>
+        )}
+      </Panel>
     </div>
   );
 }
