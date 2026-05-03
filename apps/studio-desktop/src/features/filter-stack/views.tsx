@@ -45,6 +45,7 @@ import {
   buildSyncMarkers,
   renderTimeline,
   AutomationLaneTimeline,
+  formatFilterInstanceLabel,
   formatParameterLabel,
   getStackForCurrentVariant,
   filterTransitionAssets,
@@ -74,6 +75,7 @@ export function StyleView() {
   const applyPreset = useProjectSessionStore((state) => state.applyPresetToSequenceStack);
   const randomizeFilter = useProjectSessionStore((state) => state.safeRandomizeFilter);
   const randomizeStack = useProjectSessionStore((state) => state.safeRandomizeStack);
+  const pendingFilterAddStackIdRef = useRef<string | undefined>(undefined);
   const stack = useMemo(() => getStackForCurrentVariant(project, selectedVariantId), [project, selectedVariantId]);
   const presets = useMemo(() => loadPresetLibrary().presets, []);
   const selectedFilter = useMemo(
@@ -86,7 +88,7 @@ export function StyleView() {
       field: 'type',
       headerName: 'Filter',
       minWidth: 160,
-      cellRenderer: ({ data }: { data?: FilterInstance }) => data ? <strong>{getFilterDefinition(data.type)?.label ?? data.type}</strong> : null
+      cellRenderer: ({ data }: { data?: FilterInstance }) => data ? <strong>{formatFilterInstanceLabel(data, stack?.filters ?? [])}</strong> : null
     },
     { field: 'mix', headerName: 'Mix', width: 90, valueFormatter: ({ value }) => Number(value ?? 1).toFixed(2) },
     { field: 'enabled', headerName: 'State', width: 110, valueFormatter: ({ value }) => value === false ? 'bypassed' : 'enabled' },
@@ -117,16 +119,37 @@ export function StyleView() {
       headerName: 'Actions',
       width: 120,
       sortable: false,
-      cellRenderer: ({ data }: { data?: (typeof presets)[number] }) => data ? <ToolbarButton onClick={() => applyPreset(data.id)} style={{ padding: '5px 7px' }}>Apply</ToolbarButton> : null
+      cellRenderer: ({ data }: { data?: (typeof presets)[number] }) => data ? <ToolbarButton onClick={() => applyPreset(data.id, stack?.id)} disabled={!stack} style={{ padding: '5px 7px' }}>Apply</ToolbarButton> : null
     }
-  ], [applyPreset, presets]);
+  ], [applyPreset, presets, stack]);
+
+  useEffect(() => {
+    if (!stack || pendingFilterAddStackIdRef.current !== stack.id) {
+      return;
+    }
+
+    const newestFilter = stack.filters[stack.filters.length - 1];
+    if (newestFilter) {
+      selectFilter(newestFilter.id);
+      pendingFilterAddStackIdRef.current = undefined;
+    }
+  }, [selectFilter, stack]);
+
+  const handleAddFilter = (filterType: SupportedFilterType) => {
+    if (!stack) {
+      return;
+    }
+
+    pendingFilterAddStackIdRef.current = stack.id;
+    addFilter(filterType, stack.id);
+  };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16, height: '100%', minHeight: 0 }}>
       <Panel title="Style Stack" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           {supportedFilterDefinitions.map((definition) => (
-            <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => addFilter(definition.type)}>
+            <ToolbarButton key={definition.type} primary={definition.type === 'contrast'} onClick={() => handleAddFilter(definition.type)} disabled={!stack}>
               Add {definition.label}
             </ToolbarButton>
           ))}
@@ -149,7 +172,9 @@ export function StyleView() {
             <div style={{ display: 'grid', gap: 16 }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 18 }}>{selectedFilterDefinition.label}</div>
-                <div style={{ color: muted, fontSize: 13 }}>{selectedFilter.id}</div>
+                <div style={{ color: muted, fontSize: 13 }}>
+                  {formatFilterInstanceLabel(selectedFilter, stack.filters)} · Position {(selectedFilter.orderIndex ?? stack.filters.findIndex((filter) => filter.id === selectedFilter.id)) + 1}
+                </div>
               </div>
               <label style={{ display: 'grid', gap: 8 }}>
                 <span style={{ color: muted, fontSize: 13 }}>Mix</span>
@@ -191,4 +216,3 @@ export function StyleView() {
     </div>
   );
 }
-

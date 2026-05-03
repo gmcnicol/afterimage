@@ -61,13 +61,13 @@ export type ProjectOperation =
   | { type: 'deleteVariant'; variantId: string }
   | { type: 'addMarker'; variantId: string; label: string; timeMs: number }
   | { type: 'addSection'; variantId: string; label: string; startMs: number; endMs: number }
-  | { type: 'addFilterToSequenceStack'; filterType: SupportedFilterType }
+  | { type: 'addFilterToSequenceStack'; filterType: SupportedFilterType; stackId?: string }
   | { type: 'removeFilterFromSequenceStack'; stackId: string; filterId: string }
   | { type: 'moveFilterInSequenceStack'; stackId: string; filterId: string; direction: -1 | 1 }
   | { type: 'toggleFilterEnabled'; stackId: string; filterId: string }
   | { type: 'updateFilterMix'; stackId: string; filterId: string; mix: number }
   | { type: 'updateFilterParameter'; stackId: string; filterId: string; key: Exclude<AutomationTargetProperty, 'mix'>; value: number }
-  | { type: 'applyPresetToSequenceStack'; presetId: string }
+  | { type: 'applyPresetToSequenceStack'; presetId: string; stackId?: string }
   | { type: 'safeRandomizeFilter'; stackId: string; filterId: string }
   | { type: 'safeRandomizeStack'; stackId: string }
   | { type: 'addAutomationLane'; filterId: string; property: AutomationTargetProperty; name: string }
