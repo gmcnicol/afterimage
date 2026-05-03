@@ -1,70 +1,43 @@
 import { create } from 'zustand';
 import type { AutomationTargetProperty, MediaAsset, NormalizedProjectFile, SupportedFilterType, TransitionStyle } from '@afterimage/project-model';
-import { createEmptyProject, getDefaultFilterParameters, getFilterDefinition, getPrimaryAutomationProperty } from '@afterimage/project-model';
-import {
-  addCutToSequence,
-  addMarker,
-  addSection,
-  addAutomationLane,
-  addCutToBin,
-  addFilterToStack,
-  addLaneKeyframe,
-  applyPresetToStack,
-  applySyncMarkers,
-  buildNewVariantFromReviewedCuts,
-  buildVariantFromReviewedCuts,
-  deleteVariant,
-  duplicateVariant,
-  mergeImportedAssets,
-  moveFilterInStack,
-  moveClip,
-  randomizeFoundryOverlays,
-  randomizeFoundryTransitions,
-  removeAutomationLane,
-  removeClip,
-  removeFilterFromStack,
-  removeLaneKeyframe,
-  replaceAssetPath,
-  resetLane,
-  safeRandomizeFilter,
-  safeRandomizeStack,
-  setAutomationLaneEnabled,
-  setClipOverlayAsset,
-  setClipOverlayCut,
-  setClipTransition,
-  setClipTransitionAsset,
-  setClipTransitionCut,
-  setClipTransitionDuration,
-  setClipTransitionOverlayAsset,
-  setClipTransitionOverlayCut,
-  setProjectMusicAsset,
-  setVariantMusicAsset,
-  setVariantMusicSyncMode,
-  type SequenceBuildMode,
-  toggleCutFavorite,
-  toggleExportProfile,
-  toggleFilterEnabled,
-  trimClip,
-  trimCut,
-  updateAutomationLaneTarget,
-  updateCutStatus,
-  updateFilterMix,
-  updateFilterParameter,
-  updateLaneKeyframe
-} from '@afterimage/domain-operations';
+import type { ProjectOperation } from '../lib/studio-client';
 import type { Marker, SyncMode } from '@afterimage/project-model';
+import { getStudioClient } from '../lib/studio-client';
 import { useUiStore } from './ui-store';
+
+type SequenceBuildMode = Extract<ProjectOperation, { type: 'buildVariantFromReviewedCuts' }>['mode'];
+
+let projectOperationQueue: Promise<void> = Promise.resolve();
 
 function invalidatePreview(): void {
   useUiStore.getState().setPreviewPath(undefined);
 }
 
-function markDirty<T extends Record<string, unknown>>(partial: T): T & { dirty: true } {
-  invalidatePreview();
-  return {
-    ...partial,
-    dirty: true
-  };
+function dispatchProjectOperation(
+  set: (partial: Partial<ProjectSessionState>) => void,
+  get: () => ProjectSessionState,
+  operation: ProjectOperation
+): void {
+  projectOperationQueue = projectOperationQueue.then(async () => {
+    const state = get();
+    if (!state.ready) {
+      return;
+    }
+
+    const project = await getStudioClient().project.applyOperation({
+      project: state.project,
+      operation
+    });
+    set({
+      project,
+      dirty: true,
+      ready: true
+    });
+    invalidatePreview();
+  }).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    useUiStore.getState().addNotification(`Project update failed: ${message}`, 'warn', 5200);
+  });
 }
 
 interface ProjectSessionState {
@@ -73,6 +46,7 @@ interface ProjectSessionState {
   projectRoot?: string;
   recentProjects: string[];
   dirty: boolean;
+  ready: boolean;
   setSession: (input: { project: NormalizedProjectFile; projectFilePath?: string; projectRoot?: string; recentProjects?: string[] }) => void;
   setRecentProjects: (recentProjects: string[]) => void;
   setProject: (project: NormalizedProjectFile) => void;
@@ -128,11 +102,9 @@ interface ProjectSessionState {
 }
 
 export const useProjectSessionStore = create<ProjectSessionState>((set, get) => ({
-  project: createEmptyProject({
-    id: 'project-studio-shell',
-    name: 'Studio Shell'
-  }),
+  project: undefined as unknown as NormalizedProjectFile,
   dirty: false,
+  ready: false,
   recentProjects: [],
   setSession: (input) => {
     set({
@@ -140,7 +112,8 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
       projectFilePath: input.projectFilePath,
       projectRoot: input.projectRoot,
       recentProjects: input.recentProjects ?? [],
-      dirty: false
+      dirty: false,
+      ready: true
     });
   },
   setRecentProjects: (recentProjects) => {
@@ -149,307 +122,59 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
   setProject: (project) => {
     set({
       project,
-      dirty: true
+      dirty: true,
+      ready: true
     });
     invalidatePreview();
   },
-  mergeImportedAssets: (assets) => {
-    set((state) => ({
-      project: mergeImportedAssets(state.project, assets),
-      dirty: true
-    }));
-  },
-  relinkAsset: (assetId, absolutePath, relativePath) => {
-    set((state) => ({
-      project: replaceAssetPath(state.project, assetId, {
-        absolutePath,
-        relativePath
-      }),
-      dirty: true
-    }));
-  },
-  updateCutStatus: (cutId, status) => {
-    set((state) => ({
-      project: updateCutStatus(state.project, cutId, status),
-      dirty: true
-    }));
-  },
-  toggleCutFavorite: (cutId) => {
-    set((state) => ({
-      project: toggleCutFavorite(state.project, cutId),
-      dirty: true
-    }));
-  },
-  trimCut: (cutId, startMs, endMs) => {
-    set((state) => ({
-      project: trimCut(state.project, cutId, startMs, endMs),
-      dirty: true
-    }));
-  },
-  addCutToBin: (cutId, binId) => {
-    set((state) => ({
-      project: addCutToBin(state.project, cutId, binId),
-      dirty: true
-    }));
-  },
-  addCutToSequence: (cutId, options) => {
-    set((state) => markDirty({
-      project: addCutToSequence(state.project, cutId, options)
-    }));
-  },
-  buildVariantFromReviewedCuts: (variantId, mode) => {
-    set((state) => markDirty({
-      project: buildVariantFromReviewedCuts(state.project, variantId, mode)
-    }));
-  },
-  buildNewVariantFromReviewedCuts: (variantId, mode) => {
-    set((state) => markDirty({
-      project: buildNewVariantFromReviewedCuts(state.project, variantId, mode)
-    }));
-  },
-  moveClip: (variantId, clipId, direction) => {
-    set((state) => markDirty({
-      project: moveClip(state.project, variantId, clipId, direction)
-    }));
-  },
-  removeClip: (variantId, clipId) => {
-    set((state) => markDirty({
-      project: removeClip(state.project, variantId, clipId)
-    }));
-  },
-  trimClip: (variantId, clipId, deltaMs) => {
-    set((state) => markDirty({
-      project: trimClip(state.project, variantId, clipId, deltaMs)
-    }));
-  },
-  setClipOverlayAsset: (variantId, clipId, assetId) => {
-    set((state) => markDirty({
-      project: setClipOverlayAsset(state.project, variantId, clipId, assetId)
-    }));
-  },
-  setClipOverlayCut: (variantId, clipId, cutId) => {
-    set((state) => markDirty({
-      project: setClipOverlayCut(state.project, variantId, clipId, cutId)
-    }));
-  },
-  setClipTransition: (variantId, clipId, transition) => {
-    set((state) => markDirty({
-      project: setClipTransition(state.project, variantId, clipId, transition)
-    }));
-  },
-  setClipTransitionDuration: (variantId, clipId, durationMs) => {
-    set((state) => markDirty({
-      project: setClipTransitionDuration(state.project, variantId, clipId, durationMs)
-    }));
-  },
-  setClipTransitionAsset: (variantId, clipId, assetId) => {
-    set((state) => markDirty({
-      project: setClipTransitionAsset(state.project, variantId, clipId, assetId)
-    }));
-  },
-  setClipTransitionCut: (variantId, clipId, cutId) => {
-    set((state) => markDirty({
-      project: setClipTransitionCut(state.project, variantId, clipId, cutId)
-    }));
-  },
-  setClipTransitionOverlayAsset: (variantId, clipId, assetId) => {
-    set((state) => markDirty({
-      project: setClipTransitionOverlayAsset(state.project, variantId, clipId, assetId)
-    }));
-  },
-  setClipTransitionOverlayCut: (variantId, clipId, cutId) => {
-    set((state) => markDirty({
-      project: setClipTransitionOverlayCut(state.project, variantId, clipId, cutId)
-    }));
-  },
-  randomizeFoundryTransitions: (variantId) => {
-    set((state) => markDirty({
-      project: randomizeFoundryTransitions(state.project, variantId)
-    }));
-  },
-  randomizeFoundryOverlays: (variantId) => {
-    set((state) => markDirty({
-      project: randomizeFoundryOverlays(state.project, variantId)
-    }));
-  },
-  duplicateVariant: (variantId) => {
-    set((state) => markDirty({
-      project: duplicateVariant(state.project, variantId)
-    }));
-  },
-  deleteVariant: (variantId) => {
-    set((state) => markDirty({
-      project: deleteVariant(state.project, variantId)
-    }));
-  },
-  addMarker: (variantId, label, timeMs) => {
-    set((state) => markDirty({
-      project: addMarker(state.project, variantId, {
-        id: `marker-${Date.now()}`,
-        label,
-        timeMs,
-        kind: 'marker'
-      })
-    }));
-  },
-  addSection: (variantId, label, startMs, endMs) => {
-    set((state) => markDirty({
-      project: addSection(state.project, variantId, {
-        id: `section-${Date.now()}`,
-        label,
-        startMs,
-        endMs
-      })
-    }));
-  },
-  addFilterToSequenceStack: (type) => {
-    const stackId = get().project.variants[0]?.stackId;
-    const definition = getFilterDefinition(type);
-    const primaryKey = getPrimaryAutomationProperty(type);
-    if (!stackId || !definition || !primaryKey) {
-      return;
-    }
-
-    set((state) => markDirty({
-      project: addFilterToStack(state.project, stackId, {
-        id: `filter-${Date.now()}`,
-        type,
-        enabled: true,
-        parameters: getDefaultFilterParameters(type),
-        mix: 0.8
-      })
-    }));
-  },
-  removeFilterFromSequenceStack: (stackId, filterId) => {
-    set((state) => markDirty({
-      project: removeFilterFromStack(state.project, stackId, filterId)
-    }));
-  },
-  moveFilterInSequenceStack: (stackId, filterId, direction) => {
-    set((state) => markDirty({
-      project: moveFilterInStack(state.project, stackId, filterId, direction)
-    }));
-  },
-  toggleFilterEnabled: (stackId, filterId) => {
-    set((state) => markDirty({
-      project: toggleFilterEnabled(state.project, stackId, filterId)
-    }));
-  },
-  updateFilterMix: (stackId, filterId, mix) => {
-    set((state) => markDirty({
-      project: updateFilterMix(state.project, stackId, filterId, mix)
-    }));
-  },
-  updateFilterParameter: (stackId, filterId, key, value) => {
-    set((state) => markDirty({
-      project: updateFilterParameter(state.project, stackId, filterId, key, value)
-    }));
-  },
-  applyPresetToSequenceStack: (presetId) => {
-    const stackId = get().project.variants[0]?.stackId;
-    if (!stackId) {
-      return;
-    }
-
-    set((state) => markDirty({
-      project: applyPresetToStack(state.project, presetId, stackId)
-    }));
-  },
-  safeRandomizeFilter: (stackId, filterId) => {
-    set((state) => markDirty({
-      project: safeRandomizeFilter(state.project, stackId, filterId)
-    }));
-  },
-  safeRandomizeStack: (stackId) => {
-    set((state) => markDirty({
-      project: safeRandomizeStack(state.project, stackId)
-    }));
-  },
-  addAutomationLane: (filterId, property, name) => {
-    set((state) => markDirty({
-      project: addAutomationLane(state.project, {
-        id: `lane-${Date.now()}`,
-        name,
-        target: {
-          filterId,
-          property
-        },
-        enabled: true,
-        keyframes: [
-          {
-            id: `keyframe-${Date.now()}`,
-            timeMs: 0,
-            value: 0.5
-          }
-        ]
-      })
-    }));
-  },
-  removeAutomationLane: (laneId) => {
-    set((state) => markDirty({
-      project: removeAutomationLane(state.project, laneId)
-    }));
-  },
-  updateAutomationLaneTarget: (laneId, filterId, property) => {
-    set((state) => markDirty({
-      project: updateAutomationLaneTarget(state.project, laneId, { filterId, property })
-    }));
-  },
-  setAutomationLaneEnabled: (laneId, enabled) => {
-    set((state) => markDirty({
-      project: setAutomationLaneEnabled(state.project, laneId, enabled)
-    }));
-  },
-  addLaneKeyframe: (laneId, timeMs, value) => {
-    set((state) => markDirty({
-      project: addLaneKeyframe(state.project, laneId, {
-        id: `keyframe-${Date.now()}`,
-        timeMs,
-        value
-      })
-    }));
-  },
-  updateLaneKeyframe: (laneId, keyframeId, timeMs, value) => {
-    set((state) => markDirty({
-      project: updateLaneKeyframe(state.project, laneId, keyframeId, { timeMs, value })
-    }));
-  },
-  removeLaneKeyframe: (laneId, keyframeId) => {
-    set((state) => markDirty({
-      project: removeLaneKeyframe(state.project, laneId, keyframeId)
-    }));
-  },
-  resetLane: (laneId) => {
-    set((state) => markDirty({
-      project: resetLane(state.project, laneId)
-    }));
-  },
-  toggleExportProfile: (profileId) => {
-    set((state) => ({
-      project: toggleExportProfile(state.project, profileId),
-      dirty: true
-    }));
-  },
-  setVariantMusicAsset: (variantId, assetId) => {
-    set((state) => markDirty({
-      project: setVariantMusicAsset(state.project, variantId, assetId)
-    }));
-  },
-  setProjectMusicAsset: (assetId) => {
-    set((state) => markDirty({
-      project: setProjectMusicAsset(state.project, assetId)
-    }));
-  },
-  setVariantMusicSyncMode: (variantId, syncMode) => {
-    set((state) => markDirty({
-      project: setVariantMusicSyncMode(state.project, variantId, syncMode)
-    }));
-  },
-  applySyncMarkers: (variantId, markers) => {
-    set((state) => markDirty({
-      project: applySyncMarkers(state.project, variantId, markers)
-    }));
-  },
+  mergeImportedAssets: (assets) => dispatchProjectOperation(set, get, { type: 'mergeImportedAssets', assets }),
+  relinkAsset: (assetId, absolutePath, relativePath) => dispatchProjectOperation(set, get, { type: 'relinkAsset', assetId, absolutePath, relativePath }),
+  updateCutStatus: (cutId, status) => dispatchProjectOperation(set, get, { type: 'updateCutStatus', cutId, status }),
+  toggleCutFavorite: (cutId) => dispatchProjectOperation(set, get, { type: 'toggleCutFavorite', cutId }),
+  trimCut: (cutId, startMs, endMs) => dispatchProjectOperation(set, get, { type: 'trimCut', cutId, startMs, endMs }),
+  addCutToBin: (cutId, binId) => dispatchProjectOperation(set, get, { type: 'addCutToBin', cutId, binId }),
+  addCutToSequence: (cutId, options) => dispatchProjectOperation(set, get, { type: 'addCutToSequence', cutId, options }),
+  buildVariantFromReviewedCuts: (variantId, mode) => dispatchProjectOperation(set, get, { type: 'buildVariantFromReviewedCuts', variantId, mode }),
+  buildNewVariantFromReviewedCuts: (variantId, mode) => dispatchProjectOperation(set, get, { type: 'buildNewVariantFromReviewedCuts', variantId, mode }),
+  moveClip: (variantId, clipId, direction) => dispatchProjectOperation(set, get, { type: 'moveClip', variantId, clipId, direction }),
+  removeClip: (variantId, clipId) => dispatchProjectOperation(set, get, { type: 'removeClip', variantId, clipId }),
+  trimClip: (variantId, clipId, deltaMs) => dispatchProjectOperation(set, get, { type: 'trimClip', variantId, clipId, deltaMs }),
+  setClipOverlayAsset: (variantId, clipId, assetId) => dispatchProjectOperation(set, get, { type: 'setClipOverlayAsset', variantId, clipId, assetId }),
+  setClipOverlayCut: (variantId, clipId, cutId) => dispatchProjectOperation(set, get, { type: 'setClipOverlayCut', variantId, clipId, cutId }),
+  setClipTransition: (variantId, clipId, transition) => dispatchProjectOperation(set, get, { type: 'setClipTransition', variantId, clipId, transition }),
+  setClipTransitionDuration: (variantId, clipId, durationMs) => dispatchProjectOperation(set, get, { type: 'setClipTransitionDuration', variantId, clipId, durationMs }),
+  setClipTransitionAsset: (variantId, clipId, assetId) => dispatchProjectOperation(set, get, { type: 'setClipTransitionAsset', variantId, clipId, assetId }),
+  setClipTransitionCut: (variantId, clipId, cutId) => dispatchProjectOperation(set, get, { type: 'setClipTransitionCut', variantId, clipId, cutId }),
+  setClipTransitionOverlayAsset: (variantId, clipId, assetId) => dispatchProjectOperation(set, get, { type: 'setClipTransitionOverlayAsset', variantId, clipId, assetId }),
+  setClipTransitionOverlayCut: (variantId, clipId, cutId) => dispatchProjectOperation(set, get, { type: 'setClipTransitionOverlayCut', variantId, clipId, cutId }),
+  randomizeFoundryTransitions: (variantId) => dispatchProjectOperation(set, get, { type: 'randomizeFoundryTransitions', variantId }),
+  randomizeFoundryOverlays: (variantId) => dispatchProjectOperation(set, get, { type: 'randomizeFoundryOverlays', variantId }),
+  duplicateVariant: (variantId) => dispatchProjectOperation(set, get, { type: 'duplicateVariant', variantId }),
+  deleteVariant: (variantId) => dispatchProjectOperation(set, get, { type: 'deleteVariant', variantId }),
+  addMarker: (variantId, label, timeMs) => dispatchProjectOperation(set, get, { type: 'addMarker', variantId, label, timeMs }),
+  addSection: (variantId, label, startMs, endMs) => dispatchProjectOperation(set, get, { type: 'addSection', variantId, label, startMs, endMs }),
+  addFilterToSequenceStack: (filterType) => dispatchProjectOperation(set, get, { type: 'addFilterToSequenceStack', filterType }),
+  removeFilterFromSequenceStack: (stackId, filterId) => dispatchProjectOperation(set, get, { type: 'removeFilterFromSequenceStack', stackId, filterId }),
+  moveFilterInSequenceStack: (stackId, filterId, direction) => dispatchProjectOperation(set, get, { type: 'moveFilterInSequenceStack', stackId, filterId, direction }),
+  toggleFilterEnabled: (stackId, filterId) => dispatchProjectOperation(set, get, { type: 'toggleFilterEnabled', stackId, filterId }),
+  updateFilterMix: (stackId, filterId, mix) => dispatchProjectOperation(set, get, { type: 'updateFilterMix', stackId, filterId, mix }),
+  updateFilterParameter: (stackId, filterId, key, value) => dispatchProjectOperation(set, get, { type: 'updateFilterParameter', stackId, filterId, key, value }),
+  applyPresetToSequenceStack: (presetId) => dispatchProjectOperation(set, get, { type: 'applyPresetToSequenceStack', presetId }),
+  safeRandomizeFilter: (stackId, filterId) => dispatchProjectOperation(set, get, { type: 'safeRandomizeFilter', stackId, filterId }),
+  safeRandomizeStack: (stackId) => dispatchProjectOperation(set, get, { type: 'safeRandomizeStack', stackId }),
+  addAutomationLane: (filterId, property, name) => dispatchProjectOperation(set, get, { type: 'addAutomationLane', filterId, property, name }),
+  removeAutomationLane: (laneId) => dispatchProjectOperation(set, get, { type: 'removeAutomationLane', laneId }),
+  updateAutomationLaneTarget: (laneId, filterId, property) => dispatchProjectOperation(set, get, { type: 'updateAutomationLaneTarget', laneId, filterId, property }),
+  setAutomationLaneEnabled: (laneId, enabled) => dispatchProjectOperation(set, get, { type: 'setAutomationLaneEnabled', laneId, enabled }),
+  addLaneKeyframe: (laneId, timeMs, value) => dispatchProjectOperation(set, get, { type: 'addLaneKeyframe', laneId, timeMs, value }),
+  updateLaneKeyframe: (laneId, keyframeId, timeMs, value) => dispatchProjectOperation(set, get, { type: 'updateLaneKeyframe', laneId, keyframeId, timeMs, value }),
+  removeLaneKeyframe: (laneId, keyframeId) => dispatchProjectOperation(set, get, { type: 'removeLaneKeyframe', laneId, keyframeId }),
+  resetLane: (laneId) => dispatchProjectOperation(set, get, { type: 'resetLane', laneId }),
+  toggleExportProfile: (profileId) => dispatchProjectOperation(set, get, { type: 'toggleExportProfile', profileId }),
+  setVariantMusicAsset: (variantId, assetId) => dispatchProjectOperation(set, get, { type: 'setVariantMusicAsset', variantId, assetId }),
+  setProjectMusicAsset: (assetId) => dispatchProjectOperation(set, get, { type: 'setProjectMusicAsset', assetId }),
+  setVariantMusicSyncMode: (variantId, syncMode) => dispatchProjectOperation(set, get, { type: 'setVariantMusicSyncMode', variantId, syncMode }),
+  applySyncMarkers: (variantId, markers) => dispatchProjectOperation(set, get, { type: 'applySyncMarkers', variantId, markers }),
   markSaved: (input) => {
     set((state) => ({
       projectFilePath: input.projectFilePath ?? state.projectFilePath,

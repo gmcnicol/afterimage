@@ -12,9 +12,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@afterimage/media-analysis": "workspace:*",
     "@afterimage/project-model": "workspace:*"
   },
   "devDependencies": {
+    "@afterimage/schema-validators": "workspace:*",
     "vitest": "^4.0.18"
   }
 }

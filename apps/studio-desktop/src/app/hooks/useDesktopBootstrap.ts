@@ -74,9 +74,7 @@ export function useDesktopBootstrap(): void {
       }
 
       const currentSession = useProjectSessionStore.getState();
-      const shouldApplySession = !currentSession.dirty
-        && currentSession.project.assets.length === 0
-        && !currentSession.projectFilePath;
+      const shouldApplySession = !currentSession.ready || (!currentSession.dirty && !currentSession.projectFilePath);
 
       if (shouldApplySession) {
         setSession(session);

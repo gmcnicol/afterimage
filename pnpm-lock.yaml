@@ -157,10 +157,16 @@ importers:
 
   packages/domain-operations:
     dependencies:
+      '@afterimage/media-analysis':
+        specifier: workspace:*
+        version: link:../media-analysis
       '@afterimage/project-model':
         specifier: workspace:*
         version: link:../project-model
     devDependencies:
+      '@afterimage/schema-validators':
+        specifier: workspace:*
+        version: link:../schema-validators
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@25.3.5)(jiti@2.6.1)

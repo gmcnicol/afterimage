@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { createLibraryService } from '../electron/services/library-service';
 import type { Logger } from '../electron/services/logger';
+import { createEmptyProject } from '@afterimage/project-model';
+import type { ProjectMutationResult, ProjectSessionSnapshot } from '@afterimage/studio-contracts';
 
 function createTestLogger(): Logger {
   return {
@@ -129,6 +131,61 @@ describe('library service', () => {
       });
       expect(imported[0].path.absolutePath).toBe(path.join(mediaRoot, 'overlay.webm'));
       expect(imported[0].path.relativePath).toBeUndefined();
+    } finally {
+      await cleanup();
+      await rm(mediaRoot, { recursive: true, force: true });
+      await rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('imports catalog analysis cuts into a project through the service boundary', async () => {
+    const mediaRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-library-project-import-'));
+    const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-project-service-import-'));
+    const analysisPath = path.join(mediaRoot, 'clip.analysis.json');
+    await writeFile(path.join(mediaRoot, 'clip.mp4'), 'fake video', 'utf8');
+    await writeFile(analysisPath, JSON.stringify({
+      id: 'analysis-placeholder',
+      assetId: 'asset-placeholder',
+      probe: { durationMs: 3000, streams: [{ codecType: 'video' }] },
+      sceneCuts: [{ timeMs: 1000, score: 0.8 }, { timeMs: 2100, score: 0.6 }]
+    }), 'utf8');
+    const { service, databasePath, cleanup } = await createService(mediaRoot);
+
+    try {
+      await service.addRoot({ role: 'source' });
+      const asset = service.searchAssets().assets[0];
+      const db = new DatabaseSync(databasePath);
+      try {
+        db.prepare('UPDATE library_assets SET duration_ms = ?, analysis_status = ? WHERE id = ?').run(3000, 'completed', asset.id);
+        db.prepare(`
+          INSERT INTO library_analysis_refs (asset_id, id, path, summary, updated_at)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(asset.id, `analysis-${asset.id}`, analysisPath, JSON.stringify({ durationMs: 3000, sceneCount: 2 }), new Date().toISOString());
+      } finally {
+        db.close();
+      }
+
+      const project = createEmptyProject({ id: 'project-service-import', name: 'Service Import' });
+      const commit = async (nextProject: ProjectSessionSnapshot['project']): Promise<ProjectMutationResult> => ({
+        session: { project: nextProject, projectRoot, recentProjects: [] },
+        saved: false
+      });
+      const result = await service.importAssetToProject({
+        project,
+        projectRoot,
+        assetId: asset.id,
+        cutIds: ['scene-2-1000']
+      }, commit);
+
+      expect(result.addedCutIds?.[0]).toMatch(/^cut-asset-clip-source-[a-z0-9]+-scene-2$/);
+      expect(result.session.project.assets).toHaveLength(1);
+      expect(result.session.project.cutCandidates).toHaveLength(1);
+      expect(result.session.project.cutCandidates[0]).toMatchObject({
+        assetId: result.session.project.assets[0].id,
+        startMs: 1000,
+        endMs: 2100,
+        status: 'kept'
+      });
     } finally {
       await cleanup();
       await rm(mediaRoot, { recursive: true, force: true });

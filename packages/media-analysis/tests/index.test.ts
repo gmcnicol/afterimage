@@ -118,6 +118,40 @@ describe('@afterimage/media-analysis', () => {
     ]);
   });
 
+  it('generates a whole-clip candidate when scene detection finds no cuts', () => {
+    expect(generateCutCandidatesFromAnalysis({
+      ...fixtureAnalysis,
+      sceneCuts: [],
+      thumbnails: []
+    }, {
+      analysisRefId: 'analysis-asset-alpha'
+    })).toEqual([
+      {
+        analysisRefId: 'analysis-asset-alpha',
+        assetId: 'asset-alpha',
+        binIds: [],
+        durationMs: 5000,
+        endMs: 5000,
+        favorite: false,
+        id: 'asset-alpha-cut-1',
+        luma: {
+          average: 0.614,
+          maximum: 0.81,
+          minimum: 0.42
+        },
+        motion: {
+          average: 0.69,
+          peak: 0.77
+        },
+        sceneScore: undefined,
+        startMs: 0,
+        status: 'new',
+        tags: [],
+        thumbnailPath: undefined
+      }
+    ]);
+  });
+
   it('parses audio change logs into normalized change and sync tracks', () => {
     const analysis = parseAudioChangeAnalysis('asset-music', {
       astats: [

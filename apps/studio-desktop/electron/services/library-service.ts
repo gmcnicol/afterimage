@@ -1,14 +1,19 @@
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { importCatalogAssetIntoProject, type CatalogSceneSegment } from '@afterimage/domain-operations';
 import type { MediaAsset } from '@afterimage/project-model';
+import { parseAnalysis } from '@afterimage/schema-validators';
 import type {
   LibraryAddRootRequest,
   LibraryAnalysisAgentInput,
   LibraryDirectory,
+  LibraryImportAssetToProjectRequest,
   LibraryImportAssetsRequest,
   LibraryRemoveAssetsRequest,
   LibraryScanAgentInput,
-  LibraryRoot
+  LibraryRoot,
+  ProjectMutationResult
 } from '@afterimage/studio-contracts';
 import { createLibraryAnalyzer } from './library/analyzer.js';
 import { importCatalogAssets } from './library/assets.js';
@@ -71,6 +76,38 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
       });
     }
   });
+
+  async function loadCatalogSceneSegments(asset: { analysisRef?: { path: string } }): Promise<CatalogSceneSegment[]> {
+    if (!asset.analysisRef?.path) {
+      return [];
+    }
+
+    try {
+      const raw = await readFile(asset.analysisRef.path, 'utf8');
+      const analysis = parseAnalysis(JSON.parse(raw) as unknown);
+      const durationMs = Math.max(analysis.summary?.durationMs ?? analysis.probe.durationMs ?? 0, 0);
+      const cutPoints = analysis.sceneCuts
+        .map((scene) => Math.max(0, Math.min(durationMs, Math.round(scene.timeMs))))
+        .filter((timeMs) => timeMs > 0 && timeMs < durationMs)
+        .sort((left, right) => left - right);
+      const boundaries = [0, ...cutPoints, durationMs].filter((timeMs, index, values) => index === 0 || timeMs > values[index - 1]);
+
+      return boundaries.slice(0, -1).map((startMs, index) => {
+        const endMs = boundaries[index + 1];
+        return {
+          id: `scene-${index + 1}-${startMs}`,
+          index,
+          startMs,
+          endMs,
+          durationMs: Math.max(0, endMs - startMs),
+          score: analysis.sceneCuts.find((scene) => Math.round(scene.timeMs) === startMs)?.score
+        };
+      }).filter((scene) => scene.durationMs > 0);
+    } catch (error) {
+      await logger.log('warn', 'Failed to load catalog analysis sidecar.', `${asset.analysisRef.path} :: ${getErrorMessage(error)}`);
+      return [];
+    }
+  }
 
   return {
     async addRoot(input: LibraryAddRootRequest): Promise<LibraryRoot | null> {
@@ -166,6 +203,36 @@ export function createLibraryService({ dialog, logger, databasePath, dataRoot, r
         projectRoot: input.projectRoot,
         assets: getAssetsByIds(db, input.assetIds)
       });
+    },
+    async importAssetToProject(
+      input: LibraryImportAssetToProjectRequest,
+      commitProjectMutation: (project: LibraryImportAssetToProjectRequest['project'], projectFilePath?: string) => Promise<ProjectMutationResult>
+    ): Promise<ProjectMutationResult> {
+      const [asset] = getAssetsByIds(db, [input.assetId]);
+      if (!asset) {
+        throw new Error(`Catalog asset not found: ${input.assetId}`);
+      }
+
+      const [importedAsset] = await importCatalogAssets({
+        projectRoot: input.projectRoot,
+        assets: [asset]
+      });
+      if (!importedAsset) {
+        throw new Error(`Catalog asset could not be imported: ${input.assetId}`);
+      }
+
+      const result = importCatalogAssetIntoProject({
+        project: input.project,
+        asset,
+        importedAsset,
+        sceneSegments: await loadCatalogSceneSegments(asset),
+        cutIds: input.cutIds
+      });
+      const mutation = await commitProjectMutation(result.project, input.projectFilePath);
+      return {
+        ...mutation,
+        addedCutIds: result.addedCutIds
+      };
     },
     removeAssets(input: LibraryRemoveAssetsRequest): number {
       return removal.removeAssets(input.assetIds);

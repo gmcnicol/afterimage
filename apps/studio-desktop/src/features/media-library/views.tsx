@@ -2,26 +2,18 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, type CSSPropert
 import type { ColDef } from 'ag-grid-community';
 import { exportProfiles, type ExportProfileId } from '@afterimage/export-profiles';
 import { loadPresetLibrary } from '@afterimage/preset-library';
-import {
-  getAssetById,
-  getDefaultVariant,
-  getFilterDefinition,
-  getPrimaryAutomationProperty,
-  getSupportedAutomationProperties,
-  normalizeProject,
-  supportedFilterDefinitions,
-  type AnalysisFile,
-  type AssetRole,
-  type AutomationTargetProperty,
-  type CutCandidate,
-  type FilterInstance,
-  type Marker,
-  type MediaAsset,
-  type NormalizedProjectFile,
-  type SequenceClip,
-  type SupportedFilterType,
-  type SyncMode,
-  type TransitionStyle
+import type {
+  AnalysisFile,
+  AssetRole,
+  AutomationTargetProperty,
+  FilterInstance,
+  Marker,
+  MediaAsset,
+  NormalizedProjectFile,
+  SequenceClip,
+  SupportedFilterType,
+  SyncMode,
+  TransitionStyle
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
 import type { DesktopJob, LibraryAsset, LibraryRoot, LibrarySearchRequest } from '../../lib/studio-client';
@@ -36,7 +28,12 @@ import { StudioDataGrid, type StudioGridAction } from '../../app/components/Stud
 import { ToolbarButton } from '../../app/components/ToolbarButton';
 import { useMediaLibraryClient } from './hooks';
 import {
+  getAssetById,
   getCurrentVariant,
+  getDefaultVariant,
+  getFilterDefinition,
+  getSupportedAutomationProperties,
+  supportedFilterDefinitions,
   getAnalysisSummaryByAsset,
   formatSequenceName,
   useAnalysisFile,
@@ -200,68 +197,32 @@ export function CatalogView() {
     }
   };
 
-  const addAssetToProject = async (asset: LibraryAsset, cutIds: string[] = []) => {
+  const addAssetToProject = async (asset: LibraryAsset, cutIds?: string[]) => {
     try {
-      const imported = await api.library.importAssets({
+      const result = await api.library.importAssetToProject({
+        project,
         projectRoot,
-        assetIds: [asset.id]
-      });
-      if (imported.length === 0) {
-        addNotification('Catalogue asset was not available to add.', 'warn');
-        return;
-      }
-
-      const importedAsset = imported[0];
-      const cutSegments = focusedAsset?.id === asset.id
-        ? focusedSceneSegments.filter((scene) => cutIds.includes(scene.id))
-        : [];
-      const currentProject = useProjectSessionStore.getState().project;
-      const existingAssetIds = new Set(currentProject.assets.map((candidate) => candidate.id));
-      const existingCutIds = new Set(currentProject.cutCandidates.map((cut) => cut.id));
-      const nextCuts: CutCandidate[] = cutSegments.filter((scene) => scene.endMs > scene.startMs && scene.durationMs >= 1).map((scene) => {
-        let cutId = `cut-${importedAsset.id}-scene-${scene.index + 1}`;
-        if (existingCutIds.has(cutId)) {
-          cutId = `${cutId}-${Date.now().toString(36)}`;
-        }
-        return {
-          id: cutId,
-          assetId: importedAsset.id,
-          startMs: scene.startMs,
-          endMs: scene.endMs,
-          durationMs: scene.durationMs,
-          sceneScore: scene.score,
-          status: 'kept',
-          tags: ['catalogue-cut'],
-          note: `Catalogue cut ${scene.index + 1}`
-        };
-      });
-      const nextProject = normalizeProject({
-        ...currentProject,
-        assets: existingAssetIds.has(importedAsset.id)
-          ? currentProject.assets
-          : [...currentProject.assets, importedAsset],
-        analysisRefs: currentProject.analysisRefs,
-        cutCandidates: [...currentProject.cutCandidates, ...nextCuts]
+        projectFilePath: resolvedProjectFilePath,
+        assetId: asset.id,
+        cutIds
       });
 
-      if (resolvedProjectFilePath) {
-        const session = await api.project.saveProject({
-          project: nextProject,
-          projectFilePath: resolvedProjectFilePath
-        });
-        setSession(session);
+      if (result.saved) {
+        setSession(result.session);
       } else {
-        setProject(nextProject);
+        setProject(result.session.project);
       }
+
+      const addedCutIds = result.addedCutIds ?? [];
       addNotification(
-        cutSegments.length > 0
-          ? `Added ${cutSegments.length} cut${cutSegments.length === 1 ? '' : 's'} from ${asset.filename}.`
+        addedCutIds.length > 0
+          ? `Added ${addedCutIds.length} detected cut${addedCutIds.length === 1 ? '' : 's'} from ${asset.filename}.`
           : `Added ${asset.filename} to the project.`,
         'success'
       );
-      if (cutSegments.length > 0) {
+      if (addedCutIds.length > 0) {
         setMarkedCutIds(new Set());
-        selectCut(nextCuts[0]?.id);
+        selectCut(addedCutIds[0]);
       }
     } catch (error) {
       addNotification(`Add to project failed: ${getErrorMessage(error)}`, 'warn', 5200);
@@ -776,10 +737,11 @@ export function MediaView() {
   const project = useProjectSessionStore((state) => state.project);
   const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);
-  const mergeAssets = useProjectSessionStore((state) => state.mergeImportedAssets);
+  const setProject = useProjectSessionStore((state) => state.setProject);
   const setSession = useProjectSessionStore((state) => state.setSession);
   const selectedAssetId = useUiStore((state) => state.selectedAssetId);
   const selectAsset = useUiStore((state) => state.selectAsset);
+  const selectCut = useUiStore((state) => state.selectCut);
   const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const addNotification = useUiStore((state) => state.addNotification);
   const allJobs = useJobsStore((state) => state.jobs);
@@ -832,9 +794,23 @@ export function MediaView() {
   const selectedSyncCount = selectedAsset?.assetRole === 'music'
     ? selectedAnalysisFile?.syncEventTrack?.events.length ?? selectedAnalysisSummary?.syncEventCount ?? 0
     : selectedAnalysisSummary?.syncEventCount ?? 0;
+  const selectedAssetCutCandidateCount = selectedAsset
+    ? project.cutCandidates.filter((cut) => cut.assetId === selectedAsset.id).length
+    : 0;
+  const selectedAssetCutLabel = selectedAsset?.assetRole === 'transition-mask' || selectedAsset?.assetRole === 'transition-overlay'
+    ? 'Sequence cuts'
+    : 'Review cuts';
   const analyzableSelectedAssetIds = selectedAsset && selectedAsset.mediaType !== 'image' ? [selectedAsset.id] : [];
   const selectedAssetAnalysisReady = selectedAsset?.analysisStatus === 'completed';
   const selectedAssetNeedsAnalysis = analyzableSelectedAssetIds.length > 0 && !selectedAssetAnalysisReady;
+  const selectedAssetCanCreateReviewCuts = Boolean(
+    selectedAsset
+    && selectedAsset.mediaType === 'video'
+    && selectedAsset.assetRole === 'source'
+    && selectedAssetAnalysisReady
+    && selectedAnalysisFile
+    && selectedAssetCutCandidateCount === 0
+  );
   const importToolbarButtonStyle = (primary: boolean, edge: 'left' | 'middle' | 'right'): CSSProperties => ({
     padding: '9px 13px',
     borderRadius: 0,
@@ -879,20 +855,33 @@ export function MediaView() {
     setAutoplayAssetId(undefined);
   }, [autoplayAssetId, selectedAsset]);
 
+  const commitImportedAssets = async (imported: MediaAsset[]) => {
+    const nextProject = await api.project.applyOperation({
+      project: useProjectSessionStore.getState().project,
+      operation: {
+        type: 'mergeImportedAssets',
+        assets: imported
+      }
+    });
+
+    if (resolvedProjectFilePath) {
+      const session = await api.project.saveProject({
+        project: nextProject,
+        projectFilePath: resolvedProjectFilePath
+      });
+      setSession(session);
+    } else {
+      setProject(nextProject);
+    }
+  };
+
   const importMedia = async () => {
     const imported = await api.project.importMedia(projectRoot);
     if (imported.length === 0) {
       addNotification('Media import cancelled.', 'warn');
       return;
     }
-    mergeAssets(imported);
-    if (resolvedProjectFilePath) {
-      const session = await api.project.saveProject({
-        project: useProjectSessionStore.getState().project,
-        projectFilePath: resolvedProjectFilePath
-      });
-      setSession(session);
-    }
+    await commitImportedAssets(imported);
     setCurrentTab('media');
     addNotification(
       resolvedProjectFilePath
@@ -908,14 +897,7 @@ export function MediaView() {
       addNotification('Music import cancelled.', 'warn');
       return;
     }
-    mergeAssets(imported);
-    if (resolvedProjectFilePath) {
-      const session = await api.project.saveProject({
-        project: useProjectSessionStore.getState().project,
-        projectFilePath: resolvedProjectFilePath
-      });
-      setSession(session);
-    }
+    await commitImportedAssets(imported);
     setCurrentTab('music');
     addNotification(
       resolvedProjectFilePath
@@ -931,14 +913,7 @@ export function MediaView() {
       addNotification('Transition import cancelled.', 'warn');
       return;
     }
-    mergeAssets(imported);
-    if (resolvedProjectFilePath) {
-      const session = await api.project.saveProject({
-        project: useProjectSessionStore.getState().project,
-        projectFilePath: resolvedProjectFilePath
-      });
-      setSession(session);
-    }
+    await commitImportedAssets(imported);
     setCurrentTab('media');
     addNotification(
       resolvedProjectFilePath
@@ -954,14 +929,7 @@ export function MediaView() {
       addNotification('Transition overlay import cancelled.', 'warn');
       return;
     }
-    mergeAssets(imported);
-    if (resolvedProjectFilePath) {
-      const session = await api.project.saveProject({
-        project: useProjectSessionStore.getState().project,
-        projectFilePath: resolvedProjectFilePath
-      });
-      setSession(session);
-    }
+    await commitImportedAssets(imported);
     setCurrentTab('media');
     addNotification(
       resolvedProjectFilePath
@@ -992,6 +960,35 @@ export function MediaView() {
     window.setTimeout(() => {
       setLaunchLocked(false);
     }, 500);
+  };
+
+  const createReviewCutsFromSelectedAnalysis = async () => {
+    if (!selectedAsset || !selectedAnalysisRef?.path || !selectedAssetCanCreateReviewCuts) {
+      return;
+    }
+
+    const result = await api.project.materializeAnalysisCuts({
+      project,
+      projectFilePath: resolvedProjectFilePath,
+      assetId: selectedAsset.id,
+      analysisRefId: selectedAnalysisRef.id,
+      analysisPath: selectedAnalysisRef.path
+    });
+    const addedCutIds = result.addedCutIds ?? [];
+
+    if (addedCutIds.length === 0) {
+      addNotification('No new review cuts could be created for this asset.', 'warn', 2600);
+      return;
+    }
+
+    if (result.saved) {
+      setSession(result.session);
+    } else {
+      useProjectSessionStore.getState().setProject(result.session.project);
+    }
+
+    selectCut(addedCutIds[0]);
+    addNotification(`Created ${addedCutIds.length} review cut${addedCutIds.length === 1 ? '' : 's'} from existing analysis.`, 'success', 2200);
   };
 
   const mediaAssetColumns = useMemo<ColDef<MediaAsset>[]>(() => [
@@ -1066,71 +1063,82 @@ export function MediaView() {
     }
   ], [processingAnalysis, selectAsset]);
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(340px, 0.9fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-    <Panel title="Media Library" style={{ height: '100%', minWidth: 0, overflow: 'hidden' }} bodyStyle={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, minWidth: 0 }}>
-      <div style={{ display: 'grid', gap: 10, minWidth: 0, flex: '0 0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
-          <input
-            ref={mediaSearchRef}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by filename or tag"
-            style={{
-              flex: '1 1 320px',
-              minWidth: 0,
-              borderRadius: 7,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(13, 16, 22, 0.92)',
-              color: '#f6f7f9',
-              padding: '10px 14px'
-            }}
-          />
-          <ToolbarButton onClick={() => setCurrentTab('catalog')}>
-            Import From Catalogue
-          </ToolbarButton>
-        </div>
-        <div style={{ display: 'inline-flex', alignSelf: 'start', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, overflow: 'hidden', background: 'rgba(16, 20, 28, 0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-          <ToolbarButton primary onClick={() => void importMedia()} style={importToolbarButtonStyle(true, 'left')}>Import Media</ToolbarButton>
-          <ToolbarButton onClick={() => void importMusic()} style={importToolbarButtonStyle(false, 'middle')}>Import Music</ToolbarButton>
-          <ToolbarButton onClick={() => void importTransitionMasks()} style={importToolbarButtonStyle(false, 'middle')}>Import Transitions</ToolbarButton>
-          <ToolbarButton onClick={() => void importTransitionOverlays()} style={importToolbarButtonStyle(false, 'right')}>Import Overlays</ToolbarButton>
-        </div>
-      </div>
-      <div style={{ minHeight: 0, flex: '1 1 auto' }}>
-        <StudioDataGrid
-          rows={assets}
-          columns={mediaAssetColumns}
-          focusedRowId={selectedAsset?.id}
-          searchRef={mediaSearchRef}
-          onFocusRow={(asset) => selectAsset(asset.id)}
-          onRowOpen={(asset) => selectAsset(asset.id)}
-          onAction={(action, asset) => {
-            if (action === 'open') {
-              selectAsset(asset.id);
-            }
-            if (action === 'add' && asset.mediaType !== 'image') {
-              void runAnalysis([asset.id], 'selected');
-            }
-          }}
-          rowHeight={48}
-          emptyMessage="No imported media yet"
-        />
-      </div>
-    </Panel>
+  const inspectorMediaStyle: CSSProperties = {
+    width: '100%',
+    height: '100%',
+    minHeight: 0,
+    objectFit: 'contain',
+    borderRadius: 0,
+    background: '#090a0d'
+  };
 
-      <div style={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr) minmax(220px, 0.85fr)', gap: 16, minHeight: 0 }}>
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(420px, 0.95fr) minmax(520px, 1.05fr)', gap: 16, alignItems: 'stretch', width: '100%', height: '100%', minHeight: 0, minWidth: 0 }}>
+      <Panel title="Media Library" style={{ height: '100%', minWidth: 0, overflow: 'hidden' }} bodyStyle={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, minWidth: 0 }}>
+        <div style={{ display: 'grid', gap: 10, minWidth: 0, flex: '0 0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+            <input
+              ref={mediaSearchRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by filename or tag"
+              style={{
+                flex: '1 1 320px',
+                minWidth: 0,
+                borderRadius: 7,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(13, 16, 22, 0.92)',
+                color: '#f6f7f9',
+                padding: '10px 14px'
+              }}
+            />
+            <ToolbarButton onClick={() => setCurrentTab('catalog')}>
+              Import From Catalogue
+            </ToolbarButton>
+          </div>
+          <div style={{ display: 'inline-flex', alignSelf: 'start', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, overflow: 'hidden', background: 'rgba(16, 20, 28, 0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+            <ToolbarButton primary onClick={() => void importMedia()} style={importToolbarButtonStyle(true, 'left')}>Import Media</ToolbarButton>
+            <ToolbarButton onClick={() => void importMusic()} style={importToolbarButtonStyle(false, 'middle')}>Import Music</ToolbarButton>
+            <ToolbarButton onClick={() => void importTransitionMasks()} style={importToolbarButtonStyle(false, 'middle')}>Import Transitions</ToolbarButton>
+            <ToolbarButton onClick={() => void importTransitionOverlays()} style={importToolbarButtonStyle(false, 'right')}>Import Overlays</ToolbarButton>
+          </div>
+        </div>
+        <div style={{ minHeight: 0, flex: '1 1 auto' }}>
+          <StudioDataGrid
+            rows={assets}
+            columns={mediaAssetColumns}
+            focusedRowId={selectedAsset?.id}
+            searchRef={mediaSearchRef}
+            onFocusRow={(asset) => selectAsset(asset.id)}
+            onRowOpen={(asset) => selectAsset(asset.id)}
+            onAction={(action, asset) => {
+              if (action === 'open') {
+                selectAsset(asset.id);
+              }
+              if (action === 'add' && asset.mediaType !== 'image') {
+                void runAnalysis([asset.id], 'selected');
+              }
+            }}
+            rowHeight={48}
+            emptyMessage="No imported media yet"
+          />
+        </div>
+      </Panel>
+
+      <div style={{ display: 'flex', minHeight: 0, minWidth: 0 }}>
         <Panel title="Asset Inspector" style={{ height: '100%', minWidth: 0, overflow: 'hidden' }} bodyStyle={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
           {selectedAsset ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, height: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateRows: 'minmax(280px, 1fr) minmax(120px, 0.65fr) auto', gap: 10, minHeight: 0, height: '100%' }}>
               {selectedAsset.mediaType === 'image' ? (
-                <img
-                  src={toMediaSrc(selectedAsset.path.absolutePath)}
-                  alt={selectedAsset.label ?? selectedAsset.filename}
-                  style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 0, background: '#090a0d', maxHeight: 210 }}
-                />
+                <div style={{ minHeight: 0, overflow: 'hidden', background: '#090a0d' }}>
+                  <img
+                    src={toMediaSrc(selectedAsset.path.absolutePath)}
+                    alt={selectedAsset.label ?? selectedAsset.filename}
+                    style={inspectorMediaStyle}
+                  />
+                </div>
               ) : selectedAsset.mediaType === 'audio' ? (
-                <div style={{ borderRadius: 0, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,10,13,0.92)', padding: 10 }}>
+                <div style={{ minHeight: 0, borderRadius: 0, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(9,10,13,0.92)', padding: 10, display: 'grid', alignContent: 'center' }}>
                   <audio
                     ref={previewAudioRef}
                     controls
@@ -1140,16 +1148,18 @@ export function MediaView() {
                   />
                 </div>
               ) : (
-                <video
-                  ref={previewVideoRef}
-                  controls
-                  muted
-                  playsInline
-                  preload="metadata"
-                  autoPlay={autoplayAssetId === selectedAsset.id}
-                  src={toMediaSrc(selectedAsset.path.absolutePath)}
-                  style={{ width: '100%', borderRadius: 0, background: '#090a0d', aspectRatio: '16 / 9', maxHeight: 210 }}
-                />
+                <div style={{ minHeight: 0, overflow: 'hidden', background: '#090a0d' }}>
+                  <video
+                    ref={previewVideoRef}
+                    controls
+                    muted
+                    playsInline
+                    preload="metadata"
+                    autoPlay={autoplayAssetId === selectedAsset.id}
+                    src={toMediaSrc(selectedAsset.path.absolutePath)}
+                    style={inspectorMediaStyle}
+                  />
+                </div>
               )}
               <div style={{ display: 'grid', gap: 8, minHeight: 0, overflow: 'auto', paddingRight: 4 }}>
                 <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedAsset.label ?? selectedAsset.filename}</div>
@@ -1163,10 +1173,28 @@ export function MediaView() {
                   ) : null}
                 </div>
                 {selectedAsset.mediaType !== 'image' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
                     <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
                       <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Analysis</div>
-                      <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2 }}>{selectedAssetAnalysisReady ? 'ready' : 'pending'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 3, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.2 }}>{selectedAssetAnalysisReady ? 'ready' : 'pending'}</div>
+                        {selectedAssetCanCreateReviewCuts ? (
+                          <ToolbarButton
+                            onClick={() => void createReviewCutsFromSelectedAnalysis()}
+                            style={{ height: 22, minHeight: 22, padding: '0 7px', fontSize: 11, flex: '0 0 auto' }}
+                          >
+                            Create cuts
+                          </ToolbarButton>
+                        ) : selectedAssetAnalysisReady ? (
+                          <ToolbarButton
+                            onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
+                            disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
+                            style={{ height: 22, minHeight: 22, padding: '0 7px', fontSize: 11, flex: '0 0 auto' }}
+                          >
+                            Re-analyse
+                          </ToolbarButton>
+                        ) : null}
+                      </div>
                     </div>
                     <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
                       <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Changes</div>
@@ -1175,6 +1203,10 @@ export function MediaView() {
                     <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
                       <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sync</div>
                       <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2 }}>{String(selectedSyncCount)}</div>
+                    </div>
+                    <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, padding: '6px 8px', background: 'rgba(255,255,255,0.03)' }}>
+                      <div style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{selectedAssetCutLabel}</div>
+                      <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, lineHeight: 1.2, color: selectedAssetCutCandidateCount > 0 ? '#9fe1c1' : '#f6f7f9' }}>{String(selectedAssetCutCandidateCount)}</div>
                     </div>
                   </div>
                 ) : null}
@@ -1196,48 +1228,39 @@ export function MediaView() {
                         ? 'Music analysis is ready. Open cue timing to work from detected change and sync events.'
                         : 'Run analysis first to extract change and sync events before working with cue timing.'
                       : selectedAssetAnalysisReady
-                        ? 'Analysis is ready. Move into Cut Review to work with generated candidates.'
+                        ? selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay'
+                          ? `${selectedAssetCutCandidateCount} sequence cut${selectedAssetCutCandidateCount === 1 ? '' : 's'} available for transition and overlay timing.`
+                          : selectedAssetCutCandidateCount > 0
+                            ? `${selectedAssetCutCandidateCount} review cut${selectedAssetCutCandidateCount === 1 ? '' : 's'} and timing data are available.`
+                            : 'Analysis is ready, but no review cuts are saved for this source footage yet.'
                         : 'Run analysis to generate sidecars and cut candidates for this source asset.'}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: '0 0 auto' }}>
-                {selectedAsset.mediaType === 'image' ? null : selectedAsset.assetRole === 'music' ? (
-                  selectedAssetAnalysisReady ? (
-                    <>
+              {selectedAsset.mediaType !== 'image' && (selectedAsset.assetRole === 'music' || !selectedAssetAnalysisReady) ? (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: '0 0 auto' }}>
+                  {selectedAsset.assetRole === 'music' ? (
+                    selectedAssetAnalysisReady ? (
                       <ToolbarButton primary onClick={() => setCurrentTab('music')}>Open Cue Timing</ToolbarButton>
-                      <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
-                        Re-analyse
+                    ) : (
+                      <ToolbarButton
+                        primary
+                        onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
+                        disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
+                      >
+                        {processingAnalysis ? 'Processing…' : 'Analyse Music'}
                       </ToolbarButton>
-                    </>
+                    )
                   ) : (
                     <ToolbarButton
                       primary
                       onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
                       disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
                     >
-                      {processingAnalysis ? 'Processing…' : 'Analyse Music'}
+                      {processingAnalysis ? 'Processing…' : 'Analyse Selected'}
                     </ToolbarButton>
-                  )
-                ) : selectedAssetAnalysisReady ? (
-                  <>
-                    <ToolbarButton primary onClick={() => setCurrentTab('cuts')}>Open Cut Review</ToolbarButton>
-                    <ToolbarButton onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')} disabled={processingAnalysis}>
-                      Re-analyse
-                    </ToolbarButton>
-                  </>
-                ) : (
-                  <ToolbarButton
-                    primary
-                    onClick={() => void runAnalysis(analyzableSelectedAssetIds, 'selected')}
-                    disabled={processingAnalysis || analyzableSelectedAssetIds.length === 0}
-                  >
-                    {processingAnalysis ? 'Processing…' : 'Analyse Selected'}
-                  </ToolbarButton>
-                )}
-                {selectedAsset.assetRole === 'transition-mask' || selectedAsset.assetRole === 'transition-overlay' ? (
-                  <ToolbarButton onClick={() => setCurrentTab('sequence')}>Open Sequence Builder</ToolbarButton>
-                ) : null}
-              </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted, textAlign: 'center', padding: 24 }}>

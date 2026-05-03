@@ -165,7 +165,8 @@ export function createAnalysisJobs({ logger, enqueue, findActiveAnalysisJob }: A
           await writeFile(thumbnailManifestPath, `${JSON.stringify(analysisFile.thumbnails ?? [], null, 2)}\n`, 'utf8');
           reportAssetProgress(0.9);
 
-          const generatedCuts = analysisFile.sceneCuts.length > 0
+          const shouldGenerateCuts = !isAudioAnalysis && asset.mediaType === 'video' && asset.assetRole === 'source';
+          const generatedCuts = shouldGenerateCuts
             ? generateCutCandidatesFromAnalysis(analysisFile, {
               analysisRefId: `analysis-${assetId}`
             })

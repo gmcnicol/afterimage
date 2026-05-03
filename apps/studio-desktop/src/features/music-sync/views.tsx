@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import type { ColDef } from 'ag-grid-community';
-import {
-  getAssetById,
-  type AudioChangeEvent,
-  type MediaAsset,
-  type SyncEvent
+import type {
+  AudioChangeEvent,
+  MediaAsset,
+  SyncEvent
 } from '@afterimage/project-model';
 import { StudioDataGrid } from '../../app/components/StudioDataGrid';
 import { ToolbarButton } from '../../app/components/ToolbarButton';
@@ -13,6 +12,7 @@ import { useProjectSessionStore } from '../../stores/project-session-store';
 import { useUiStore } from '../../stores/ui-store';
 import {
   formatMillisecondsClock,
+  getAssetById,
   getCurrentVariant,
   useAnalysisFile
 } from '../view-support';

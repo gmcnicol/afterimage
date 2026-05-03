@@ -8,6 +8,7 @@ import type {
   LibrarySearchRequest,
   LibrarySearchResult,
   LogEntry,
+  ProjectOperation,
   ProjectSessionSnapshot,
   RelinkAssetResult,
   RunAnalysisRequest,
@@ -28,6 +29,7 @@ export type {
   LibrarySearchRequest,
   LibrarySearchResult,
   LogEntry,
+  ProjectOperation,
   ProjectSessionSnapshot,
   RelinkAssetResult,
   RunAnalysisRequest,
@@ -72,7 +74,9 @@ export function createStudioClient(bridge: StudioPreloadBridge): StudioClient {
       importTransitionMasks: (projectRoot) => bridge.invoke('command', 'project.importTransitionMasks', projectRoot),
       importTransitionOverlays: (projectRoot) => bridge.invoke('command', 'project.importTransitionOverlays', projectRoot),
       relinkAsset: (input) => bridge.invoke('command', 'project.relinkAsset', input),
-      importCueFile: () => bridge.invoke('command', 'project.importCueFile', undefined)
+      importCueFile: () => bridge.invoke('command', 'project.importCueFile', undefined),
+      applyOperation: (input) => bridge.invoke('command', 'project.applyOperation', input),
+      materializeAnalysisCuts: (input) => bridge.invoke('command', 'project.materializeAnalysisCuts', input)
     },
     library: {
       addRoot: (input) => bridge.invoke('command', 'library.addRoot', input),
@@ -84,7 +88,8 @@ export function createStudioClient(bridge: StudioPreloadBridge): StudioClient {
       listDirectories: (rootId) => bridge.invoke('query', 'library.listDirectories', rootId),
       searchAssets: (input) => bridge.invoke('query', 'library.searchAssets', input),
       importAssets: (input) => bridge.invoke('command', 'library.importAssets', input),
-      removeAssets: (input) => bridge.invoke('command', 'library.removeAssets', input)
+      removeAssets: (input) => bridge.invoke('command', 'library.removeAssets', input),
+      importAssetToProject: (input) => bridge.invoke('command', 'library.importAssetToProject', input)
     },
     jobs: {
       list: () => bridge.invoke('query', 'jobs.list', undefined),

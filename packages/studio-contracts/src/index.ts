@@ -34,6 +34,7 @@ export type {
   LibraryCommandMap,
   LibraryDirectory,
   LibraryImportAssetsRequest,
+  LibraryImportAssetToProjectRequest,
   LibraryQueryMap,
   LibraryRemoveAssetsRequest,
   LibraryRoot,
@@ -43,8 +44,12 @@ export type {
 } from './library.js';
 export type {
   ImportCueFileResult,
+  ProjectMaterializeAnalysisCutsRequest,
   ProjectCommandMap,
   ProjectEventMap,
+  ProjectMutationResult,
+  ProjectOperation,
+  ProjectOperationRequest,
   ProjectQueryMap,
   ProjectSessionSnapshot,
   RelinkAssetResult,

@@ -1,8 +1,8 @@
 import { useEffect, useEffectEvent } from 'react';
-import { getDefaultVariant } from '@afterimage/project-model';
 import { getStudioClient } from '../../lib/studio-client';
 import { useProjectSessionStore } from '../../stores/project-session-store';
 import { useUiStore } from '../../stores/ui-store';
+import { getDefaultVariant } from '../../features/view-support';
 import { getEnabledExportProfileIds, resolveProjectFilePath } from '../utils';
 
 export function useKeyboardShortcuts(): void {
