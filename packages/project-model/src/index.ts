@@ -506,7 +506,7 @@ const SUPPORTED_FILTER_DEFINITIONS = [
         label: 'Brightness',
         min: 0,
         max: 1,
-        defaultValue: 0.5,
+        defaultValue: 0.6,
         step: 0.01
       }
     ]

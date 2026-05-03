@@ -376,18 +376,23 @@ function compileFilterExpression(filter: FilterInstance): string {
   const effectiveAmount = primaryValue * mix;
 
   switch (filter.type) {
-    case 'chroma-bleed':
-      return `eq=saturation=${formatDecimal(1 - (effectiveAmount * 0.25))}`;
+    case 'chroma-bleed': {
+      const shiftPixels = Math.round(effectiveAmount * 12);
+      return `chromashift=cbh=${shiftPixels}:crh=${-shiftPixels}:edge=smear,eq=saturation=${formatDecimal(1 + (effectiveAmount * 0.12))}`;
+    }
     case 'bloom-soft':
-      return `gblur=sigma=${formatDecimal(0.4 + (effectiveAmount * 4))}`;
-    case 'glitch-bands':
-      return `noise=alls=${formatDecimal(10 + (effectiveAmount * 70), 1)}:allf=t+u`;
+      return `gblur=sigma=${formatDecimal(0.6 + (effectiveAmount * 5))},eq=contrast=${formatDecimal(1 + (effectiveAmount * 0.12))}:brightness=${formatDecimal(effectiveAmount * 0.12)}:saturation=${formatDecimal(1 + (effectiveAmount * 0.08))}`;
+    case 'glitch-bands': {
+      const noiseStrength = Math.min(100, 20 + (effectiveAmount * 80));
+      const opacity = Math.min(0.35, 0.08 + (effectiveAmount * 0.22));
+      return `noise=alls=${formatDecimal(noiseStrength, 1)}:allf=t+u,tblend=all_mode=difference:all_opacity=${formatDecimal(opacity)}`;
+    }
     case 'blur':
       return `gblur=sigma=${formatDecimal(0.4 + (effectiveAmount * 5))}`;
     case 'contrast':
       return `eq=contrast=${formatDecimal(1 + effectiveAmount)}`;
     case 'brightness':
-      return `eq=brightness=${formatDecimal((effectiveAmount - 0.5) * 0.2)}`;
+      return `eq=brightness=${formatDecimal(effectiveAmount * 0.25)}`;
   }
 
   throw new Error(`Unsupported filter type "${filter.type}" in render compiler.`);

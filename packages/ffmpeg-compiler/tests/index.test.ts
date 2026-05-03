@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { getExportProfileById } from '../../export-profiles/src';
 import { fixtureProject } from '../../test-fixtures/src';
 import { parseProject } from '../../schema-validators/src';
+import type { FilterInstance, SupportedFilterType } from '../../project-model/src';
 import {
   buildAnalysisPlan,
   buildAudioChangeAnalysisPlan,
@@ -212,7 +213,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "-i",
             "fixtures/audio/score-alpha.wav",
             "-filter_complex",
-            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.072,gblur=sigma=2.150,eq=saturation=0.938,fps=30.000,scale=1920:1080,setsar=1,format=yuv420p[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]tpad=stop_mode=clone:stop_duration=3.000,trim=duration=5.000,fade=t=out:st=3.000:d=2.000,format=yuv420p[vout];[1:a]atrim=start=0:duration=5.000,asetpts=PTS-STARTPTS[amusic]",
+            "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.440,eq=contrast=1.020:brightness=0.020:saturation=1.013,gblur=sigma=2.150,chromashift=cbh=3:crh=-3:edge=smear,eq=saturation=1.030,fps=30.000,scale=1920:1080,setsar=1,format=yuv420p[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]tpad=stop_mode=clone:stop_duration=3.000,trim=duration=5.000,fade=t=out:st=3.000:d=2.000,format=yuv420p[vout];[1:a]atrim=start=0:duration=5.000,asetpts=PTS-STARTPTS[amusic]",
             "-map",
             "[vout]",
             "-c:v",
@@ -395,8 +396,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
 
     expect(plan.command.args).toContain('exports/studio-fixture-automation.mov');
     expect(plan.command.args.join(' ')).toContain('concat=n=2:v=1:a=0[vconcat]');
-    expect(plan.command.args.join(' ')).toContain('gblur=sigma=1.800');
-    expect(plan.command.args.join(' ')).toContain('gblur=sigma=3.400');
+    expect(plan.command.args.join(' ')).toContain('gblur=sigma=2.350,eq=contrast=1.042:brightness=0.042:saturation=1.028');
+    expect(plan.command.args.join(' ')).toContain('gblur=sigma=4.350,eq=contrast=1.090:brightness=0.090:saturation=1.060');
     expect(plan.command.args.join(' ')).toContain('fade=t=out:st=3.000:d=2.000');
   });
 
@@ -425,7 +426,39 @@ describe('@afterimage/ffmpeg-compiler', () => {
       outputPath: '.afterimage/preview/variant-signal-breakup.mp4'
     });
 
-    expect(plan.command.args.join(' ')).toContain('noise=alls=80.0:allf=t+u');
+    expect(plan.command.args.join(' ')).toContain('noise=alls=100.0:allf=t+u,tblend=all_mode=difference:all_opacity=0.300');
+  });
+
+  it.each([
+    ['contrast', { contrast: 1 }, 'eq=contrast=2.000'],
+    ['brightness', { brightness: 1 }, 'eq=brightness=0.250'],
+    ['blur', { radius: 1 }, 'gblur=sigma=5.400'],
+    ['bloom-soft', { strength: 1 }, 'gblur=sigma=5.600,eq=contrast=1.120:brightness=0.120:saturation=1.080'],
+    ['glitch-bands', { strength: 1 }, 'noise=alls=100.0:allf=t+u,tblend=all_mode=difference:all_opacity=0.300'],
+    ['chroma-bleed', { strength: 1 }, 'chromashift=cbh=12:crh=-12:edge=smear,eq=saturation=1.120']
+  ] satisfies [SupportedFilterType, Record<string, number>, string][])('compiles %s into an active video filter', (type, parameters, expectedExpression) => {
+    const filter: FilterInstance = {
+      id: `filter-${type}`,
+      type,
+      enabled: true,
+      orderIndex: 0,
+      parameters,
+      mix: 1
+    };
+    const plan = buildPreviewPlan(parseProject({
+      ...fixtureProject,
+      filterStacks: [
+        {
+          ...fixtureProject.filterStacks[0],
+          filters: [filter]
+        }
+      ],
+      automationLanes: []
+    }), {
+      outputPath: `.afterimage/preview/variant-${type}.mp4`
+    });
+
+    expect(plan.command.args.join(' ')).toContain(expectedExpression);
   });
 
   it('builds asset-backed mask transitions with optional overlay assets', () => {
