@@ -32,7 +32,6 @@ import {
   getAssetById,
   getCurrentVariant,
   getDefaultVariant,
-  getFilterDefinition,
   getSupportedAutomationProperties,
   supportedFilterDefinitions,
   getAnalysisSummaryByAsset,
@@ -45,6 +44,7 @@ import {
   buildSyncMarkers,
   renderTimeline,
   AutomationLaneTimeline,
+  formatFilterInstanceLabel,
   formatParameterLabel,
   getStackForCurrentVariant,
   filterTransitionAssets,
@@ -85,7 +85,14 @@ export function AutomationView() {
   const selectedLane = project.automationLanes.find((lane) => lane.id === selectedLaneId) ?? project.automationLanes[0];
   const laneColumns = useMemo<ColDef<(typeof project.automationLanes)[number]>[]>(() => [
     { field: 'name', headerName: 'Lane', minWidth: 170, cellRenderer: ({ value }: { value?: string }) => <strong>{value}</strong> },
-    { headerName: 'Target', minWidth: 190, valueGetter: ({ data }) => data ? `${data.target.filterId} -> ${data.target.property}` : '' },
+    {
+      headerName: 'Target',
+      minWidth: 190,
+      valueGetter: ({ data }) => {
+        const filter = stackFilters.find((candidate) => candidate.id === data?.target.filterId);
+        return data ? `${formatFilterInstanceLabel(filter, stackFilters)} · ${formatParameterLabel(data.target.property)}` : '';
+      }
+    },
     { field: 'enabled', headerName: 'State', width: 100, cellRenderer: ({ value }: { value?: boolean }) => <span style={pillStyle(value === false ? 'default' : 'success')}>{value === false ? 'bypassed' : 'enabled'}</span> },
     { headerName: 'Keyframes', width: 110, valueGetter: ({ data }) => data?.keyframes.length ?? 0 },
     {
@@ -100,7 +107,20 @@ export function AutomationView() {
         </div>
       ) : null
     }
-  ], [addKeyframe, project.automationLanes, removeLane, setLaneEnabled]);
+  ], [addKeyframe, removeLane, setLaneEnabled, stackFilters]);
+
+  const handleAddLane = () => {
+    if (!targetFilter) {
+      return;
+    }
+
+    const property = targetProperties[0] ?? 'mix';
+    addLane(
+      targetFilter.id,
+      property,
+      `${formatFilterInstanceLabel(targetFilter, stackFilters)} ${formatParameterLabel(property)}`
+    );
+  };
 
   return (
     <div style={{ display: 'grid', gap: 16, height: '100%', minHeight: 0 }}>
@@ -108,7 +128,7 @@ export function AutomationView() {
         <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
           <ToolbarButton
             primary
-            onClick={() => targetFilter && addLane(targetFilter.id, targetProperties[0] ?? 'mix', `Lane ${project.automationLanes.length + 1}`)}
+            onClick={handleAddLane}
             disabled={!targetFilter}
           >
             Add Lane
@@ -127,12 +147,13 @@ export function AutomationView() {
           {project.automationLanes.map((lane) => {
             const laneFilter = stackFilters.find((filter) => filter.id === lane.target.filterId) ?? stackFilters[0];
             const laneProperties = getSupportedAutomationProperties(laneFilter?.type ?? '');
+            const laneFilterLabel = formatFilterInstanceLabel(laneFilter, stackFilters);
             return (
               <div key={lane.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                   <div>
                     <strong>{lane.name}</strong>
-                    <div style={{ color: muted, fontSize: 13 }}>Target {lane.target.filterId} {'->'} {lane.target.property}</div>
+                    <div style={{ color: muted, fontSize: 13 }}>Target {laneFilterLabel} · {formatParameterLabel(lane.target.property)}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: muted }}>
@@ -159,7 +180,7 @@ export function AutomationView() {
                       style={{ borderRadius: 12, padding: '10px 12px', background: 'rgba(13, 16, 22, 0.92)', color: '#f6f7f9', border: '1px solid rgba(255,255,255,0.08)' }}
                     >
                       {stackFilters.map((filter) => (
-                        <option key={filter.id} value={filter.id}>{getFilterDefinition(filter.type)?.label ?? filter.type}</option>
+                        <option key={filter.id} value={filter.id}>{formatFilterInstanceLabel(filter, stackFilters)}</option>
                       ))}
                     </select>
                   </label>
@@ -230,4 +251,3 @@ export function AutomationView() {
     </div>
   );
 }
-

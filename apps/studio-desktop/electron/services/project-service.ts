@@ -73,6 +73,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function collectProjectEntityIds(project: ProjectSessionSnapshot['project']): Set<string> {
+  return new Set([
+    project.id,
+    ...project.assets.map((asset) => asset.id),
+    ...project.presets.map((preset) => preset.id),
+    ...project.analysisRefs.map((ref) => ref.id),
+    ...project.cutCandidates.map((cut) => cut.id),
+    ...project.bins.map((bin) => bin.id),
+    ...project.sequences.map((sequence) => sequence.id),
+    ...project.variants.map((variant) => variant.id),
+    ...project.variants.flatMap((variant) => [
+      ...(variant.clips ?? []).map((clip) => clip.id),
+      ...(variant.markers ?? []).map((marker) => marker.id),
+      ...(variant.sections ?? []).map((section) => section.id)
+    ]).flat(),
+    ...project.filterStacks.map((stack) => stack.id),
+    ...project.filterStacks.flatMap((stack) => stack.filters.map((filter) => filter.id)),
+    ...project.automationLanes.map((lane) => lane.id),
+    ...project.automationLanes.flatMap((lane) => lane.keyframes.map((keyframe) => keyframe.id)),
+    ...project.midiMappings.map((mapping) => mapping.id)
+  ]);
+}
+
+function createProjectEntityId(project: ProjectSessionSnapshot['project'], prefix: string): string {
+  const ids = collectProjectEntityIds(project);
+  const baseId = `${prefix}-${Date.now()}`;
+
+  if (!ids.has(baseId)) {
+    return baseId;
+  }
+
+  let suffix = 2;
+  while (ids.has(`${baseId}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseId}-${suffix}`;
+}
+
 function parseCueKind(value: unknown): Marker['kind'] {
   if (value === 'beat' || value === 'chapter' || value === 'marker') {
     return value;
@@ -296,25 +335,25 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return domainOps.deleteVariant(project, operation.variantId);
       case 'addMarker':
         return domainOps.addMarker(project, operation.variantId, {
-          id: `marker-${Date.now()}`,
+          id: createProjectEntityId(project, 'marker'),
           label: operation.label,
           timeMs: operation.timeMs,
           kind: 'marker'
         });
       case 'addSection':
         return domainOps.addSection(project, operation.variantId, {
-          id: `section-${Date.now()}`,
+          id: createProjectEntityId(project, 'section'),
           label: operation.label,
           startMs: operation.startMs,
           endMs: operation.endMs
         });
       case 'addFilterToSequenceStack': {
-        const stackId = project.variants[0]?.stackId;
+        const stackId = operation.stackId ?? project.variants[0]?.stackId;
         if (!stackId || !getFilterDefinition(operation.filterType) || !getPrimaryAutomationProperty(operation.filterType)) {
           return project;
         }
         return domainOps.addFilterToStack(project, stackId, {
-          id: `filter-${Date.now()}`,
+          id: createProjectEntityId(project, 'filter'),
           type: operation.filterType,
           enabled: true,
           parameters: getDefaultFilterParameters(operation.filterType),
@@ -332,7 +371,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       case 'updateFilterParameter':
         return domainOps.updateFilterParameter(project, operation.stackId, operation.filterId, operation.key, operation.value);
       case 'applyPresetToSequenceStack': {
-        const stackId = project.variants[0]?.stackId;
+        const stackId = operation.stackId ?? project.variants[0]?.stackId;
         return stackId ? domainOps.applyPresetToStack(project, operation.presetId, stackId) : project;
       }
       case 'safeRandomizeFilter':
@@ -341,7 +380,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return domainOps.safeRandomizeStack(project, operation.stackId);
       case 'addAutomationLane':
         return domainOps.addAutomationLane(project, {
-          id: `lane-${Date.now()}`,
+          id: createProjectEntityId(project, 'lane'),
           name: operation.name,
           target: {
             filterId: operation.filterId,
@@ -349,7 +388,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
           },
           enabled: true,
           keyframes: [{
-            id: `keyframe-${Date.now()}`,
+            id: createProjectEntityId(project, 'keyframe'),
             timeMs: 0,
             value: 0.5
           }]
@@ -365,7 +404,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return domainOps.setAutomationLaneEnabled(project, operation.laneId, operation.enabled);
       case 'addLaneKeyframe':
         return domainOps.addLaneKeyframe(project, operation.laneId, {
-          id: `keyframe-${Date.now()}`,
+          id: createProjectEntityId(project, 'keyframe'),
           timeMs: operation.timeMs,
           value: operation.value
         });

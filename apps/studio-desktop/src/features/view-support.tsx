@@ -85,6 +85,21 @@ export function getFilterDefinition(type: string): FilterDefinition | undefined 
   return supportedFilterDefinitions.find((definition) => definition.type === type);
 }
 
+export function formatFilterInstanceLabel(filter: FilterInstance | undefined, stackFilters: FilterInstance[]): string {
+  if (!filter) {
+    return 'Missing filter';
+  }
+
+  const baseLabel = getFilterDefinition(filter.type)?.label ?? formatParameterLabel(filter.type);
+  const matchingFilters = stackFilters.filter((candidate) => candidate.type === filter.type);
+  if (matchingFilters.length <= 1) {
+    return baseLabel;
+  }
+
+  const ordinal = matchingFilters.findIndex((candidate) => candidate.id === filter.id) + 1;
+  return `${baseLabel} ${Math.max(ordinal, 1)}`;
+}
+
 export function getSupportedAutomationProperties(type: string): AutomationTargetProperty[] {
   const definition = getFilterDefinition(type);
   return definition ? ['mix', ...definition.parameters.map((parameter) => parameter.key)] : [];
