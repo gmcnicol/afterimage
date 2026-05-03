@@ -41,7 +41,7 @@ export const supportedFilterDefinitions = [
     type: 'brightness',
     label: 'Brightness',
     ffmpegGroup: 'eq',
-    parameters: [{ key: 'brightness', label: 'Brightness', min: 0, max: 1, defaultValue: 0.5, step: 0.01 }]
+    parameters: [{ key: 'brightness', label: 'Brightness', min: 0, max: 1, defaultValue: 0.6, step: 0.01 }]
   },
   {
     type: 'blur',
