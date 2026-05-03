@@ -2,26 +2,20 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ColDef } from 'ag-grid-community';
 import { exportProfiles, type ExportProfileId } from '@afterimage/export-profiles';
 import { loadPresetLibrary } from '@afterimage/preset-library';
-import {
-  getAssetById,
-  getDefaultVariant,
-  getFilterDefinition,
-  getPrimaryAutomationProperty,
-  getSupportedAutomationProperties,
-  normalizeProject,
-  supportedFilterDefinitions,
-  type AnalysisFile,
-  type AssetRole,
-  type AutomationTargetProperty,
-  type CutCandidate,
-  type FilterInstance,
-  type Marker,
-  type MediaAsset,
-  type NormalizedProjectFile,
-  type SequenceClip,
-  type SupportedFilterType,
-  type SyncMode,
-  type TransitionStyle
+import type {
+  AnalysisFile,
+  AssetRole,
+  AutomationTargetProperty,
+  CutCandidate,
+  FilterDefinition,
+  FilterInstance,
+  Marker,
+  MediaAsset,
+  NormalizedProjectFile,
+  SequenceClip,
+  SupportedFilterType,
+  SyncMode,
+  TransitionStyle
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
 import { getStudioClient, type DesktopJob, type LibraryAsset, type LibraryRoot, type LibrarySearchRequest } from '../lib/studio-client';
@@ -35,6 +29,66 @@ import { JobRow } from '../app/components/JobRow';
 import { StatCard } from '../app/components/StatCard';
 import { StudioDataGrid, type StudioGridAction } from '../app/components/StudioDataGrid';
 import { ToolbarButton } from '../app/components/ToolbarButton';
+
+export const supportedFilterDefinitions = [
+  {
+    type: 'contrast',
+    label: 'Contrast',
+    ffmpegGroup: 'eq',
+    parameters: [{ key: 'contrast', label: 'Contrast', min: 0, max: 1, defaultValue: 0.35, step: 0.01 }]
+  },
+  {
+    type: 'brightness',
+    label: 'Brightness',
+    ffmpegGroup: 'eq',
+    parameters: [{ key: 'brightness', label: 'Brightness', min: 0, max: 1, defaultValue: 0.5, step: 0.01 }]
+  },
+  {
+    type: 'blur',
+    label: 'Blur',
+    ffmpegGroup: 'gblur',
+    parameters: [{ key: 'radius', label: 'Radius', min: 0, max: 1, defaultValue: 0.24, step: 0.01 }]
+  },
+  {
+    type: 'bloom-soft',
+    label: 'Bloom Soft',
+    ffmpegGroup: 'gblur',
+    parameters: [{ key: 'strength', label: 'Strength', min: 0, max: 1, defaultValue: 0.28, step: 0.01 }]
+  },
+  {
+    type: 'glitch-bands',
+    label: 'Glitch Bands',
+    ffmpegGroup: 'noise',
+    parameters: [{ key: 'strength', label: 'Strength', min: 0, max: 1, defaultValue: 0.22, step: 0.01 }]
+  },
+  {
+    type: 'chroma-bleed',
+    label: 'Chroma Bleed',
+    ffmpegGroup: 'eq',
+    parameters: [{ key: 'strength', label: 'Strength', min: 0, max: 1, defaultValue: 0.25, step: 0.01 }]
+  }
+] as const satisfies readonly FilterDefinition[];
+
+export function getAssetById(project: NormalizedProjectFile, assetId: string): MediaAsset | undefined {
+  return project.assets.find((asset) => asset.id === assetId);
+}
+
+export function getDefaultVariant(project: NormalizedProjectFile, sequenceId?: string) {
+  const sequence = sequenceId
+    ? project.sequences.find((candidate) => candidate.id === sequenceId)
+    : project.sequences.find((candidate) => candidate.id === project.defaultSequenceId) ?? project.sequences[0];
+  const variantId = sequence?.defaultVariantId ?? sequence?.variantIds[0];
+  return variantId ? project.variants.find((variant) => variant.id === variantId) : undefined;
+}
+
+export function getFilterDefinition(type: string): FilterDefinition | undefined {
+  return supportedFilterDefinitions.find((definition) => definition.type === type);
+}
+
+export function getSupportedAutomationProperties(type: string): AutomationTargetProperty[] {
+  const definition = getFilterDefinition(type);
+  return definition ? ['mix', ...definition.parameters.map((parameter) => parameter.key)] : [];
+}
 
 export function getCurrentVariant(project: NormalizedProjectFile, selectedVariantId?: string) {
   return project.variants.find((candidate) => candidate.id === (selectedVariantId ?? getDefaultVariant(project)?.id)) ?? project.variants[0];

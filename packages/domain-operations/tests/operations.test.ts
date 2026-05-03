@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createEmptyProject } from '@afterimage/project-model';
+import { validateProject } from '@afterimage/schema-validators';
 import {
   addCutToSequence,
   buildNewVariantFromReviewedCuts,
@@ -21,6 +22,7 @@ import {
 import { addAutomationLane, addLaneKeyframe, updateAutomationLaneTarget } from '../src/automation-ops';
 import { mergeImportedAssets, toggleExportProfile } from '../src/project-ops';
 import { addFilterToStack, applyPresetToStack, safeRandomizeFilter, updateFilterParameter } from '../src/style-ops';
+import { importCatalogAssetIntoProject, materializeAnalysisCuts } from '../src/catalog-ops';
 
 function makeProject() {
   const project = createEmptyProject({
@@ -61,6 +63,95 @@ describe('@afterimage/domain-operations', () => {
 
     expect(project.assets).toHaveLength(1);
     expect(toggleExportProfile(project, 'square-social').exportSelections.find((selection) => selection.profileId === 'square-social')?.enabled).toBe(true);
+  });
+
+  it('imports full-video source, transition, and overlay catalog assets as cuts', () => {
+    const baseProject = makeProject();
+    const roles = ['source', 'transition-mask', 'transition-overlay'] as const;
+    const imported = roles.reduce((project, role) => importCatalogAssetIntoProject({
+      project,
+      asset: {
+        id: `catalog-${role}`,
+        filename: `${role}.mp4`,
+        mediaType: 'video',
+        durationMs: 2400
+      },
+      importedAsset: {
+        id: `asset-${role}`,
+        filename: `${role}.mp4`,
+        mediaType: 'video',
+        assetRole: role,
+        path: { absolutePath: `/media/${role}.mp4` },
+        hasAudio: role === 'source',
+        durationMs: 2400
+      },
+      sceneSegments: []
+    }).project, baseProject);
+
+    expect(imported.cutCandidates.map((cut) => cut.assetId).sort()).toEqual([
+      'asset-source',
+      'asset-transition-mask',
+      'asset-transition-overlay'
+    ]);
+    expect(validateProject(imported).ok).toBe(true);
+  });
+
+  it('does not duplicate catalog cuts on repeated import', () => {
+    const input = {
+      asset: {
+        id: 'catalog-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video' as const,
+        durationMs: 1000
+      },
+      importedAsset: {
+        id: 'asset-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video' as const,
+        assetRole: 'source' as const,
+        path: { absolutePath: '/media/alpha.mp4' },
+        hasAudio: true,
+        durationMs: 1000
+      },
+      sceneSegments: []
+    };
+    const first = importCatalogAssetIntoProject({ project: makeProject(), ...input });
+    const second = importCatalogAssetIntoProject({ project: first.project, ...input });
+
+    expect(first.addedCutIds).toEqual(['cut-asset-alpha-scene-1']);
+    expect(second.addedCutIds).toEqual([]);
+    expect(second.project.cutCandidates).toHaveLength(1);
+  });
+
+  it('materializes analysis cuts and validates the result', () => {
+    const project = {
+      ...mergeImportedAssets(makeProject(), [{
+      id: 'asset-alpha',
+      filename: 'alpha.mp4',
+      mediaType: 'video',
+      path: { absolutePath: '/media/alpha.mp4' },
+      hasAudio: true,
+      durationMs: 3000
+      }]),
+      analysisRefs: [{
+        id: 'analysis-alpha',
+        assetId: 'asset-alpha',
+        path: '/media/alpha.analysis.json'
+      }]
+    };
+    const result = materializeAnalysisCuts({
+      project,
+      analysis: {
+        id: 'analysis-alpha',
+        assetId: 'asset-alpha',
+        probe: { durationMs: 3000, streams: [{ codecType: 'video' }] },
+        sceneCuts: [{ timeMs: 1200, score: 0.8 }]
+      },
+      analysisRefId: 'analysis-alpha'
+    });
+
+    expect(result.addedCutIds).toEqual(['asset-alpha-cut-1', 'asset-alpha-cut-2']);
+    expect(validateProject(result.project).ok).toBe(true);
   });
 
   it('adds cuts to sequence variants and duplicates variants deterministically', () => {

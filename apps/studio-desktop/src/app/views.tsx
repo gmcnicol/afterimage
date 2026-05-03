@@ -27,7 +27,7 @@ export function ActiveView() {
   const activeTab = useUiStore((state) => state.currentTab);
   const View = viewMap[activeTab];
   return (
-    <div style={{ display: 'flex', flex: '1 1 auto', minHeight: 0, minWidth: 0 }}>
+    <div style={{ display: 'grid', flex: '1 1 auto', width: '100%', height: '100%', minHeight: 0, minWidth: 0 }}>
       <View />
     </div>
   );

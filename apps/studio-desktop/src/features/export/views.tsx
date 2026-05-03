@@ -2,26 +2,19 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ColDef } from 'ag-grid-community';
 import { exportProfiles, type ExportProfileId } from '@afterimage/export-profiles';
 import { loadPresetLibrary } from '@afterimage/preset-library';
-import {
-  getAssetById,
-  getDefaultVariant,
-  getFilterDefinition,
-  getPrimaryAutomationProperty,
-  getSupportedAutomationProperties,
-  normalizeProject,
-  supportedFilterDefinitions,
-  type AnalysisFile,
-  type AssetRole,
-  type AutomationTargetProperty,
-  type CutCandidate,
-  type FilterInstance,
-  type Marker,
-  type MediaAsset,
-  type NormalizedProjectFile,
-  type SequenceClip,
-  type SupportedFilterType,
-  type SyncMode,
-  type TransitionStyle
+import type {
+  AnalysisFile,
+  AssetRole,
+  AutomationTargetProperty,
+  CutCandidate,
+  FilterInstance,
+  Marker,
+  MediaAsset,
+  NormalizedProjectFile,
+  SequenceClip,
+  SupportedFilterType,
+  SyncMode,
+  TransitionStyle
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
 import type { DesktopJob, LibraryAsset, LibraryRoot, LibrarySearchRequest } from '../../lib/studio-client';
@@ -37,7 +30,12 @@ import { StudioDataGrid, type StudioGridAction } from '../../app/components/Stud
 import { ToolbarButton } from '../../app/components/ToolbarButton';
 import { useExportClient } from './hooks';
 import {
+  getAssetById,
   getCurrentVariant,
+  getDefaultVariant,
+  getFilterDefinition,
+  getSupportedAutomationProperties,
+  supportedFilterDefinitions,
   getAnalysisSummaryByAsset,
   formatSequenceName,
   useAnalysisFile,
@@ -167,13 +165,13 @@ export function ExportView() {
           }}>Export Selected Sequence</ToolbarButton>
         </div>
       </Panel>
-      <Panel title="Render Queue" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Export Queue" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         <div style={{ display: 'grid', minHeight: 0 }}>
           {exportJobs.length > 0 ? (
             <StudioDataGrid rows={exportJobs} columns={jobColumns} rowHeight={46} emptyMessage="No export jobs yet" />
           ) : (
             <div style={{ border: '1px dashed rgba(255,255,255,0.14)', borderRadius: 16, padding: 18, color: muted, lineHeight: 1.6 }}>
-              No export jobs yet. Enable at least one delivery profile, then render the selected sequence and watch the queue here.
+              No export jobs yet. Enable at least one delivery profile, then export the selected sequence and watch the queue here.
             </div>
           )}
         </div>

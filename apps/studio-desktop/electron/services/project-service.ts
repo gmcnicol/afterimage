@@ -4,8 +4,12 @@ import { basename, dirname, extname, join, relative } from 'node:path';
 import type { Dialog, Shell } from 'electron';
 import { executeCommandSpec, resolveFfmpegTools } from '@afterimage/ffmpeg-compiler';
 import { parseFfprobeOutput } from '@afterimage/media-analysis';
+import * as domainOps from '@afterimage/domain-operations';
 import {
   createEmptyProject,
+  getDefaultFilterParameters,
+  getFilterDefinition,
+  getPrimaryAutomationProperty,
   normalizeProjectPathRef,
   slugify,
   type AssetRole,
@@ -16,6 +20,9 @@ import {
 import { parseAnalysis, parseProject } from '@afterimage/schema-validators';
 import type {
   ImportCueFileResult,
+  ProjectMaterializeAnalysisCutsRequest,
+  ProjectMutationResult,
+  ProjectOperation,
   ProjectSessionSnapshot,
   RelinkAssetResult,
   SaveProjectRequest
@@ -208,6 +215,180 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
   function cacheSession(session: ProjectSessionSnapshot): ProjectSessionSnapshot {
     cachedSession = session;
     return session;
+  }
+
+  async function commitProjectMutation(project: ProjectSessionSnapshot['project'], projectFilePath?: string): Promise<ProjectMutationResult> {
+    if (projectFilePath) {
+      const session = await writeProjectFile(dirname(projectFilePath), project);
+      const recentProjects = await rememberRecentProject(session.projectFilePath);
+      return {
+        session: cacheSession({
+          ...session,
+          recentProjects
+        }),
+        saved: true
+      };
+    }
+
+    return {
+      session: cacheSession({
+        project,
+        projectFilePath: cachedSession?.projectFilePath,
+        projectRoot: cachedSession?.projectRoot,
+        recentProjects: cachedSession?.recentProjects ?? []
+      }),
+      saved: false
+    };
+  }
+
+  function applyProjectOperation(project: ProjectSessionSnapshot['project'], operation: ProjectOperation): ProjectSessionSnapshot['project'] {
+    switch (operation.type) {
+      case 'mergeImportedAssets':
+        return domainOps.mergeImportedAssets(project, operation.assets);
+      case 'relinkAsset':
+        return domainOps.replaceAssetPath(project, operation.assetId, {
+          absolutePath: operation.absolutePath,
+          relativePath: operation.relativePath
+        });
+      case 'updateCutStatus':
+        return domainOps.updateCutStatus(project, operation.cutId, operation.status);
+      case 'toggleCutFavorite':
+        return domainOps.toggleCutFavorite(project, operation.cutId);
+      case 'trimCut':
+        return domainOps.trimCut(project, operation.cutId, operation.startMs, operation.endMs);
+      case 'addCutToBin':
+        return domainOps.addCutToBin(project, operation.cutId, operation.binId);
+      case 'addCutToSequence':
+        return domainOps.addCutToSequence(project, operation.cutId, operation.options);
+      case 'buildVariantFromReviewedCuts':
+        return domainOps.buildVariantFromReviewedCuts(project, operation.variantId, operation.mode);
+      case 'buildNewVariantFromReviewedCuts':
+        return domainOps.buildNewVariantFromReviewedCuts(project, operation.variantId, operation.mode);
+      case 'moveClip':
+        return domainOps.moveClip(project, operation.variantId, operation.clipId, operation.direction);
+      case 'removeClip':
+        return domainOps.removeClip(project, operation.variantId, operation.clipId);
+      case 'trimClip':
+        return domainOps.trimClip(project, operation.variantId, operation.clipId, operation.deltaMs);
+      case 'setClipOverlayAsset':
+        return domainOps.setClipOverlayAsset(project, operation.variantId, operation.clipId, operation.assetId);
+      case 'setClipOverlayCut':
+        return domainOps.setClipOverlayCut(project, operation.variantId, operation.clipId, operation.cutId);
+      case 'setClipTransition':
+        return domainOps.setClipTransition(project, operation.variantId, operation.clipId, operation.transition);
+      case 'setClipTransitionDuration':
+        return domainOps.setClipTransitionDuration(project, operation.variantId, operation.clipId, operation.durationMs);
+      case 'setClipTransitionAsset':
+        return domainOps.setClipTransitionAsset(project, operation.variantId, operation.clipId, operation.assetId);
+      case 'setClipTransitionCut':
+        return domainOps.setClipTransitionCut(project, operation.variantId, operation.clipId, operation.cutId);
+      case 'setClipTransitionOverlayAsset':
+        return domainOps.setClipTransitionOverlayAsset(project, operation.variantId, operation.clipId, operation.assetId);
+      case 'setClipTransitionOverlayCut':
+        return domainOps.setClipTransitionOverlayCut(project, operation.variantId, operation.clipId, operation.cutId);
+      case 'randomizeFoundryTransitions':
+        return domainOps.randomizeFoundryTransitions(project, operation.variantId);
+      case 'randomizeFoundryOverlays':
+        return domainOps.randomizeFoundryOverlays(project, operation.variantId);
+      case 'duplicateVariant':
+        return domainOps.duplicateVariant(project, operation.variantId);
+      case 'deleteVariant':
+        return domainOps.deleteVariant(project, operation.variantId);
+      case 'addMarker':
+        return domainOps.addMarker(project, operation.variantId, {
+          id: `marker-${Date.now()}`,
+          label: operation.label,
+          timeMs: operation.timeMs,
+          kind: 'marker'
+        });
+      case 'addSection':
+        return domainOps.addSection(project, operation.variantId, {
+          id: `section-${Date.now()}`,
+          label: operation.label,
+          startMs: operation.startMs,
+          endMs: operation.endMs
+        });
+      case 'addFilterToSequenceStack': {
+        const stackId = project.variants[0]?.stackId;
+        if (!stackId || !getFilterDefinition(operation.filterType) || !getPrimaryAutomationProperty(operation.filterType)) {
+          return project;
+        }
+        return domainOps.addFilterToStack(project, stackId, {
+          id: `filter-${Date.now()}`,
+          type: operation.filterType,
+          enabled: true,
+          parameters: getDefaultFilterParameters(operation.filterType),
+          mix: 0.8
+        });
+      }
+      case 'removeFilterFromSequenceStack':
+        return domainOps.removeFilterFromStack(project, operation.stackId, operation.filterId);
+      case 'moveFilterInSequenceStack':
+        return domainOps.moveFilterInStack(project, operation.stackId, operation.filterId, operation.direction);
+      case 'toggleFilterEnabled':
+        return domainOps.toggleFilterEnabled(project, operation.stackId, operation.filterId);
+      case 'updateFilterMix':
+        return domainOps.updateFilterMix(project, operation.stackId, operation.filterId, operation.mix);
+      case 'updateFilterParameter':
+        return domainOps.updateFilterParameter(project, operation.stackId, operation.filterId, operation.key, operation.value);
+      case 'applyPresetToSequenceStack': {
+        const stackId = project.variants[0]?.stackId;
+        return stackId ? domainOps.applyPresetToStack(project, operation.presetId, stackId) : project;
+      }
+      case 'safeRandomizeFilter':
+        return domainOps.safeRandomizeFilter(project, operation.stackId, operation.filterId);
+      case 'safeRandomizeStack':
+        return domainOps.safeRandomizeStack(project, operation.stackId);
+      case 'addAutomationLane':
+        return domainOps.addAutomationLane(project, {
+          id: `lane-${Date.now()}`,
+          name: operation.name,
+          target: {
+            filterId: operation.filterId,
+            property: operation.property
+          },
+          enabled: true,
+          keyframes: [{
+            id: `keyframe-${Date.now()}`,
+            timeMs: 0,
+            value: 0.5
+          }]
+        });
+      case 'removeAutomationLane':
+        return domainOps.removeAutomationLane(project, operation.laneId);
+      case 'updateAutomationLaneTarget':
+        return domainOps.updateAutomationLaneTarget(project, operation.laneId, {
+          filterId: operation.filterId,
+          property: operation.property
+        });
+      case 'setAutomationLaneEnabled':
+        return domainOps.setAutomationLaneEnabled(project, operation.laneId, operation.enabled);
+      case 'addLaneKeyframe':
+        return domainOps.addLaneKeyframe(project, operation.laneId, {
+          id: `keyframe-${Date.now()}`,
+          timeMs: operation.timeMs,
+          value: operation.value
+        });
+      case 'updateLaneKeyframe':
+        return domainOps.updateLaneKeyframe(project, operation.laneId, operation.keyframeId, {
+          timeMs: operation.timeMs,
+          value: operation.value
+        });
+      case 'removeLaneKeyframe':
+        return domainOps.removeLaneKeyframe(project, operation.laneId, operation.keyframeId);
+      case 'resetLane':
+        return domainOps.resetLane(project, operation.laneId);
+      case 'toggleExportProfile':
+        return domainOps.toggleExportProfile(project, operation.profileId);
+      case 'setVariantMusicAsset':
+        return domainOps.setVariantMusicAsset(project, operation.variantId, operation.assetId);
+      case 'setProjectMusicAsset':
+        return domainOps.setProjectMusicAsset(project, operation.assetId);
+      case 'setVariantMusicSyncMode':
+        return domainOps.setVariantMusicSyncMode(project, operation.variantId, operation.syncMode);
+      case 'applySyncMarkers':
+        return domainOps.applySyncMarkers(project, operation.variantId, operation.markers);
+    }
   }
 
   async function readProjectSession(projectFilePath: string, recentProjects: string[]): Promise<ProjectSessionSnapshot> {
@@ -554,6 +735,33 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         path: cuePath,
         markers
       };
-    }
+    },
+    applyProjectOperation(input: { project: ProjectSessionSnapshot['project']; operation: ProjectOperation }): ProjectSessionSnapshot['project'] {
+      return applyProjectOperation(input.project, input.operation);
+    },
+    async materializeAnalysisCuts(input: ProjectMaterializeAnalysisCutsRequest): Promise<ProjectMutationResult> {
+      const analysis = await this.loadAnalysis(input.analysisPath);
+      if (!analysis) {
+        throw new Error('Analysis sidecar could not be loaded.');
+      }
+
+      const result = domainOps.materializeAnalysisCuts({
+        project: input.project,
+        analysis: {
+          ...analysis,
+          id: input.analysisRefId ?? analysis.id,
+          assetId: input.assetId
+        },
+        analysisRefId: input.analysisRefId,
+        status: 'new',
+        tags: []
+      });
+      const mutation = await commitProjectMutation(result.project, input.projectFilePath);
+      return {
+        ...mutation,
+        addedCutIds: result.addedCutIds
+      };
+    },
+    commitProjectMutation
   };
 }

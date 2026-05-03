@@ -2,26 +2,19 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ColDef } from 'ag-grid-community';
 import { exportProfiles, type ExportProfileId } from '@afterimage/export-profiles';
 import { loadPresetLibrary } from '@afterimage/preset-library';
-import {
-  getAssetById,
-  getDefaultVariant,
-  getFilterDefinition,
-  getPrimaryAutomationProperty,
-  getSupportedAutomationProperties,
-  normalizeProject,
-  supportedFilterDefinitions,
-  type AnalysisFile,
-  type AssetRole,
-  type AutomationTargetProperty,
-  type CutCandidate,
-  type FilterInstance,
-  type Marker,
-  type MediaAsset,
-  type NormalizedProjectFile,
-  type SequenceClip,
-  type SupportedFilterType,
-  type SyncMode,
-  type TransitionStyle
+import type {
+  AnalysisFile,
+  AssetRole,
+  AutomationTargetProperty,
+  CutCandidate,
+  FilterInstance,
+  Marker,
+  MediaAsset,
+  NormalizedProjectFile,
+  SequenceClip,
+  SupportedFilterType,
+  SyncMode,
+  TransitionStyle
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
 import type { DesktopJob, LibraryAsset, LibraryRoot, LibrarySearchRequest } from '../../lib/studio-client';
@@ -36,7 +29,12 @@ import { StatCard } from '../../app/components/StatCard';
 import { StudioDataGrid, type StudioGridAction } from '../../app/components/StudioDataGrid';
 import { ToolbarButton } from '../../app/components/ToolbarButton';
 import {
+  getAssetById,
   getCurrentVariant,
+  getDefaultVariant,
+  getFilterDefinition,
+  getSupportedAutomationProperties,
+  supportedFilterDefinitions,
   getAnalysisSummaryByAsset,
   formatSequenceName,
   useAnalysisFile,

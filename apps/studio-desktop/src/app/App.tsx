@@ -942,8 +942,8 @@ const tabMeta: TabMeta[] = [
     id: 'export',
     label: 'Export Deliverables',
     group: 'Deliver',
-    description: 'Pick delivery profiles and render the chosen sequence.',
-    guidance: 'Enable the exact formats you need, then watch the render queue for failures.'
+    description: 'Pick delivery profiles and export the chosen sequence.',
+    guidance: 'Enable the exact formats you need, then watch the export queue for failures.'
   },
   {
     id: 'diagnostics',
@@ -963,6 +963,15 @@ function useWorkflowMetrics(): WorkflowMetrics {
   const audioAssetCount = project.assets.filter((asset) => asset.mediaType === 'audio').length;
   const analyzableAssetCount = project.assets.filter((asset) => asset.mediaType !== 'image').length;
   const analyzedAssetCount = project.assets.filter((asset) => asset.mediaType !== 'image' && asset.analysisStatus === 'completed').length;
+  const assetRoleById = new Map(project.assets.map((asset) => [asset.id, asset.assetRole]));
+  const reviewCutCount = project.cutCandidates.filter((cut) => {
+    const role = assetRoleById.get(cut.assetId);
+    return role !== undefined && role !== 'transition-mask' && role !== 'transition-overlay';
+  }).length;
+  const keptReviewCutCount = project.cutCandidates.filter((cut) => {
+    const role = assetRoleById.get(cut.assetId);
+    return role !== undefined && role !== 'transition-mask' && role !== 'transition-overlay' && (cut.status === 'kept' || cut.favorite);
+  }).length;
   const sequenceClipCount = project.variants.reduce((largest, variant) => Math.max(largest, variant.clips.length), 0);
   const filterCount = project.filterStacks.reduce((count, stack) => count + stack.filters.length, 0);
   const enabledExportProfileCount = project.exportSelections.filter((selection) => selection.enabled).length;
@@ -975,8 +984,8 @@ function useWorkflowMetrics(): WorkflowMetrics {
     analyzableAssetCount,
     analyzedAssetCount,
     pendingAnalysisCount: Math.max(analyzableAssetCount - analyzedAssetCount, 0),
-    cutCount: project.cutCandidates.length,
-    keptCutCount: project.cutCandidates.filter((cut) => cut.status === 'kept' || cut.favorite).length,
+    cutCount: reviewCutCount,
+    keptCutCount: keptReviewCutCount,
     sequenceClipCount,
     variantCount: project.variants.length,
     filterCount,
@@ -1111,15 +1120,15 @@ function getNextStep(metrics: WorkflowMetrics, projectSaved: boolean): NextStep 
     return {
       tab: 'export',
       label: 'Choose delivery formats',
-      reason: 'Render targets are still undefined, so the workstation cannot produce a final output yet.',
+      reason: 'Export targets are still undefined, so the workstation cannot produce a final output yet.',
       actionLabel: 'Open Export'
     };
   }
 
   return {
     tab: 'export',
-    label: 'Ready to render',
-    reason: 'The project is in a deliverable state. Open Export to run the current sequence.',
+    label: 'Ready to export',
+    reason: 'The project is in a deliverable state. Open Export to export the current sequence.',
     actionLabel: 'Open Export'
   };
 }
@@ -1284,8 +1293,20 @@ function ActiveJobsPanel() {
   );
 }
 
-export function App() {
-  useDesktopBootstrap();
+function LoadingShell() {
+  return (
+    <Screen>
+      <style>{shellCss}</style>
+      <div className="studio-shell" style={{ display: 'grid', placeItems: 'center' }}>
+        <div className="studio-surface" style={{ padding: 18, color: muted }}>
+          Loading project...
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+function StudioShell() {
   useProjectAutosave();
   useKeyboardShortcuts();
 
@@ -1307,4 +1328,11 @@ export function App() {
       </div>
     </Screen>
   );
+}
+
+export function App() {
+  useDesktopBootstrap();
+  const ready = useProjectSessionStore((state) => state.ready);
+
+  return ready ? <StudioShell /> : <LoadingShell />;
 }

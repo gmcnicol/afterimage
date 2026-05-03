@@ -2,26 +2,19 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import type { ColDef } from 'ag-grid-community';
 import { exportProfiles, type ExportProfileId } from '@afterimage/export-profiles';
 import { loadPresetLibrary } from '@afterimage/preset-library';
-import {
-  getAssetById,
-  getDefaultVariant,
-  getFilterDefinition,
-  getPrimaryAutomationProperty,
-  getSupportedAutomationProperties,
-  normalizeProject,
-  supportedFilterDefinitions,
-  type AnalysisFile,
-  type AssetRole,
-  type AutomationTargetProperty,
-  type CutCandidate,
-  type FilterInstance,
-  type Marker,
-  type MediaAsset,
-  type NormalizedProjectFile,
-  type SequenceClip,
-  type SupportedFilterType,
-  type SyncMode,
-  type TransitionStyle
+import type {
+  AnalysisFile,
+  AssetRole,
+  AutomationTargetProperty,
+  CutCandidate,
+  FilterInstance,
+  Marker,
+  MediaAsset,
+  NormalizedProjectFile,
+  SequenceClip,
+  SupportedFilterType,
+  SyncMode,
+  TransitionStyle
 } from '@afterimage/project-model';
 import { Panel } from '@afterimage/ui';
 import type { DesktopJob, LibraryAsset, LibraryRoot, LibrarySearchRequest } from '../../lib/studio-client';
@@ -36,7 +29,12 @@ import { StatCard } from '../../app/components/StatCard';
 import { StudioDataGrid, type StudioGridAction } from '../../app/components/StudioDataGrid';
 import { ToolbarButton } from '../../app/components/ToolbarButton';
 import {
+  getAssetById,
   getCurrentVariant,
+  getDefaultVariant,
+  getFilterDefinition,
+  getSupportedAutomationProperties,
+  supportedFilterDefinitions,
   getAnalysisSummaryByAsset,
   formatSequenceName,
   useAnalysisFile,
@@ -68,6 +66,7 @@ export function CutsView() {
   const currentTab = useUiStore((state) => state.currentTab);
   const selectedCutId = useUiStore((state) => state.selectedCutId);
   const selectCut = useUiStore((state) => state.selectCut);
+  const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const addNotification = useUiStore((state) => state.addNotification);
   const addCutToSequence = useProjectSessionStore((state) => state.addCutToSequence);
   const updateCutStatus = useProjectSessionStore((state) => state.updateCutStatus);
@@ -82,14 +81,29 @@ export function CutsView() {
   const cutsSearchRef = useRef<HTMLInputElement | null>(null);
   const assetLabels = useMemo(() => new Map(project.assets.map((asset) => [asset.id, asset.label ?? asset.filename])), [project.assets]);
   const assetById = useMemo(() => new Map(project.assets.map((asset) => [asset.id, asset])), [project.assets]);
-  const cuts = useMemo(() => project.cutCandidates.filter((cut) => {
+  const reviewableAssetCount = useMemo(
+    () => project.assets.filter((asset) => asset.mediaType === 'video' && asset.assetRole !== 'transition-mask' && asset.assetRole !== 'transition-overlay').length,
+    [project.assets]
+  );
+  const sequenceOnlyCutCount = useMemo(() => project.cutCandidates.filter((cut) => {
+    const asset = assetById.get(cut.assetId);
+    return asset?.assetRole === 'transition-mask' || asset?.assetRole === 'transition-overlay';
+  }).length, [assetById, project.cutCandidates]);
+  const analyzedReviewableAssetCount = useMemo(
+    () => project.assets.filter((asset) => asset.mediaType === 'video' && asset.analysisStatus === 'completed' && asset.assetRole !== 'transition-mask' && asset.assetRole !== 'transition-overlay').length,
+    [project.assets]
+  );
+  const reviewCuts = useMemo(() => project.cutCandidates.filter((cut) => {
     const asset = assetById.get(cut.assetId);
     if (!asset || asset.assetRole === 'transition-mask' || asset.assetRole === 'transition-overlay') {
       return false;
     }
 
+    return true;
+  }), [assetById, project.cutCandidates]);
+  const cuts = useMemo(() => reviewCuts.filter((cut) => {
     return `${cut.id} ${(cut.tags ?? []).join(' ')}`.toLowerCase().includes(deferredQuery.toLowerCase());
-  }), [assetById, deferredQuery, project.cutCandidates]);
+  }), [deferredQuery, reviewCuts]);
   const selectedCut = useMemo(
     () => cuts.find((cut) => cut.id === selectedCutId) ?? cuts[0],
     [cuts, selectedCutId]
@@ -160,6 +174,15 @@ export function CutsView() {
   const previewDurationMs = Math.max(selectedAsset?.durationMs ?? 0, selectedCut?.endMs ?? 0, 1);
   const draftDurationMs = Math.max(1, draftEndMs - draftStartMs);
   const hasDraftChanges = Boolean(selectedCut && (draftStartMs !== selectedCut.startMs || draftEndMs !== selectedCut.endMs));
+  const emptyCutMessage = query.trim().length > 0 && reviewCuts.length > 0
+    ? 'No cuts match the current filter.'
+    : sequenceOnlyCutCount > 0
+      ? 'Only transition and overlay cuts are saved. Review Cuts shows source footage cuts.'
+    : analyzedReviewableAssetCount > 0
+      ? 'Analysed footage is in the project, but no review cuts have been saved yet.'
+      : reviewableAssetCount > 0
+        ? 'Run analysis on the project footage to create review cuts.'
+        : 'Import source footage before reviewing cuts.';
 
   const selectRelativeCut = (baseCutId: string, delta: -1 | 1 | 0 = 1) => {
     const index = cuts.findIndex((cut) => cut.id === baseCutId);
@@ -413,7 +436,7 @@ export function CutsView() {
   }, [addSelectedCutToSequence, currentTab, cuts, draftEndMs, draftStartMs, previewCurrentMs, selectCut, selectedCut, updateCutStatus]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.24fr) minmax(360px, 0.76fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(390px, 0.85fr)', gap: 16, alignItems: 'stretch', width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
       <Panel title="" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         {selectedCut && selectedAsset ? (
           <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(160px, 1fr) auto', gap: 10, minHeight: 0, overflow: 'hidden' }}>
@@ -623,8 +646,19 @@ export function CutsView() {
             </div>
           </div>
         ) : (
-          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', borderRadius: 18, minHeight: 280, display: 'grid', placeItems: 'center', color: muted }}>
-            Select a cut to preview it.
+          <div style={{ border: '1px dashed rgba(255,255,255,0.16)', minHeight: 280, display: 'grid', placeItems: 'center', color: muted, padding: 24, textAlign: 'center' }}>
+            <div style={{ display: 'grid', gap: 12, justifyItems: 'center', maxWidth: 460 }}>
+              <div style={{ color: accent, fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                No review cuts
+              </div>
+              <div style={{ color: '#f6f7f9', fontSize: 18, fontWeight: 500, lineHeight: 1.2 }}>
+                {emptyCutMessage}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <ToolbarButton onClick={() => setCurrentTab('media')}>Open Media</ToolbarButton>
+                <ToolbarButton onClick={() => setCurrentTab('catalog')}>Open Catalogue</ToolbarButton>
+              </div>
+            </div>
           </div>
         )}
       </Panel>
@@ -653,7 +687,7 @@ export function CutsView() {
           rows={cuts}
           columns={cutColumns}
           focusedRowId={selectedCut?.id}
-          emptyMessage="No cuts match the current filter."
+          emptyMessage={emptyCutMessage}
           onFocusRow={(cut) => {
             selectCut(cut.id);
             seekPreview(cut.startMs);

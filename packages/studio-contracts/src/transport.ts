@@ -77,6 +77,8 @@ export interface StudioClient {
     importTransitionOverlays: (projectRoot?: string) => Promise<ProjectCommandMap['project.importTransitionOverlays']['result']>;
     relinkAsset: (input: ProjectCommandMap['project.relinkAsset']['payload']) => Promise<ProjectCommandMap['project.relinkAsset']['result']>;
     importCueFile: () => Promise<ProjectCommandMap['project.importCueFile']['result']>;
+    applyOperation: (input: ProjectCommandMap['project.applyOperation']['payload']) => Promise<ProjectCommandMap['project.applyOperation']['result']>;
+    materializeAnalysisCuts: (input: ProjectCommandMap['project.materializeAnalysisCuts']['payload']) => Promise<ProjectCommandMap['project.materializeAnalysisCuts']['result']>;
   };
   library: {
     addRoot: (input: LibraryCommandMap['library.addRoot']['payload']) => Promise<LibraryCommandMap['library.addRoot']['result']>;
@@ -89,6 +91,7 @@ export interface StudioClient {
     searchAssets: (input?: LibraryQueryMap['library.searchAssets']['payload']) => Promise<LibraryQueryMap['library.searchAssets']['result']>;
     importAssets: (input: LibraryCommandMap['library.importAssets']['payload']) => Promise<LibraryCommandMap['library.importAssets']['result']>;
     removeAssets: (input: LibraryCommandMap['library.removeAssets']['payload']) => Promise<LibraryCommandMap['library.removeAssets']['result']>;
+    importAssetToProject: (input: LibraryCommandMap['library.importAssetToProject']['payload']) => Promise<LibraryCommandMap['library.importAssetToProject']['result']>;
   };
   jobs: {
     list: () => Promise<JobsQueryMap['jobs.list']['result']>;

@@ -3,8 +3,10 @@ import type {
   AnalysisStatus,
   AssetRole,
   MediaAsset,
-  MediaType
+  MediaType,
+  NormalizedProjectFile
 } from '@afterimage/project-model';
+import type { ProjectMutationResult } from './project.js';
 
 export type LibraryScanStatus = 'idle' | 'pending' | 'running' | 'completed' | 'failed';
 
@@ -85,6 +87,14 @@ export interface LibraryRemoveAssetsRequest {
   assetIds: string[];
 }
 
+export interface LibraryImportAssetToProjectRequest {
+  project: NormalizedProjectFile;
+  projectRoot?: string;
+  projectFilePath?: string;
+  assetId: string;
+  cutIds?: string[];
+}
+
 export interface LibraryCommandMap {
   'library.addRoot': {
     payload: LibraryAddRootRequest;
@@ -113,6 +123,10 @@ export interface LibraryCommandMap {
   'library.removeAssets': {
     payload: LibraryRemoveAssetsRequest;
     result: number;
+  };
+  'library.importAssetToProject': {
+    payload: LibraryImportAssetToProjectRequest;
+    result: ProjectMutationResult;
   };
 }
 
