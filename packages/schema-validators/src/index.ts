@@ -5,15 +5,18 @@ import {
   collectProjectIntegrityIssues,
   createEmptyProject,
   normalizeAnalysisFile,
+  normalizeArchiveMetadataFile,
   normalizeMidiMappingFile,
   normalizePreset,
   normalizeProject,
   normalizeSequence,
   slugify,
   type AnalysisFile,
+  type ArchiveMetadataFile,
   type CutCandidate,
   type MediaType,
   type MidiMappingFile,
+  type NormalizedArchiveMetadataFile,
   type NormalizedProjectFile,
   type Preset,
   type ProjectFile,
@@ -26,6 +29,7 @@ import projectSchema from '../../../schemas/project.schema.json' with { type: 'j
 import presetSchema from '../../../schemas/preset.schema.json' with { type: 'json' };
 import sequenceSchema from '../../../schemas/sequence.schema.json' with { type: 'json' };
 import analysisSchema from '../../../schemas/analysis.schema.json' with { type: 'json' };
+import archiveSchema from '../../../schemas/archive.schema.json' with { type: 'json' };
 import midiMappingSchema from '../../../schemas/midi-mapping.schema.json' with { type: 'json' };
 
 export interface ValidationIssue {
@@ -65,6 +69,7 @@ export const projectValidator = ajv.compile<ProjectFile>(projectSchema);
 export const presetValidator = ajv.compile<Preset>(presetSchema);
 export const sequenceValidator = ajv.compile<Sequence>(sequenceSchema);
 export const analysisValidator = ajv.compile<AnalysisFile>(analysisSchema);
+export const archiveValidator = ajv.compile<ArchiveMetadataFile>(archiveSchema);
 export const midiMappingValidator = ajv.compile<MidiMappingFile>(midiMappingSchema);
 
 function cloneInput<T>(value: T): T {
@@ -646,6 +651,24 @@ export function parseAnalysis(input: unknown): AnalysisFile {
 
 export function assertAnalysis(input: unknown): asserts input is AnalysisFile {
   parseAnalysis(input);
+}
+
+export function validateArchiveMetadata(input: unknown): ValidationResult<NormalizedArchiveMetadataFile> {
+  return validateWithSchema(archiveValidator, input, normalizeArchiveMetadataFile, 'schema-validation-failure');
+}
+
+export function parseArchiveMetadata(input: unknown): NormalizedArchiveMetadataFile {
+  const result = validateArchiveMetadata(input);
+
+  if (!result.ok) {
+    throw new ValidationError('Archive metadata validation failed.', result.code, result.errors);
+  }
+
+  return result.value;
+}
+
+export function assertArchiveMetadata(input: unknown): asserts input is ArchiveMetadataFile {
+  parseArchiveMetadata(input);
 }
 
 export function validateMidiMapping(input: unknown): ValidationResult<MidiMappingFile> {

@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afterimage.local/schemas/archive.schema.json",
+  "title": "Afterimage Archive Metadata v1",
+  "type": "object",
+  "required": ["id", "version", "sourceSystem", "sourceAssetId", "provenance"],
+  "properties": {
+    "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+    "version": { "type": "integer", "const": 1 },
+    "sourceSystem": {
+      "type": "string",
+      "enum": ["darklife", "afterimage", "manual"]
+    },
+    "sourceAssetId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+    "generatedAt": { "type": "string", "minLength": 1 },
+    "provenance": { "$ref": "#/$defs/archiveProvenance" },
+    "segments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveSegment" },
+      "default": []
+    },
+    "motifs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveMotifCandidate" },
+      "default": []
+    },
+    "atmospheres": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveWeightedTag" },
+      "default": []
+    },
+    "materials": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveWeightedTag" },
+      "default": []
+    },
+    "motion": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveWeightedTag" },
+      "default": []
+    },
+    "behaviourSeeds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveBehaviourSeed" },
+      "default": []
+    },
+    "recurrence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveRecurrenceLink" },
+      "default": []
+    },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "archiveProvenance": {
+      "type": "object",
+      "required": ["sourceKind"],
+      "properties": {
+        "sourceKind": {
+          "type": "string",
+          "enum": ["public-domain", "capture", "livestream", "generated", "manual", "unknown"]
+        },
+        "sourceUri": { "type": "string", "minLength": 1 },
+        "rightsStatus": { "type": "string", "minLength": 1 },
+        "license": { "type": "string", "minLength": 1 },
+        "generator": { "type": "string", "minLength": 1 },
+        "generatorVersion": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "timeRange": {
+      "type": "object",
+      "required": ["startMs", "endMs"],
+      "properties": {
+        "startMs": { "type": "integer", "minimum": 0 },
+        "endMs": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "archiveSegment": {
+      "type": "object",
+      "required": ["id", "range"],
+      "properties": {
+        "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "range": { "$ref": "#/$defs/timeRange" },
+        "label": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tags": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "motifIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "atmosphereIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "materialIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "motionIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "behaviourSeedIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "archiveMotifCandidate": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "label": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "segmentIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "descriptors": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "recurrenceGroupId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" }
+      },
+      "additionalProperties": false
+    },
+    "archiveWeightedTag": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "label": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "intensity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "segmentIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "descriptors": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "archiveBehaviourSeed": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "type": { "type": "string", "minLength": 1 },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "seed": { "type": "integer", "minimum": 0 },
+        "segmentIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "motifIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "atmosphereIds": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" },
+        "parameters": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1 },
+          "additionalProperties": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/jsonPrimitive" },
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "archiveRecurrenceLink": {
+      "type": "object",
+      "required": ["id", "sourceId", "targetId", "relationship"],
+      "properties": {
+        "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "sourceId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "targetId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "relationship": {
+          "type": "string",
+          "enum": ["visual-similarity", "atmosphere-similarity", "motif-recurrence", "source-lineage", "performance-reuse"]
+        },
+        "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+        "explanation": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

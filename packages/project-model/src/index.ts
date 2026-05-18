@@ -9,6 +9,14 @@ export type AssetRole = 'source' | 'music' | 'transition-mask' | 'transition-ove
 export type ImportStatus = 'ready' | 'excluded' | 'missing';
 export type AnalysisStatus = 'pending' | 'queued' | 'running' | 'completed' | 'failed';
 export type CutStatus = 'new' | 'kept' | 'rejected' | 'favorite';
+export type ArchiveSourceSystem = 'darklife' | 'afterimage' | 'manual';
+export type ArchiveSourceKind = 'public-domain' | 'capture' | 'livestream' | 'generated' | 'manual' | 'unknown';
+export type ArchiveRecurrenceRelationship =
+  | 'visual-similarity'
+  | 'atmosphere-similarity'
+  | 'motif-recurrence'
+  | 'source-lineage'
+  | 'performance-reuse';
 export type AudioChangeKind = 'energy-shift' | 'spectral-change' | 'silence-start' | 'silence-end' | 'onset-cluster';
 export type AudioChangeSource = 'astats' | 'aspectralstats' | 'ebur128' | 'silencedetect' | 'derived';
 export type SyncEventSource = 'audio-change' | 'beat' | 'downbeat' | 'midi' | 'manual';
@@ -228,6 +236,108 @@ export interface AnalysisRef {
   thumbnailManifestPath?: string;
   waveformPath?: string;
   summary?: AnalysisSummary;
+}
+
+export interface ArchiveProvenance {
+  sourceKind: ArchiveSourceKind;
+  sourceUri?: string;
+  rightsStatus?: string;
+  license?: string;
+  generator?: string;
+  generatorVersion?: string;
+  notes?: string;
+}
+
+export interface ArchiveTimeRange {
+  startMs: number;
+  endMs: number;
+}
+
+export interface ArchiveSegment {
+  id: string;
+  range: ArchiveTimeRange;
+  label?: string;
+  confidence?: number;
+  tags?: string[];
+  motifIds?: string[];
+  atmosphereIds?: string[];
+  materialIds?: string[];
+  motionIds?: string[];
+  behaviourSeedIds?: string[];
+}
+
+export interface ArchiveMotifCandidate {
+  id: string;
+  label: string;
+  confidence?: number;
+  weight?: number;
+  segmentIds?: string[];
+  descriptors?: string[];
+  recurrenceGroupId?: string;
+}
+
+export interface ArchiveWeightedTag {
+  id: string;
+  label: string;
+  confidence?: number;
+  intensity?: number;
+  segmentIds?: string[];
+  descriptors?: string[];
+}
+
+export interface ArchiveBehaviourSeed {
+  id: string;
+  type: string;
+  strength?: number;
+  confidence?: number;
+  seed?: number;
+  segmentIds?: string[];
+  motifIds?: string[];
+  atmosphereIds?: string[];
+  parameters?: Record<string, JsonPrimitive>;
+}
+
+export interface ArchiveRecurrenceLink {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  relationship: ArchiveRecurrenceRelationship;
+  strength?: number;
+  explanation?: string;
+}
+
+export interface ArchiveMetadataFile {
+  id: string;
+  version: 1;
+  sourceSystem: ArchiveSourceSystem;
+  sourceAssetId: string;
+  generatedAt?: string;
+  provenance: ArchiveProvenance;
+  segments?: ArchiveSegment[];
+  motifs?: ArchiveMotifCandidate[];
+  atmospheres?: ArchiveWeightedTag[];
+  materials?: ArchiveWeightedTag[];
+  motion?: ArchiveWeightedTag[];
+  behaviourSeeds?: ArchiveBehaviourSeed[];
+  recurrence?: ArchiveRecurrenceLink[];
+  notes?: string;
+}
+
+export interface NormalizedArchiveMetadataFile extends Omit<ArchiveMetadataFile,
+  | 'segments'
+  | 'motifs'
+  | 'atmospheres'
+  | 'materials'
+  | 'motion'
+  | 'behaviourSeeds'
+  | 'recurrence'> {
+  segments: ArchiveSegment[];
+  motifs: ArchiveMotifCandidate[];
+  atmospheres: ArchiveWeightedTag[];
+  materials: ArchiveWeightedTag[];
+  motion: ArchiveWeightedTag[];
+  behaviourSeeds: ArchiveBehaviourSeed[];
+  recurrence: ArchiveRecurrenceLink[];
 }
 
 export interface CutCandidate {
@@ -790,6 +900,19 @@ export function normalizeAnalysisFile(file: AnalysisFile): AnalysisFile {
       syncEventCount: syncEventTrack?.events.length,
       beatEventCount: beatTrack?.events.length
     }
+  };
+}
+
+export function normalizeArchiveMetadataFile(archive: ArchiveMetadataFile): NormalizedArchiveMetadataFile {
+  return {
+    ...archive,
+    segments: archive.segments ?? [],
+    motifs: archive.motifs ?? [],
+    atmospheres: archive.atmospheres ?? [],
+    materials: archive.materials ?? [],
+    motion: archive.motion ?? [],
+    behaviourSeeds: archive.behaviourSeeds ?? [],
+    recurrence: archive.recurrence ?? []
   };
 }
 
