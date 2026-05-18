@@ -73,6 +73,10 @@ deterministic seeds.
 A composition is not just a timeline. It is a world snapshot with enough
 semantic information to plan rendering and replay performance.
 
+`docs/architecture/COMPOSITION_MODEL.md` defines this boundary in detail. This
+document owns the underlying project and sidecar data concepts; the composition
+model owns how those concepts resolve into one traversable world.
+
 ## Timeline Model
 
 The timeline provides temporal order, duration, and synchronization.
@@ -190,4 +194,3 @@ documentation updates.
 
 Behavioural runtime concepts may incubate in sidecars or feature flags before
 they become required project fields.
-
