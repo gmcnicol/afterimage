@@ -1,0 +1,98 @@
+{
+  "id": "archive-source-alpha",
+  "version": 1,
+  "sourceSystem": "darklife",
+  "sourceAssetId": "asset-alpha",
+  "generatedAt": "2026-05-17T10:00:00.000Z",
+  "provenance": {
+    "sourceKind": "public-domain",
+    "sourceUri": "fixtures/clips/source-alpha.mp4",
+    "rightsStatus": "known",
+    "license": "public-domain",
+    "generator": "darklife-local",
+    "generatorVersion": "0.1.0"
+  },
+  "segments": [
+    {
+      "id": "segment-alpha-hallway",
+      "range": {
+        "startMs": 0,
+        "endMs": 3200
+      },
+      "label": "Industrial hallway drift",
+      "confidence": 0.82,
+      "tags": ["industrial", "hallway", "liminal"],
+      "motifIds": ["motif-hallway"],
+      "atmosphereIds": ["atmosphere-thermal-drift"],
+      "materialIds": ["material-concrete"],
+      "motionIds": ["motion-drift"],
+      "behaviourSeedIds": ["seed-memory-resurface"]
+    }
+  ],
+  "motifs": [
+    {
+      "id": "motif-hallway",
+      "label": "hallway",
+      "confidence": 0.86,
+      "weight": 0.72,
+      "segmentIds": ["segment-alpha-hallway"],
+      "descriptors": ["industrial", "surveillance", "liminal"],
+      "recurrenceGroupId": "recurrence-hallways"
+    }
+  ],
+  "atmospheres": [
+    {
+      "id": "atmosphere-thermal-drift",
+      "label": "thermal drift",
+      "confidence": 0.74,
+      "intensity": 0.61,
+      "segmentIds": ["segment-alpha-hallway"],
+      "descriptors": ["fog", "analog warmth"]
+    }
+  ],
+  "materials": [
+    {
+      "id": "material-concrete",
+      "label": "concrete",
+      "confidence": 0.79,
+      "intensity": 0.66,
+      "segmentIds": ["segment-alpha-hallway"],
+      "descriptors": ["cold", "flat", "institutional"]
+    }
+  ],
+  "motion": [
+    {
+      "id": "motion-drift",
+      "label": "drift",
+      "confidence": 0.68,
+      "intensity": 0.42,
+      "segmentIds": ["segment-alpha-hallway"],
+      "descriptors": ["slow", "lateral"]
+    }
+  ],
+  "behaviourSeeds": [
+    {
+      "id": "seed-memory-resurface",
+      "type": "memory-resurfacing",
+      "strength": 0.58,
+      "confidence": 0.7,
+      "seed": 1084,
+      "segmentIds": ["segment-alpha-hallway"],
+      "motifIds": ["motif-hallway"],
+      "atmosphereIds": ["atmosphere-thermal-drift"],
+      "parameters": {
+        "persistence": 0.62
+      }
+    }
+  ],
+  "recurrence": [
+    {
+      "id": "recurrence-hallway-thermal",
+      "sourceId": "motif-hallway",
+      "targetId": "atmosphere-thermal-drift",
+      "relationship": "atmosphere-similarity",
+      "strength": 0.57,
+      "explanation": "Hallway fragments repeatedly carry warm analog haze."
+    }
+  ]
+}
