@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { fixtureAnalysis, fixtureMidiMapping, fixtureProject } from '../../test-fixtures/src';
-import { parseAnalysis, parseMidiMapping, parseProject, validatePreset, validateProject } from '../src';
+import { fixtureAnalysis, fixtureArchive, fixtureMidiMapping, fixtureProject } from '../../test-fixtures/src';
+import {
+  parseAnalysis,
+  parseArchiveMetadata,
+  parseMidiMapping,
+  parseProject,
+  validateArchiveMetadata,
+  validatePreset,
+  validateProject
+} from '../src';
 
 describe('@afterimage/schema-validators', () => {
   it('parses the v2 canonical project and applies defaults', () => {
@@ -171,6 +179,42 @@ describe('@afterimage/schema-validators', () => {
   it('parses standalone analysis and midi sidecars', () => {
     expect(parseAnalysis(fixtureAnalysis).summary?.thumbnailCount).toBe(2);
     expect(parseMidiMapping(fixtureMidiMapping).bindings[0].id).toBe('binding-cut-trigger');
+  });
+
+  it('parses archive metadata sidecars and applies collection defaults', () => {
+    const parsed = parseArchiveMetadata({
+      ...fixtureArchive,
+      recurrence: undefined
+    });
+
+    expect(parsed.sourceSystem).toBe('darklife');
+    expect(parsed.segments[0].motifIds).toEqual(['motif-hallway']);
+    expect(parsed.recurrence).toEqual([]);
+  });
+
+  it('rejects archive metadata with unsupported recurrence relationships', () => {
+    expect(validateArchiveMetadata({
+      ...fixtureArchive,
+      recurrence: [
+        {
+          id: 'recurrence-bad',
+          sourceId: 'motif-hallway',
+          targetId: 'atmosphere-thermal-drift',
+          relationship: 'generic-relatedness'
+        }
+      ]
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: [
+        {
+          keyword: 'enum',
+          message: 'must be equal to one of the allowed values',
+          path: '/recurrence/0/relationship',
+          source: 'schema'
+        }
+      ]
+    });
   });
 
   it('accepts analysis sidecars with audio change and sync tracks', () => {
