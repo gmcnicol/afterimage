@@ -5,6 +5,7 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 ## Core Documents
 
 - `ARCHITECTURE.md`
+- `COMPOSITION_MODEL.md`
 - `DATA_MODEL.md`
 - `RENDER_GRAPH.md`
 - `UX.md`
