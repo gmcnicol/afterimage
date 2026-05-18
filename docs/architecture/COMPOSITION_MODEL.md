@@ -169,6 +169,10 @@ audio analysis, archive recurrence, random walks, and performance capture.
 Modulation targets may include layer mix, scene pressure, behaviour intensity,
 material response, field strength, transition bias, and render pass controls.
 
+`docs/architecture/MODULATION_MODEL.md` defines modulation sources, targets,
+mapping, conflict policy, capture requirements, and render graph lowering in
+detail.
+
 ## Archive Boundary
 
 Archive references are memory inputs to the composition.
@@ -307,4 +311,3 @@ real missing boundary.
 Do not introduce a service, worker, graph system, schema field, or UI surface
 just because the concept exists. Add it when a composition needs to preserve
 meaning across authoring, performance, capture, replay, or export.
-

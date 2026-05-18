@@ -7,6 +7,7 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 - `ARCHITECTURE.md`
 - `COMPOSITION_MODEL.md`
 - `DATA_MODEL.md`
+- `MODULATION_MODEL.md`
 - `RENDER_GRAPH.md`
 - `UX.md`
 - `IMMERSIVE_WORKSPACES.md`
@@ -21,7 +22,6 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 - `runtime-model.md`
 - `world-lifecycle.md`
 - `performance-model.md`
-- `modulation-system.md`
 - `plugin-architecture.md`
 - `deterministic-export.md`
 
