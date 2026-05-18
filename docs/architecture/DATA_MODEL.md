@@ -131,6 +131,10 @@ render pass controls.
 Modulation lanes should describe normalized intent. Backend-specific parameter
 mapping belongs in render graph compilation or runtime adapters.
 
+`docs/architecture/MODULATION_MODEL.md` defines the broader v1 modulation
+semantics. This document owns the underlying data concepts; the modulation
+model owns how change intent is normalized, targeted, captured, and lowered.
+
 ## Behaviour Model
 
 Behaviours describe how a world evolves over time.
