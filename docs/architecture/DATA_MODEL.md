@@ -103,6 +103,9 @@ Layer ordering must be deterministic for export. Performance surfaces may
 change active layer weights, but capture logs must make those changes
 replayable.
 
+`docs/architecture/SCENE_LAYER_HIERARCHY.md` defines the hierarchy and ownership
+rules for layer identity, scope, ordering, contribution, and influence.
+
 ## Scene Model
 
 Scenes are behavioural climates, not clip bins.
@@ -116,6 +119,10 @@ references serve the climate. A scene is not simply a folder of assets.
 
 Scene state should be serializable so offline export and live runtime share the
 same intent.
+
+`docs/architecture/SCENE_LAYER_HIERARCHY.md` defines scenes as behavioural
+climates and specifies activation, overlap, transition, and deterministic export
+rules.
 
 ## Modulation Model
 

@@ -191,6 +191,9 @@ Layer targets include:
 
 Layer targets describe contribution and influence, not just opacity.
 
+`docs/architecture/SCENE_LAYER_HIERARCHY.md` defines where scene and layer
+targets live in the composition hierarchy.
+
 ### Behaviour Targets
 
 Behaviour targets include:
@@ -425,4 +428,3 @@ across authoring, performance, capture, replay, and export.
 Do not add a controller bridge, render path, schema field, or UI control just
 because a signal exists. Add it when it carries composition meaning that must
 survive across runtimes.
-
