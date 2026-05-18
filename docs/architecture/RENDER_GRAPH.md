@@ -115,6 +115,10 @@ signals, or intermediate surfaces.
 
 The graph must be serializable, inspectable, and deterministic.
 
+`docs/architecture/MODULATION_MODEL.md` defines modulation meaning. Render graph
+nodes may consume resolved modulation, but they must not invent source, target,
+mapping, conflict, or capture semantics.
+
 ### Node
 
 A node is a single render-planning operation.
