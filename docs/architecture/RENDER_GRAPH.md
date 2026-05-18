@@ -102,6 +102,10 @@ It answers:
 - which output profile is targeted
 - which capture or export constraints apply
 
+`docs/architecture/COMPOSITION_MODEL.md` defines the semantic composition
+boundary. The render graph consumes a resolved composition and lowers it into
+backend-specific render plans without redefining composition meaning.
+
 ### Render Graph
 
 A render graph is a directed acyclic plan of render nodes.
