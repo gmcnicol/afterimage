@@ -8,6 +8,7 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 - `COMPOSITION_MODEL.md`
 - `DATA_MODEL.md`
 - `MODULATION_MODEL.md`
+- `SCENE_LAYER_HIERARCHY.md`
 - `RENDER_GRAPH.md`
 - `UX.md`
 - `IMMERSIVE_WORKSPACES.md`

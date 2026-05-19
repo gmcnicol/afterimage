@@ -527,6 +527,10 @@ Layer order must be stable after normalization.
 Compositing must not depend on object insertion order from unnormalized project
 data.
 
+`docs/architecture/SCENE_LAYER_HIERARCHY.md` defines layer identity, scope,
+ordering, contribution, and influence before the render graph lowers them into
+backend-specific compositing operations.
+
 ## Scene Transition Planning
 
 Scene transitions are graph structures, not UI decorations.
@@ -548,6 +552,9 @@ extended or padded deliberately. Duration checks must use rendered duration, not
 raw authored clip duration.
 
 Terminal clips must not carry transitions that require a missing incoming clip.
+
+`docs/architecture/SCENE_LAYER_HIERARCHY.md` defines scene activation, overlap,
+and transition meaning. Render graph planning consumes that resolved meaning.
 
 ## Blend Mode Planning
 
