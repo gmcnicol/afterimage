@@ -111,6 +111,9 @@ A scene can contribute:
 Scenes may overlap, blend, or hand off, but they must remain deterministic when
 resolved for export.
 
+`docs/architecture/SCENE_LAYER_HIERARCHY.md` defines scene activation,
+transition, overlap, and ownership rules in detail.
+
 ## Layer Boundary
 
 Layers describe visual contribution and influence.
@@ -129,6 +132,9 @@ A layer can represent:
 Layer ordering, blend intent, mask participation, modulation targets, and
 render pass requirements belong to the composition. Backend-specific
 implementation belongs to render graph compilation.
+
+`docs/architecture/SCENE_LAYER_HIERARCHY.md` defines layer identity, ordering,
+scope, contribution, influence, and render graph lowering in detail.
 
 ## Timeline Boundary
 
