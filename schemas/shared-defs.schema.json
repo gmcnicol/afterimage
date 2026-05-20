@@ -692,6 +692,34 @@
       },
       "additionalProperties": false
     },
+    "compositionDeterministicSeed": {
+      "type": "object",
+      "required": ["id", "value"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "value": { "type": "number", "minimum": 0 },
+        "label": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "compositionIdentity": {
+      "type": "object",
+      "required": ["id", "name", "sequenceId", "variantId", "assetIds", "exportProfileIds", "deterministicSeeds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "sequenceId": { "$ref": "#/$defs/idString" },
+        "variantId": { "$ref": "#/$defs/idString" },
+        "assetIds": { "$ref": "#/$defs/stringArray" },
+        "exportProfileIds": { "$ref": "#/$defs/stringArray" },
+        "deterministicSeeds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/compositionDeterministicSeed" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
     "featureFlags": {
       "type": "object",
       "properties": {
