@@ -17,6 +17,10 @@ state changes, and capture the resulting traversal.
 - Performance and emergence are first-class.
 - Deterministic replay remains visible and trustworthy.
 
+`docs/architecture/STUDIO_UX_INTERACTION_SYSTEM.md` defines the durable v1 UX
+laws, primitive control library, Penpot component contract, workspace
+wireframes, and review criteria that extend these principles.
+
 ## Primary Workflows
 
 The core workflows are gathering archive material, shaping a world, defining
@@ -143,4 +147,3 @@ analyzing audio, planning render graph, rendering preview, or exporting a final
 artifact.
 
 Failure states should include recovery action and preserve authored intent.
-
