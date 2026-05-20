@@ -1,4 +1,4 @@
-export const CURRENT_PROJECT_VERSION = 2;
+export const CURRENT_PROJECT_VERSION = 3;
 
 export type RuntimeMode = 'studio' | 'live-desktop' | 'live-appliance';
 export type PresetFamily = 'vhs' | 'liminal' | 'imagined-futures' | 'glitch';
@@ -47,6 +47,14 @@ export type SceneLayerContribution =
 export type SceneLayerInfluence = 'pixels' | 'mask' | 'field' | 'modulation' | 'material' | 'diagnostic';
 export type SceneLayerBlendIntent = 'normal' | 'mix' | 'add-luma' | 'screen' | 'multiply' | 'masked-merge';
 export type SceneLayerRenderPassKind = 'source' | 'mask' | 'overlay' | 'behaviour' | 'diagnostic';
+export type CapturePolicy = 'ignore' | 'record' | 'replay-critical';
+export type ModulationSourceKind = 'automation-lane' | 'midi-binding' | 'capture-event' | 'entropy-state' | 'manual';
+export type ModulationTargetKind = 'filter' | 'scene-climate' | 'layer' | 'composition';
+export type ModulationMappingKind = 'linear' | 'exponential' | 'step' | 'toggle' | 'trigger';
+export type EntropyIdentityKind = 'capture-event' | 'modulation-route' | 'entropy-state' | 'scene' | 'layer' | 'composition' | 'manual';
+export type CaptureSessionStatus = 'open' | 'completed';
+export type CaptureTimebaseKind = 'project-ms' | 'composition-ms' | 'sequence-ms';
+export type CaptureEventKind = 'input' | 'modulation' | 'entropy' | 'transport' | 'manual';
 export type StudioErrorCode =
   | 'invalid-project-file'
   | 'schema-validation-failure'
@@ -534,6 +542,57 @@ export interface CompositionDeterministicSeed {
   label?: string;
 }
 
+export interface ModulationEndpoint {
+  kind: ModulationSourceKind | ModulationTargetKind | EntropyIdentityKind;
+  id: string;
+  property?: string;
+}
+
+export interface ModulationScope {
+  compositionId?: string;
+  sequenceId?: string;
+  variantId?: string;
+  sceneId?: string;
+  layerId?: string;
+  clipId?: string;
+}
+
+export interface ModulationMapping {
+  kind: ModulationMappingKind;
+  inputMin?: number;
+  inputMax?: number;
+  outputMin?: number;
+  outputMax?: number;
+  curve?: number;
+  clamp?: boolean;
+  invert?: boolean;
+}
+
+export interface ModulationRoute {
+  id: string;
+  name?: string;
+  source: ModulationEndpoint;
+  target: ModulationEndpoint;
+  mapping: ModulationMapping;
+  scope: ModulationScope;
+  capturePolicy: CapturePolicy;
+  seedId?: string;
+  enabled?: boolean;
+}
+
+export interface EntropyState {
+  id: string;
+  source: ModulationEndpoint;
+  target: ModulationEndpoint;
+  scope: ModulationScope;
+  value: number;
+  accumulationPolicyId?: string;
+  recoveryPolicyId?: string;
+  capturePolicy: CapturePolicy;
+  seedId?: string;
+  enabled?: boolean;
+}
+
 export interface SceneClimate {
   atmosphere?: string;
   pressure?: number;
@@ -609,8 +668,52 @@ export interface CompositionIdentity {
   assetIds: string[];
   exportProfileIds: string[];
   deterministicSeeds: CompositionDeterministicSeed[];
+  modulationRoutes?: ModulationRoute[];
+  entropyStates?: EntropyState[];
   scenes?: SceneDefinition[];
   layers?: SceneLayerDefinition[];
+}
+
+export interface CaptureTimebase {
+  kind: CaptureTimebaseKind;
+  fps?: number;
+}
+
+export interface CaptureSession {
+  id: string;
+  status: CaptureSessionStatus;
+  startedAt: string;
+  completedAt?: string;
+  projectId: string;
+  compositionId?: string;
+  sequenceId?: string;
+  variantId?: string;
+  timebase: CaptureTimebase;
+  admittedInputIds: string[];
+  seedIds: string[];
+  metadata?: Record<string, JsonPrimitive>;
+}
+
+export interface CaptureEvent {
+  id: string;
+  captureId: string;
+  index: number;
+  captureTimeMs: number;
+  compositionTimeMs?: number;
+  source: ModulationEndpoint;
+  target?: ModulationEndpoint;
+  kind: CaptureEventKind;
+  replayCritical: boolean;
+  routeId?: string;
+  mappingId?: string;
+  seedId?: string;
+  payload?: JsonValue;
+}
+
+export interface CaptureLog {
+  id: string;
+  captureSessionId: string;
+  events: CaptureEvent[];
 }
 
 export interface NormalizedSceneDefinition extends Omit<SceneDefinition,
@@ -639,7 +742,11 @@ export interface NormalizedSceneLayerDefinition extends Omit<SceneLayerDefinitio
 
 export interface NormalizedCompositionIdentity extends Omit<CompositionIdentity,
   | 'scenes'
-  | 'layers'> {
+  | 'layers'
+  | 'modulationRoutes'
+  | 'entropyStates'> {
+  modulationRoutes: ModulationRoute[];
+  entropyStates: EntropyState[];
   scenes: NormalizedSceneDefinition[];
   layers: NormalizedSceneLayerDefinition[];
 }
@@ -671,6 +778,8 @@ export interface ProjectFile {
   midiMappings?: MidiMappingFile[];
   exportSelections?: ExportSelection[];
   composition?: CompositionIdentity;
+  captureSessions?: CaptureSession[];
+  captureLogs?: CaptureLog[];
   defaultSequenceId?: string;
   featureFlags?: FeatureFlags;
   notes?: string;
@@ -686,6 +795,8 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
   | 'midiMappings'
   | 'exportSelections'
   | 'composition'
+  | 'captureSessions'
+  | 'captureLogs'
   | 'metadata'
   | 'featureFlags'
   | 'tags'> {
@@ -698,6 +809,8 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
   midiMappings: MidiMappingFile[];
   exportSelections: ExportSelection[];
   composition: NormalizedCompositionIdentity;
+  captureSessions: CaptureSession[];
+  captureLogs: CaptureLog[];
   featureFlags: FeatureFlags;
   tags: string[];
 }

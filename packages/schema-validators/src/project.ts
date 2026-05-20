@@ -416,7 +416,7 @@ function coerceProjectInput(input: unknown): { candidate: unknown; migrated: boo
       migrated: upgraded.migrated || shouldBumpVersion,
       fromVersion: version,
       notes: [
-        ...(shouldBumpVersion ? ['Updated project version to the current canonical schema.'] : []),
+        ...(shouldBumpVersion ? [`Updated project version from v${version} to v${CURRENT_PROJECT_VERSION} as the current canonical schema.`] : []),
         ...upgraded.notes
       ]
     };

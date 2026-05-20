@@ -10,7 +10,11 @@ import type {
   AutomationLane,
   BeatTrack,
   Bin,
+  CaptureEvent,
+  CaptureLog,
+  CaptureSession,
   CutCandidate,
+  EntropyState,
   ExportSelection,
   FilterInstance,
   FilterStack,
@@ -19,6 +23,10 @@ import type {
   MediaAsset,
   MidiGestureTrack,
   MidiMappingFile,
+  ModulationEndpoint,
+  ModulationMapping,
+  ModulationRoute,
+  ModulationScope,
   NormalizedArchiveMetadataFile,
   NormalizedCompositionIdentity,
   NormalizedProjectFile,
@@ -352,6 +360,86 @@ export function normalizeExportSelection(selection: ExportSelection): ExportSele
   };
 }
 
+export function normalizeModulationEndpoint(endpoint: ModulationEndpoint): ModulationEndpoint {
+  return { ...endpoint };
+}
+
+export function normalizeModulationScope(scope: ModulationScope | undefined): ModulationScope {
+  return {
+    compositionId: scope?.compositionId,
+    sequenceId: scope?.sequenceId,
+    variantId: scope?.variantId,
+    sceneId: scope?.sceneId,
+    layerId: scope?.layerId,
+    clipId: scope?.clipId
+  };
+}
+
+export function normalizeModulationMapping(mapping: ModulationMapping): ModulationMapping {
+  return {
+    ...mapping,
+    clamp: normalizeBoolean(mapping.clamp, true),
+    invert: normalizeBoolean(mapping.invert, false)
+  };
+}
+
+export function normalizeModulationRoute(route: ModulationRoute): ModulationRoute {
+  return {
+    ...route,
+    source: normalizeModulationEndpoint(route.source),
+    target: normalizeModulationEndpoint(route.target),
+    mapping: normalizeModulationMapping(route.mapping),
+    scope: normalizeModulationScope(route.scope),
+    capturePolicy: route.capturePolicy ?? 'record',
+    enabled: normalizeBoolean(route.enabled, true)
+  };
+}
+
+export function normalizeEntropyState(state: EntropyState): EntropyState {
+  return {
+    ...state,
+    source: normalizeModulationEndpoint(state.source),
+    target: normalizeModulationEndpoint(state.target),
+    scope: normalizeModulationScope(state.scope),
+    value: normalizeUnit(state.value, 0),
+    capturePolicy: state.capturePolicy ?? 'record',
+    enabled: normalizeBoolean(state.enabled, true)
+  };
+}
+
+export function normalizeCaptureSession(session: CaptureSession): CaptureSession {
+  return {
+    ...session,
+    status: session.status ?? 'open',
+    timebase: {
+      ...session.timebase,
+      kind: session.timebase.kind ?? 'project-ms'
+    },
+    admittedInputIds: normalizeStringArray(session.admittedInputIds),
+    seedIds: normalizeStringArray(session.seedIds),
+    metadata: normalizeJsonRecord(session.metadata)
+  };
+}
+
+export function normalizeCaptureEvent(event: CaptureEvent): CaptureEvent {
+  return {
+    ...event,
+    source: normalizeModulationEndpoint(event.source),
+    target: event.target ? normalizeModulationEndpoint(event.target) : undefined,
+    replayCritical: normalizeBoolean(event.replayCritical, false),
+    payload: event.payload === undefined ? undefined : structuredClone(event.payload)
+  };
+}
+
+export function normalizeCaptureLog(log: CaptureLog): CaptureLog {
+  return {
+    ...log,
+    events: [...log.events]
+      .map(normalizeCaptureEvent)
+      .sort((left, right) => compareNumbers(left.index, right.index) || compareNumbers(left.captureTimeMs, right.captureTimeMs) || compareStrings(left.id, right.id))
+  };
+}
+
 function findDefaultSequence(project: ProjectFile): Sequence | undefined {
   return project.defaultSequenceId
     ? project.sequences.find((sequence) => sequence.id === project.defaultSequenceId)
@@ -524,6 +612,8 @@ export function normalizeCompositionIdentity(project: ProjectFile): NormalizedCo
       ? normalizeSortedStringArray(project.composition.exportProfileIds)
       : normalizeStringArray(enabledExportProfileIds.length > 0 ? enabledExportProfileIds : fallbackExportProfileIds),
     deterministicSeeds: sortById((project.composition?.deterministicSeeds ?? []).map((seed) => ({ ...seed }))),
+    modulationRoutes: sortById((project.composition?.modulationRoutes ?? []).map(normalizeModulationRoute)),
+    entropyStates: sortById((project.composition?.entropyStates ?? []).map(normalizeEntropyState)),
     scenes: sortById(scenes.map(normalizeSceneDefinition)),
     layers: [...layers]
       .map(normalizeSceneLayerDefinition)
@@ -555,6 +645,8 @@ export function normalizeProject(project: ProjectFile): NormalizedProjectFile {
       .map(normalizeExportSelection)
       .sort((left, right) => compareStrings(left.profileId, right.profileId)),
     composition: normalizeCompositionIdentity(project),
+    captureSessions: sortById((project.captureSessions ?? []).map(normalizeCaptureSession)),
+    captureLogs: sortById((project.captureLogs ?? []).map(normalizeCaptureLog)),
     featureFlags: {
       recordedMidiAutomation: normalizeBoolean(project.featureFlags?.recordedMidiAutomation, false),
       advancedBeatDetection: normalizeBoolean(project.featureFlags?.advancedBeatDetection, false),
