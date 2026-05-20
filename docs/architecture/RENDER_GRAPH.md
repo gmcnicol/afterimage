@@ -184,6 +184,10 @@ Future backend:
 
 Both backends must consume the same render graph semantics where possible.
 
+`docs/architecture/FFMPEG_COMPILER_BOUNDARY.md` defines the offline compiler
+boundary. `docs/architecture/WEBGPU_PREVIEW.md` defines the future realtime
+preview boundary.
+
 ## Planning Pipeline
 
 The planning pipeline is:
@@ -287,6 +291,10 @@ Examples from current v1:
 
 Supported style nodes come from shared Core contracts. Unsupported filters are
 integrity failures, not best-effort backend behavior.
+
+`docs/architecture/AESTHETIC_INTERPRETATION.md` defines how style, material,
+atmosphere, LUT, and final look interpretation relate without reducing visual
+identity to filter stacks.
 
 ### Behavioural Nodes
 
@@ -414,6 +422,11 @@ The compiler may choose:
 
 Every such choice must be deterministic from graph inputs and compiler policy.
 
+`docs/architecture/FFMPEG_COMPILER_BOUNDARY.md` defines compiler ownership,
+capability checking, rejection policy, command identity, toolchain identity,
+duration accounting, pass evolution, cache provenance, and diagnostics in
+detail.
+
 ## Cache Strategy
 
 Cache exists to improve responsiveness and reliability. It must not change
@@ -505,6 +518,10 @@ Realtime execution may:
 
 Realtime capture/export must still record enough state to replay deterministically
 through the offline export backend.
+
+`docs/architecture/WEBGPU_PREVIEW.md` defines WebGPU preview ownership,
+capability negotiation, approximation policy, timebase handling, seed handling,
+cache boundaries, observability, and device failure semantics in detail.
 
 ## Layer Compositing Rules
 

@@ -5,13 +5,16 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 ## Core Documents
 
 - `ARCHITECTURE.md`
+- `AESTHETIC_INTERPRETATION.md`
 - `COMPOSITION_MODEL.md`
 - `DATA_MODEL.md`
 - `DETERMINISTIC_CAPTURE.md`
 - `ENTROPY_INTERACTION.md`
+- `FFMPEG_COMPILER_BOUNDARY.md`
 - `MODULATION_MODEL.md`
 - `SCENE_LAYER_HIERARCHY.md`
 - `RENDER_GRAPH.md`
+- `WEBGPU_PREVIEW.md`
 - `UX.md`
 - `IMMERSIVE_WORKSPACES.md`
 - `PICO_SERVICES.md`
