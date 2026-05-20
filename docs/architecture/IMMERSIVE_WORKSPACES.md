@@ -23,6 +23,10 @@ The primary workspaces are:
 
 They are modes of attention, not isolated products.
 
+`docs/architecture/STUDIO_UX_INTERACTION_SYSTEM.md` defines the v1 wireframes,
+primitive controls, shared states, and cross-space navigation rules for these
+workspaces.
+
 ## Archive Space
 
 Archive Space is for discovering and selecting memory.
@@ -94,4 +98,3 @@ capture state, active output target, and relevant selection where meaningful.
 
 The user should never feel they are leaving the world to operate a different
 application.
-
