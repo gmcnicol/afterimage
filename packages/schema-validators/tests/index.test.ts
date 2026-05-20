@@ -21,7 +21,7 @@ describe('@afterimage/schema-validators', () => {
     });
 
     expect(parsed.version).toBe(2);
-    expect(parsed.composition).toEqual({
+    expect(parsed.composition).toMatchObject({
       id: 'composition-main',
       name: 'Studio Fixture',
       sequenceId: 'sequence-main',
@@ -30,6 +30,8 @@ describe('@afterimage/schema-validators', () => {
       exportProfileIds: [],
       deterministicSeeds: []
     });
+    expect(parsed.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
+    expect(parsed.composition.layers[0].id).toBe('layer-clip-intro');
     expect(parsed.featureFlags.proxyGeneration).toBe(false);
     expect(parsed.exportSelections).toEqual([]);
     expect(parsed.tags).toEqual([]);
@@ -38,7 +40,7 @@ describe('@afterimage/schema-validators', () => {
   it('parses the canonical project with authored composition identity', () => {
     const parsed = parseProject(fixtureProject);
 
-    expect(parsed.composition).toEqual({
+    expect(parsed.composition).toMatchObject({
       id: 'composition-main',
       name: 'Studio Fixture',
       sequenceId: 'sequence-main',
@@ -52,6 +54,16 @@ describe('@afterimage/schema-validators', () => {
           label: 'Main composition seed'
         }
       ]
+    });
+    expect(parsed.composition.scenes[0]).toMatchObject({
+      id: 'scene-main',
+      name: 'Main Scene',
+      layerIds: ['layer-clip-intro']
+    });
+    expect(parsed.composition.layers[0]).toMatchObject({
+      id: 'layer-clip-intro',
+      sceneId: 'scene-main',
+      contribution: 'source'
     });
   });
 
@@ -230,6 +242,32 @@ describe('@afterimage/schema-validators', () => {
           message: 'must be >= 0',
           path: '/composition/deterministicSeeds/0/value',
           source: 'schema'
+        }
+      ]
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        scenes: [
+          {
+            id: 'scene-main',
+            name: 'Main Scene',
+            layerIds: ['missing-layer']
+          }
+        ],
+        layers: []
+      }
+    })).toEqual({
+      ok: false,
+      code: 'invalid-project-file',
+      errors: [
+        {
+          keyword: 'missing-reference',
+          message: 'Scene "scene-main" references missing layer "missing-layer".',
+          path: 'composition.scenes.scene-main.layerIds',
+          source: 'integrity'
         }
       ]
     });
