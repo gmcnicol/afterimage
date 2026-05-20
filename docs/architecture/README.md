@@ -20,6 +20,7 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 - `PICO_SERVICES.md`
 - `BEHAVIOURAL_PACKS.md`
 - `BEHAVIOURAL_SPATIAL_SYSTEMS.md`
+- `ARCHIVE_MOTIF_SYSTEM.md`
 - `ARCHIVE_SCHEMA.md`
 - `DARKLIFE_PIPELINE.md`
 
