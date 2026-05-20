@@ -66,6 +66,7 @@
       "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/exportSelection" },
       "default": []
     },
+    "composition": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/compositionIdentity" },
     "defaultSequenceId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
     "featureFlags": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/featureFlags" },
     "notes": { "type": "string" },

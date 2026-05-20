@@ -245,6 +245,21 @@
       "lastOutputDirectory": "exports"
     }
   ],
+  "composition": {
+    "id": "composition-main",
+    "name": "Studio Fixture",
+    "sequenceId": "sequence-main",
+    "variantId": "variant-main",
+    "assetIds": ["asset-alpha", "asset-music"],
+    "exportProfileIds": ["landscape-master", "portrait-short-form"],
+    "deterministicSeeds": [
+      {
+        "id": "seed-composition-main",
+        "value": 1337,
+        "label": "Main composition seed"
+      }
+    ]
+  },
   "defaultSequenceId": "sequence-main",
   "featureFlags": {
     "recordedMidiAutomation": false,
