@@ -23,7 +23,7 @@ describe('@afterimage/project-model', () => {
     expect(getAssetById(normalized, 'asset-alpha')?.filename).toBe('source-alpha.mp4');
     expect(getDefaultVariant(normalized)?.id).toBe('variant-main');
     expect(getDefaultVariant(normalized)?.musicAlignment?.syncMode).toBe('texture');
-    expect(normalized.composition).toEqual({
+    expect(normalized.composition).toMatchObject({
       id: 'composition-main',
       name: 'Studio Fixture',
       sequenceId: 'sequence-main',
@@ -38,6 +38,25 @@ describe('@afterimage/project-model', () => {
         }
       ]
     });
+    expect(normalized.composition.scenes.map((scene) => scene.id)).toEqual(['scene-main']);
+    expect(normalized.composition.scenes[0]).toMatchObject({
+      id: 'scene-main',
+      name: 'Main Scene',
+      layerIds: ['layer-clip-intro'],
+      archiveReferenceIds: ['archive-source-alpha']
+    });
+    expect(normalized.composition.layers).toEqual([
+      expect.objectContaining({
+        id: 'layer-clip-intro',
+        sceneId: 'scene-main',
+        orderIndex: 0,
+        contribution: 'source',
+        assetId: 'asset-alpha',
+        cutId: 'cut-intro',
+        clipId: 'clip-intro',
+        stackId: 'stack-sequence-main'
+      })
+    ]);
   });
 
   it('creates numbered default sequence variants', () => {
@@ -56,13 +75,26 @@ describe('@afterimage/project-model', () => {
       deterministicSeeds: []
     });
     expect(project.composition.exportProfileIds).toEqual(['landscape-master']);
+    expect(project.composition.scenes[0]).toMatchObject({
+      id: 'scene-main',
+      activation: [
+        {
+          id: 'activation-main',
+          kind: 'timeline',
+          startMs: 0,
+          endMs: 0
+        }
+      ],
+      layerIds: []
+    });
+    expect(project.composition.layers).toEqual([]);
   });
 
   it('defaults composition identity for projects without authored composition', () => {
     const { composition: _composition, ...projectWithoutComposition } = fixtureProject;
     const normalized = normalizeProject(projectWithoutComposition);
 
-    expect(normalized.composition).toEqual({
+    expect(normalized.composition).toMatchObject({
       id: 'composition-main',
       name: 'Studio Fixture',
       sequenceId: 'sequence-main',
@@ -70,6 +102,39 @@ describe('@afterimage/project-model', () => {
       assetIds: ['asset-alpha', 'asset-music'],
       exportProfileIds: ['landscape-master', 'portrait-short-form'],
       deterministicSeeds: []
+    });
+    expect(normalized.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
+    expect(normalized.composition.layers[0]).toMatchObject({
+      id: 'layer-clip-intro',
+      sceneId: 'scene-main',
+      assetId: 'asset-alpha',
+      clipId: 'clip-intro'
+    });
+  });
+
+  it('defaults scene and layer identity for older authored composition objects', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        id: 'composition-main',
+        name: 'Studio Fixture',
+        sequenceId: 'sequence-main',
+        variantId: 'variant-main',
+        assetIds: ['asset-alpha', 'asset-music'],
+        exportProfileIds: ['landscape-master', 'portrait-short-form'],
+        deterministicSeeds: []
+      }
+    });
+
+    expect(normalized.composition.scenes[0]).toMatchObject({
+      id: 'scene-main',
+      layerIds: ['layer-clip-intro']
+    });
+    expect(normalized.composition.layers[0]).toMatchObject({
+      id: 'layer-clip-intro',
+      sceneId: 'scene-main',
+      assetId: 'asset-alpha',
+      clipId: 'clip-intro'
     });
   });
 
@@ -193,6 +258,142 @@ describe('@afterimage/project-model', () => {
         code: 'missing-reference',
         message: 'Composition "composition-main" references missing variant "missing-variant".',
         path: 'composition.variantId'
+      }
+    ]));
+  });
+
+  it('normalizes scene and layer ordering and reports invalid scene layer references', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        scenes: [
+          {
+            id: 'scene-b',
+            name: 'Scene B',
+            activation: [
+              {
+                id: 'activation-late',
+                kind: 'timeline',
+                startMs: 2000,
+                endMs: 1000
+              }
+            ],
+            transitions: [
+              {
+                id: 'transition-missing',
+                toSceneId: 'scene-missing',
+                style: 'mask',
+                durationMs: 250,
+                maskAssetId: 'missing-mask'
+              }
+            ],
+            layerIds: ['layer-missing'],
+            archiveReferenceIds: []
+          },
+          {
+            id: 'scene-a',
+            name: 'Scene A',
+            layerIds: ['layer-b', 'layer-a']
+          }
+        ],
+        layers: [
+          {
+            id: 'layer-b',
+            name: 'Layer B',
+            sceneId: 'scene-a',
+            orderIndex: 2,
+            scope: 'source-clip',
+            contribution: 'source',
+            assetId: 'asset-alpha',
+            clipId: 'clip-intro',
+            renderIntent: {
+              passKind: 'source'
+            }
+          },
+          {
+            id: 'layer-a',
+            name: 'Layer A',
+            sceneId: 'scene-a',
+            orderIndex: 1,
+            scope: 'source-clip',
+            contribution: 'source',
+            assetId: 'missing-asset',
+            cutId: 'missing-cut',
+            clipId: 'missing-clip',
+            stackId: 'missing-stack',
+            maskLayerId: 'missing-layer',
+            renderIntent: {
+              passKind: 'source'
+            }
+          },
+          {
+            id: 'layer-orphan',
+            name: 'Layer Orphan',
+            sceneId: 'scene-missing',
+            orderIndex: 0,
+            scope: 'diagnostic',
+            contribution: 'diagnostic',
+            renderIntent: {
+              passKind: 'diagnostic'
+            }
+          }
+        ]
+      }
+    });
+
+    expect(normalized.composition.scenes.map((scene) => scene.id)).toEqual(['scene-a', 'scene-b']);
+    expect(normalized.composition.layers.map((layer) => layer.id)).toEqual(['layer-a', 'layer-b', 'layer-orphan']);
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'invalid-range',
+        message: 'Scene activation "activation-late" cannot end before it starts.',
+        path: 'composition.scenes.scene-b.activation.activation-late'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Scene transition "transition-missing" references missing scene "scene-missing".',
+        path: 'composition.scenes.scene-b.transitions.transition-missing.toSceneId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Scene transition "transition-missing" references missing mask asset "missing-mask".',
+        path: 'composition.scenes.scene-b.transitions.transition-missing.maskAssetId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Scene "scene-b" references missing layer "layer-missing".',
+        path: 'composition.scenes.scene-b.layerIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-a" references missing asset "missing-asset".',
+        path: 'composition.layers.layer-a.assetId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-a" references missing clip "missing-clip".',
+        path: 'composition.layers.layer-a.clipId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-a" references missing cut "missing-cut".',
+        path: 'composition.layers.layer-a.cutId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-a" references missing filter stack "missing-stack".',
+        path: 'composition.layers.layer-a.stackId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-a" references missing mask layer "missing-layer".',
+        path: 'composition.layers.layer-a.maskLayerId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-orphan" references missing scene "scene-missing".',
+        path: 'composition.layers.layer-orphan.sceneId'
       }
     ]));
   });

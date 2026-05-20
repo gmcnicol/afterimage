@@ -78,6 +78,30 @@
       "type": "string",
       "enum": ["contrast", "brightness", "blur", "bloom-soft", "glitch-bands", "chroma-bleed"]
     },
+    "sceneActivationKind": {
+      "type": "string",
+      "enum": ["timeline", "manual", "capture", "entropy", "archive", "audio"]
+    },
+    "sceneLayerScope": {
+      "type": "string",
+      "enum": ["composition", "scene", "scene-transition", "source-clip", "archive-segment", "behaviour", "diagnostic"]
+    },
+    "sceneLayerContribution": {
+      "type": "string",
+      "enum": ["source", "texture", "mask", "transition-overlay", "atmospheric-overlay", "generated-material", "archive-resurfacing", "field-visualization", "diagnostic"]
+    },
+    "sceneLayerInfluence": {
+      "type": "string",
+      "enum": ["pixels", "mask", "field", "modulation", "material", "diagnostic"]
+    },
+    "sceneLayerBlendIntent": {
+      "type": "string",
+      "enum": ["normal", "mix", "add-luma", "screen", "multiply", "masked-merge"]
+    },
+    "sceneLayerRenderPassKind": {
+      "type": "string",
+      "enum": ["source", "mask", "overlay", "behaviour", "diagnostic"]
+    },
     "assistedGenerationStrategy": {
       "type": "string",
       "enum": ["manual", "chronological", "marker-aware", "motif", "seeded-constrained"]
@@ -702,6 +726,108 @@
       },
       "additionalProperties": false
     },
+    "sceneClimate": {
+      "type": "object",
+      "properties": {
+        "atmosphere": { "type": "string", "minLength": 1 },
+        "pressure": { "type": "number", "minimum": 0, "maximum": 1 },
+        "entropyBias": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cohesion": { "type": "number", "minimum": 0, "maximum": 1 },
+        "memory": { "type": "number", "minimum": 0, "maximum": 1 },
+        "volatility": { "type": "number", "minimum": 0, "maximum": 1 },
+        "motifIds": { "$ref": "#/$defs/stringArray" },
+        "archiveSegmentIds": { "$ref": "#/$defs/stringArray" },
+        "materialTags": { "$ref": "#/$defs/stringArray" },
+        "behaviourIds": { "$ref": "#/$defs/stringArray" },
+        "transitionTendency": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "sceneActivation": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "kind": { "$ref": "#/$defs/sceneActivationKind" },
+        "startMs": { "type": "integer", "minimum": 0 },
+        "endMs": { "type": "integer", "minimum": 0 },
+        "sourceId": { "$ref": "#/$defs/idString" }
+      },
+      "additionalProperties": false
+    },
+    "sceneTransition": {
+      "type": "object",
+      "required": ["id", "toSceneId", "style", "durationMs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "toSceneId": { "$ref": "#/$defs/idString" },
+        "style": { "$ref": "#/$defs/transitionStyle" },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "pressureHandoff": { "type": "number", "minimum": 0, "maximum": 1 },
+        "entropyHandoff": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maskAssetId": { "$ref": "#/$defs/idString" },
+        "overlayAssetId": { "$ref": "#/$defs/idString" }
+      },
+      "additionalProperties": false
+    },
+    "sceneDefinition": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "climate": { "$ref": "#/$defs/sceneClimate" },
+        "activation": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sceneActivation" },
+          "default": []
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sceneTransition" },
+          "default": []
+        },
+        "layerIds": { "$ref": "#/$defs/stringArray" },
+        "archiveReferenceIds": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "sceneLayerRenderIntent": {
+      "type": "object",
+      "required": ["passKind"],
+      "properties": {
+        "passKind": { "$ref": "#/$defs/sceneLayerRenderPassKind" },
+        "requiredCapabilities": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "sceneLayerDefinition": {
+      "type": "object",
+      "required": ["id", "name", "sceneId", "orderIndex", "scope", "contribution", "renderIntent"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "sceneId": { "$ref": "#/$defs/idString" },
+        "orderIndex": { "type": "integer", "minimum": 0 },
+        "scope": { "$ref": "#/$defs/sceneLayerScope" },
+        "contribution": { "$ref": "#/$defs/sceneLayerContribution" },
+        "influence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sceneLayerInfluence" },
+          "default": []
+        },
+        "blendIntent": { "$ref": "#/$defs/sceneLayerBlendIntent", "default": "normal" },
+        "mix": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+        "assetId": { "$ref": "#/$defs/idString" },
+        "cutId": { "$ref": "#/$defs/idString" },
+        "clipId": { "$ref": "#/$defs/idString" },
+        "stackId": { "$ref": "#/$defs/idString" },
+        "maskLayerId": { "$ref": "#/$defs/idString" },
+        "archiveReferenceIds": { "$ref": "#/$defs/stringArray" },
+        "renderIntent": { "$ref": "#/$defs/sceneLayerRenderIntent" }
+      },
+      "additionalProperties": false
+    },
     "compositionIdentity": {
       "type": "object",
       "required": ["id", "name", "sequenceId", "variantId", "assetIds", "exportProfileIds", "deterministicSeeds"],
@@ -715,6 +841,16 @@
         "deterministicSeeds": {
           "type": "array",
           "items": { "$ref": "#/$defs/compositionDeterministicSeed" },
+          "default": []
+        },
+        "scenes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sceneDefinition" },
+          "default": []
+        },
+        "layers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sceneLayerDefinition" },
           "default": []
         }
       },

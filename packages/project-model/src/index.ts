@@ -32,6 +32,21 @@ export type AssistedGenerationStrategy =
 export type FilterStackScope = 'sequence' | 'clip' | 'preset';
 export type SupportedFilterType = 'contrast' | 'brightness' | 'blur' | 'bloom-soft' | 'glitch-bands' | 'chroma-bleed';
 export type AutomationTargetProperty = 'mix' | 'contrast' | 'brightness' | 'radius' | 'strength';
+export type SceneActivationKind = 'timeline' | 'manual' | 'capture' | 'entropy' | 'archive' | 'audio';
+export type SceneLayerScope = 'composition' | 'scene' | 'scene-transition' | 'source-clip' | 'archive-segment' | 'behaviour' | 'diagnostic';
+export type SceneLayerContribution =
+  | 'source'
+  | 'texture'
+  | 'mask'
+  | 'transition-overlay'
+  | 'atmospheric-overlay'
+  | 'generated-material'
+  | 'archive-resurfacing'
+  | 'field-visualization'
+  | 'diagnostic';
+export type SceneLayerInfluence = 'pixels' | 'mask' | 'field' | 'modulation' | 'material' | 'diagnostic';
+export type SceneLayerBlendIntent = 'normal' | 'mix' | 'add-luma' | 'screen' | 'multiply' | 'masked-merge';
+export type SceneLayerRenderPassKind = 'source' | 'mask' | 'overlay' | 'behaviour' | 'diagnostic';
 export type StudioErrorCode =
   | 'invalid-project-file'
   | 'schema-validation-failure'
@@ -519,6 +534,73 @@ export interface CompositionDeterministicSeed {
   label?: string;
 }
 
+export interface SceneClimate {
+  atmosphere?: string;
+  pressure?: number;
+  entropyBias?: number;
+  cohesion?: number;
+  memory?: number;
+  volatility?: number;
+  motifIds?: string[];
+  archiveSegmentIds?: string[];
+  materialTags?: string[];
+  behaviourIds?: string[];
+  transitionTendency?: number;
+}
+
+export interface SceneActivation {
+  id: string;
+  kind: SceneActivationKind;
+  startMs?: number;
+  endMs?: number;
+  sourceId?: string;
+}
+
+export interface SceneTransition {
+  id: string;
+  toSceneId: string;
+  style: TransitionStyle;
+  durationMs: number;
+  pressureHandoff?: number;
+  entropyHandoff?: number;
+  maskAssetId?: string;
+  overlayAssetId?: string;
+}
+
+export interface SceneDefinition {
+  id: string;
+  name: string;
+  climate?: SceneClimate;
+  activation?: SceneActivation[];
+  transitions?: SceneTransition[];
+  layerIds?: string[];
+  archiveReferenceIds?: string[];
+}
+
+export interface SceneLayerRenderIntent {
+  passKind: SceneLayerRenderPassKind;
+  requiredCapabilities?: string[];
+}
+
+export interface SceneLayerDefinition {
+  id: string;
+  name: string;
+  sceneId: string;
+  orderIndex: number;
+  scope: SceneLayerScope;
+  contribution: SceneLayerContribution;
+  influence?: SceneLayerInfluence[];
+  blendIntent?: SceneLayerBlendIntent;
+  mix?: number;
+  assetId?: string;
+  cutId?: string;
+  clipId?: string;
+  stackId?: string;
+  maskLayerId?: string;
+  archiveReferenceIds?: string[];
+  renderIntent: SceneLayerRenderIntent;
+}
+
 export interface CompositionIdentity {
   id: string;
   name: string;
@@ -527,6 +609,39 @@ export interface CompositionIdentity {
   assetIds: string[];
   exportProfileIds: string[];
   deterministicSeeds: CompositionDeterministicSeed[];
+  scenes?: SceneDefinition[];
+  layers?: SceneLayerDefinition[];
+}
+
+export interface NormalizedSceneDefinition extends Omit<SceneDefinition,
+  | 'activation'
+  | 'transitions'
+  | 'layerIds'
+  | 'archiveReferenceIds'
+  | 'climate'> {
+  climate: SceneClimate;
+  activation: SceneActivation[];
+  transitions: SceneTransition[];
+  layerIds: string[];
+  archiveReferenceIds: string[];
+}
+
+export interface NormalizedSceneLayerDefinition extends Omit<SceneLayerDefinition,
+  | 'influence'
+  | 'blendIntent'
+  | 'mix'
+  | 'archiveReferenceIds'> {
+  influence: SceneLayerInfluence[];
+  blendIntent: SceneLayerBlendIntent;
+  mix: number;
+  archiveReferenceIds: string[];
+}
+
+export interface NormalizedCompositionIdentity extends Omit<CompositionIdentity,
+  | 'scenes'
+  | 'layers'> {
+  scenes: NormalizedSceneDefinition[];
+  layers: NormalizedSceneLayerDefinition[];
 }
 
 export interface FeatureFlags {
@@ -582,7 +697,7 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
   automationLanes: AutomationLane[];
   midiMappings: MidiMappingFile[];
   exportSelections: ExportSelection[];
-  composition: CompositionIdentity;
+  composition: NormalizedCompositionIdentity;
   featureFlags: FeatureFlags;
   tags: string[];
 }
@@ -768,6 +883,10 @@ function clampUnit(value: number | undefined): number | undefined {
   }
 
   return Math.max(0, Math.min(1, value));
+}
+
+function normalizeUnit(value: number | undefined, fallback: number): number {
+  return clampUnit(value) ?? fallback;
 }
 
 function normalizeJsonRecord(record: Record<string, JsonPrimitive> | undefined): Record<string, JsonPrimitive> {
@@ -1111,7 +1230,124 @@ function collectVariantAssetIds(variant: Variant | undefined): string[] {
   ].filter((assetId): assetId is string => assetId !== undefined));
 }
 
-export function normalizeCompositionIdentity(project: ProjectFile): CompositionIdentity {
+function getVariantDurationMs(variant: Variant | undefined): number {
+  if (!variant || variant.clips.length === 0) {
+    return 0;
+  }
+
+  return Math.max(...variant.clips.map((clip) => clip.timelineStartMs + clip.durationMs));
+}
+
+function createDefaultScene(variant: Variant | undefined, layers: SceneLayerDefinition[]): SceneDefinition {
+  return {
+    id: 'scene-main',
+    name: 'Main Scene',
+    climate: {
+      atmosphere: 'default',
+      pressure: 0,
+      entropyBias: 0,
+      cohesion: 1,
+      memory: 0,
+      volatility: 0,
+      motifIds: [],
+      archiveSegmentIds: [],
+      materialTags: [],
+      behaviourIds: []
+    },
+    activation: [
+      {
+        id: 'activation-main',
+        kind: 'timeline',
+        startMs: 0,
+        endMs: getVariantDurationMs(variant)
+      }
+    ],
+    transitions: [],
+    layerIds: layers.map((layer) => layer.id),
+    archiveReferenceIds: []
+  };
+}
+
+function createDefaultLayers(variant: Variant | undefined): SceneLayerDefinition[] {
+  return (variant?.clips ?? []).map((clip, index) => ({
+    id: `layer-${clip.id}`,
+    name: `Layer ${index + 1}`,
+    sceneId: 'scene-main',
+    orderIndex: index,
+    scope: 'source-clip',
+    contribution: 'source',
+    influence: ['pixels'],
+    blendIntent: 'normal',
+    mix: 1,
+    assetId: clip.assetId,
+    cutId: clip.cutId,
+    clipId: clip.id,
+    stackId: clip.stackOverrideId ?? variant?.stackId,
+    archiveReferenceIds: [],
+    renderIntent: {
+      passKind: 'source',
+      requiredCapabilities: []
+    }
+  }));
+}
+
+export function normalizeSceneClimate(climate: SceneClimate | undefined): SceneClimate {
+  return {
+    atmosphere: climate?.atmosphere,
+    pressure: normalizeUnit(climate?.pressure, 0),
+    entropyBias: normalizeUnit(climate?.entropyBias, 0),
+    cohesion: normalizeUnit(climate?.cohesion, 1),
+    memory: normalizeUnit(climate?.memory, 0),
+    volatility: normalizeUnit(climate?.volatility, 0),
+    motifIds: normalizeStringArray(climate?.motifIds),
+    archiveSegmentIds: normalizeStringArray(climate?.archiveSegmentIds),
+    materialTags: normalizeStringArray(climate?.materialTags),
+    behaviourIds: normalizeStringArray(climate?.behaviourIds),
+    transitionTendency: clampUnit(climate?.transitionTendency)
+  };
+}
+
+export function normalizeSceneActivation(activation: SceneActivation): SceneActivation {
+  return { ...activation };
+}
+
+export function normalizeSceneTransition(transition: SceneTransition): SceneTransition {
+  return {
+    ...transition,
+    style: transition.style ?? 'cut',
+    durationMs: Math.max(0, transition.durationMs),
+    pressureHandoff: clampUnit(transition.pressureHandoff),
+    entropyHandoff: clampUnit(transition.entropyHandoff)
+  };
+}
+
+export function normalizeSceneDefinition(scene: SceneDefinition): NormalizedSceneDefinition {
+  return {
+    ...scene,
+    climate: normalizeSceneClimate(scene.climate),
+    activation: sortById((scene.activation ?? []).map(normalizeSceneActivation))
+      .sort((left, right) => compareNumbers(left.startMs ?? 0, right.startMs ?? 0) || compareStrings(left.id, right.id)),
+    transitions: sortById((scene.transitions ?? []).map(normalizeSceneTransition)),
+    layerIds: normalizeStringArray(scene.layerIds),
+    archiveReferenceIds: normalizeStringArray(scene.archiveReferenceIds)
+  };
+}
+
+export function normalizeSceneLayerDefinition(layer: SceneLayerDefinition): NormalizedSceneLayerDefinition {
+  return {
+    ...layer,
+    influence: normalizeStringArray(layer.influence) as SceneLayerInfluence[],
+    blendIntent: layer.blendIntent ?? 'normal',
+    mix: normalizeUnit(layer.mix, 1),
+    archiveReferenceIds: normalizeStringArray(layer.archiveReferenceIds),
+    renderIntent: {
+      ...layer.renderIntent,
+      requiredCapabilities: normalizeStringArray(layer.renderIntent.requiredCapabilities)
+    }
+  };
+}
+
+export function normalizeCompositionIdentity(project: ProjectFile): NormalizedCompositionIdentity {
   const sequence = project.composition
     ? project.sequences.find((candidate) => candidate.id === project.composition?.sequenceId)
     : findDefaultSequence(project);
@@ -1122,6 +1358,10 @@ export function normalizeCompositionIdentity(project: ProjectFile): CompositionI
     .filter((selection) => selection.enabled ?? true)
     .map((selection) => selection.profileId);
   const fallbackExportProfileIds = (project.exportSelections ?? []).map((selection) => selection.profileId);
+  const authoredLayers = project.composition?.layers ?? [];
+  const layers = authoredLayers.length > 0 ? authoredLayers : createDefaultLayers(variant);
+  const authoredScenes = project.composition?.scenes ?? [];
+  const scenes = authoredScenes.length > 0 ? authoredScenes : [createDefaultScene(variant, layers)];
 
   return {
     id: project.composition?.id ?? 'composition-main',
@@ -1134,7 +1374,11 @@ export function normalizeCompositionIdentity(project: ProjectFile): CompositionI
     exportProfileIds: project.composition
       ? normalizeSortedStringArray(project.composition.exportProfileIds)
       : normalizeStringArray(enabledExportProfileIds.length > 0 ? enabledExportProfileIds : fallbackExportProfileIds),
-    deterministicSeeds: sortById((project.composition?.deterministicSeeds ?? []).map((seed) => ({ ...seed })))
+    deterministicSeeds: sortById((project.composition?.deterministicSeeds ?? []).map((seed) => ({ ...seed }))),
+    scenes: sortById(scenes.map(normalizeSceneDefinition)),
+    layers: [...layers]
+      .map(normalizeSceneLayerDefinition)
+      .sort((left, right) => compareStrings(left.sceneId, right.sceneId) || compareNumbers(left.orderIndex, right.orderIndex) || compareStrings(left.id, right.id))
   };
 }
 
@@ -1213,6 +1457,9 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   const laneIds = new Set(project.automationLanes.map((lane) => lane.id));
   const midiMappingIds = new Set(project.midiMappings.map((mapping) => mapping.id));
   const exportProfileIds = new Set(project.exportSelections.map((selection) => selection.profileId));
+  const sceneIds = new Set(project.composition.scenes.map((scene) => scene.id));
+  const layerIds = new Set(project.composition.layers.map((layer) => layer.id));
+  const clipIds = new Set(project.variants.flatMap((variant) => variant.clips.map((clip) => clip.id)));
 
   issues.push(...collectDuplicateIdIssues('assets', project.assets.map((asset) => asset.id)));
   issues.push(...collectDuplicateIdIssues('presets', project.presets.map((preset) => preset.id)));
@@ -1227,6 +1474,8 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   issues.push(...collectDuplicateIdIssues('composition.assetIds', project.composition.assetIds));
   issues.push(...collectDuplicateIdIssues('composition.exportProfileIds', project.composition.exportProfileIds));
   issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
+  issues.push(...collectDuplicateIdIssues('composition.scenes', project.composition.scenes.map((scene) => scene.id)));
+  issues.push(...collectDuplicateIdIssues('composition.layers', project.composition.layers.map((layer) => layer.id)));
 
   if (!sequenceIds.has(project.composition.sequenceId)) {
     pushMissingReference(issues, 'composition.sequenceId', `Composition "${project.composition.id}" references missing sequence "${project.composition.sequenceId}".`);
@@ -1247,6 +1496,55 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   for (const profileId of project.composition.exportProfileIds) {
     if (!exportProfileIds.has(profileId)) {
       pushMissingReference(issues, 'composition.exportProfileIds', `Composition "${project.composition.id}" references missing export profile selection "${profileId}".`);
+    }
+  }
+  for (const scene of project.composition.scenes) {
+    issues.push(...collectDuplicateIdIssues(`composition.scenes.${scene.id}.activation`, scene.activation.map((activation) => activation.id)));
+    issues.push(...collectDuplicateIdIssues(`composition.scenes.${scene.id}.transitions`, scene.transitions.map((transition) => transition.id)));
+    for (const activation of scene.activation) {
+      if (activation.startMs !== undefined && activation.endMs !== undefined && activation.endMs < activation.startMs) {
+        issues.push({
+          code: 'invalid-range',
+          path: `composition.scenes.${scene.id}.activation.${activation.id}`,
+          message: `Scene activation "${activation.id}" cannot end before it starts.`
+        });
+      }
+    }
+    for (const transition of scene.transitions) {
+      if (!sceneIds.has(transition.toSceneId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.transitions.${transition.id}.toSceneId`, `Scene transition "${transition.id}" references missing scene "${transition.toSceneId}".`);
+      }
+      if (transition.maskAssetId && !assetIds.has(transition.maskAssetId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.transitions.${transition.id}.maskAssetId`, `Scene transition "${transition.id}" references missing mask asset "${transition.maskAssetId}".`);
+      }
+      if (transition.overlayAssetId && !assetIds.has(transition.overlayAssetId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.transitions.${transition.id}.overlayAssetId`, `Scene transition "${transition.id}" references missing overlay asset "${transition.overlayAssetId}".`);
+      }
+    }
+    for (const layerId of scene.layerIds) {
+      if (!layerIds.has(layerId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.layerIds`, `Scene "${scene.id}" references missing layer "${layerId}".`);
+      }
+    }
+  }
+  for (const layer of project.composition.layers) {
+    if (!sceneIds.has(layer.sceneId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.sceneId`, `Layer "${layer.id}" references missing scene "${layer.sceneId}".`);
+    }
+    if (layer.assetId && !assetIds.has(layer.assetId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.assetId`, `Layer "${layer.id}" references missing asset "${layer.assetId}".`);
+    }
+    if (layer.cutId && !cutIds.has(layer.cutId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.cutId`, `Layer "${layer.id}" references missing cut "${layer.cutId}".`);
+    }
+    if (layer.clipId && !clipIds.has(layer.clipId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.clipId`, `Layer "${layer.id}" references missing clip "${layer.clipId}".`);
+    }
+    if (layer.stackId && !stackIds.has(layer.stackId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.stackId`, `Layer "${layer.id}" references missing filter stack "${layer.stackId}".`);
+    }
+    if (layer.maskLayerId && !layerIds.has(layer.maskLayerId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.maskLayerId`, `Layer "${layer.id}" references missing mask layer "${layer.maskLayerId}".`);
     }
   }
 
