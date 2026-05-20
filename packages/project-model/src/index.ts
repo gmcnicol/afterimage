@@ -513,6 +513,22 @@ export interface ExportSelection {
   lastOutputDirectory?: string;
 }
 
+export interface CompositionDeterministicSeed {
+  id: string;
+  value: number;
+  label?: string;
+}
+
+export interface CompositionIdentity {
+  id: string;
+  name: string;
+  sequenceId: string;
+  variantId: string;
+  assetIds: string[];
+  exportProfileIds: string[];
+  deterministicSeeds: CompositionDeterministicSeed[];
+}
+
 export interface FeatureFlags {
   recordedMidiAutomation?: boolean;
   advancedBeatDetection?: boolean;
@@ -539,6 +555,7 @@ export interface ProjectFile {
   automationLanes?: AutomationLane[];
   midiMappings?: MidiMappingFile[];
   exportSelections?: ExportSelection[];
+  composition?: CompositionIdentity;
   defaultSequenceId?: string;
   featureFlags?: FeatureFlags;
   notes?: string;
@@ -553,6 +570,7 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
   | 'automationLanes'
   | 'midiMappings'
   | 'exportSelections'
+  | 'composition'
   | 'metadata'
   | 'featureFlags'
   | 'tags'> {
@@ -564,6 +582,7 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
   automationLanes: AutomationLane[];
   midiMappings: MidiMappingFile[];
   exportSelections: ExportSelection[];
+  composition: CompositionIdentity;
   featureFlags: FeatureFlags;
   tags: string[];
 }
@@ -737,6 +756,10 @@ function normalizeNumber(value: number | undefined, fallback: number): number {
 
 function normalizeStringArray(value: string[] | undefined): string[] {
   return [...new Set(value ?? [])].sort(compareStrings);
+}
+
+function normalizeSortedStringArray(value: string[] | undefined): string[] {
+  return [...(value ?? [])].sort(compareStrings);
 }
 
 function clampUnit(value: number | undefined): number | undefined {
@@ -1061,6 +1084,60 @@ export function normalizeExportSelection(selection: ExportSelection): ExportSele
   };
 }
 
+function findDefaultSequence(project: ProjectFile): Sequence | undefined {
+  return project.defaultSequenceId
+    ? project.sequences.find((sequence) => sequence.id === project.defaultSequenceId)
+    : project.sequences[0];
+}
+
+function findDefaultVariant(project: ProjectFile, sequence: Sequence | undefined): Variant | undefined {
+  const variantId = sequence?.defaultVariantId ?? sequence?.variantIds[0];
+  return variantId ? project.variants.find((variant) => variant.id === variantId) : project.variants[0];
+}
+
+function collectVariantAssetIds(variant: Variant | undefined): string[] {
+  if (!variant) {
+    return [];
+  }
+
+  return normalizeStringArray([
+    ...variant.clips.flatMap((clip) => [
+      clip.assetId,
+      clip.overlayAssetId,
+      clip.transitionAssetId,
+      clip.transitionOverlayAssetId
+    ]),
+    variant.musicAlignment?.primaryAssetId
+  ].filter((assetId): assetId is string => assetId !== undefined));
+}
+
+export function normalizeCompositionIdentity(project: ProjectFile): CompositionIdentity {
+  const sequence = project.composition
+    ? project.sequences.find((candidate) => candidate.id === project.composition?.sequenceId)
+    : findDefaultSequence(project);
+  const variant = project.composition
+    ? project.variants.find((candidate) => candidate.id === project.composition?.variantId)
+    : findDefaultVariant(project, sequence);
+  const enabledExportProfileIds = (project.exportSelections ?? [])
+    .filter((selection) => selection.enabled ?? true)
+    .map((selection) => selection.profileId);
+  const fallbackExportProfileIds = (project.exportSelections ?? []).map((selection) => selection.profileId);
+
+  return {
+    id: project.composition?.id ?? 'composition-main',
+    name: project.composition?.name ?? project.name,
+    sequenceId: project.composition?.sequenceId ?? sequence?.id ?? '',
+    variantId: project.composition?.variantId ?? variant?.id ?? '',
+    assetIds: project.composition
+      ? normalizeSortedStringArray(project.composition.assetIds)
+      : collectVariantAssetIds(variant),
+    exportProfileIds: project.composition
+      ? normalizeSortedStringArray(project.composition.exportProfileIds)
+      : normalizeStringArray(enabledExportProfileIds.length > 0 ? enabledExportProfileIds : fallbackExportProfileIds),
+    deterministicSeeds: sortById((project.composition?.deterministicSeeds ?? []).map((seed) => ({ ...seed })))
+  };
+}
+
 export function normalizeProject(project: ProjectFile): NormalizedProjectFile {
   return {
     ...project,
@@ -1084,6 +1161,7 @@ export function normalizeProject(project: ProjectFile): NormalizedProjectFile {
     exportSelections: [...(project.exportSelections ?? [])]
       .map(normalizeExportSelection)
       .sort((left, right) => compareStrings(left.profileId, right.profileId)),
+    composition: normalizeCompositionIdentity(project),
     featureFlags: {
       recordedMidiAutomation: normalizeBoolean(project.featureFlags?.recordedMidiAutomation, false),
       advancedBeatDetection: normalizeBoolean(project.featureFlags?.advancedBeatDetection, false),
@@ -1134,6 +1212,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   const stackIds = new Set(project.filterStacks.map((stack) => stack.id));
   const laneIds = new Set(project.automationLanes.map((lane) => lane.id));
   const midiMappingIds = new Set(project.midiMappings.map((mapping) => mapping.id));
+  const exportProfileIds = new Set(project.exportSelections.map((selection) => selection.profileId));
 
   issues.push(...collectDuplicateIdIssues('assets', project.assets.map((asset) => asset.id)));
   issues.push(...collectDuplicateIdIssues('presets', project.presets.map((preset) => preset.id)));
@@ -1145,6 +1224,31 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   issues.push(...collectDuplicateIdIssues('filterStacks', project.filterStacks.map((stack) => stack.id)));
   issues.push(...collectDuplicateIdIssues('automationLanes', project.automationLanes.map((lane) => lane.id)));
   issues.push(...collectDuplicateIdIssues('midiMappings', project.midiMappings.map((mapping) => mapping.id)));
+  issues.push(...collectDuplicateIdIssues('composition.assetIds', project.composition.assetIds));
+  issues.push(...collectDuplicateIdIssues('composition.exportProfileIds', project.composition.exportProfileIds));
+  issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
+
+  if (!sequenceIds.has(project.composition.sequenceId)) {
+    pushMissingReference(issues, 'composition.sequenceId', `Composition "${project.composition.id}" references missing sequence "${project.composition.sequenceId}".`);
+  }
+  if (!variantIds.has(project.composition.variantId)) {
+    pushMissingReference(issues, 'composition.variantId', `Composition "${project.composition.id}" references missing variant "${project.composition.variantId}".`);
+  } else {
+    const sequence = project.sequences.find((candidate) => candidate.id === project.composition.sequenceId);
+    if (sequence && !sequence.variantIds.includes(project.composition.variantId)) {
+      pushMissingReference(issues, 'composition.variantId', `Composition "${project.composition.id}" references variant "${project.composition.variantId}" outside sequence "${project.composition.sequenceId}".`);
+    }
+  }
+  for (const assetId of project.composition.assetIds) {
+    if (!assetIds.has(assetId)) {
+      pushMissingReference(issues, 'composition.assetIds', `Composition "${project.composition.id}" references missing asset "${assetId}".`);
+    }
+  }
+  for (const profileId of project.composition.exportProfileIds) {
+    if (!exportProfileIds.has(profileId)) {
+      pushMissingReference(issues, 'composition.exportProfileIds', `Composition "${project.composition.id}" references missing export profile selection "${profileId}".`);
+    }
+  }
 
   for (const ref of project.analysisRefs) {
     if (!assetIds.has(ref.assetId)) {
