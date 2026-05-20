@@ -1,0 +1,331 @@
+import { getFilterDefinition, getSupportedAutomationProperties, isSupportedFilterType } from './filters.js';
+import type { AutomationTargetProperty, NormalizedProjectFile, ProjectIntegrityIssue } from './types.js';
+import { compareNumbers, compareStrings } from './utils.js';
+
+function collectDuplicateIdIssues(kind: string, ids: string[]): ProjectIntegrityIssue[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const id of ids) {
+    if (seen.has(id)) {
+      duplicates.add(id);
+    } else {
+      seen.add(id);
+    }
+  }
+
+  return [...duplicates].sort(compareStrings).map((id) => ({
+    code: 'duplicate-id',
+    path: kind,
+    message: `Duplicate ${kind} id "${id}" detected.`
+  }));
+}
+
+function pushMissingReference(issues: ProjectIntegrityIssue[], path: string, message: string): void {
+  issues.push({
+    code: 'missing-reference',
+    path,
+    message
+  });
+}
+
+export function collectProjectIntegrityIssues(project: NormalizedProjectFile): ProjectIntegrityIssue[] {
+  const issues: ProjectIntegrityIssue[] = [];
+  const assetIds = new Set(project.assets.map((asset) => asset.id));
+  const presetIds = new Set(project.presets.map((preset) => preset.id));
+  const analysisRefIds = new Set(project.analysisRefs.map((ref) => ref.id));
+  const cutIds = new Set(project.cutCandidates.map((cut) => cut.id));
+  const binIds = new Set(project.bins.map((bin) => bin.id));
+  const sequenceIds = new Set(project.sequences.map((sequence) => sequence.id));
+  const variantIds = new Set(project.variants.map((variant) => variant.id));
+  const stackIds = new Set(project.filterStacks.map((stack) => stack.id));
+  const laneIds = new Set(project.automationLanes.map((lane) => lane.id));
+  const midiMappingIds = new Set(project.midiMappings.map((mapping) => mapping.id));
+  const exportProfileIds = new Set(project.exportSelections.map((selection) => selection.profileId));
+  const sceneIds = new Set(project.composition.scenes.map((scene) => scene.id));
+  const layerIds = new Set(project.composition.layers.map((layer) => layer.id));
+  const clipIds = new Set(project.variants.flatMap((variant) => variant.clips.map((clip) => clip.id)));
+
+  issues.push(...collectDuplicateIdIssues('assets', project.assets.map((asset) => asset.id)));
+  issues.push(...collectDuplicateIdIssues('presets', project.presets.map((preset) => preset.id)));
+  issues.push(...collectDuplicateIdIssues('analysisRefs', project.analysisRefs.map((ref) => ref.id)));
+  issues.push(...collectDuplicateIdIssues('cutCandidates', project.cutCandidates.map((cut) => cut.id)));
+  issues.push(...collectDuplicateIdIssues('bins', project.bins.map((bin) => bin.id)));
+  issues.push(...collectDuplicateIdIssues('sequences', project.sequences.map((sequence) => sequence.id)));
+  issues.push(...collectDuplicateIdIssues('variants', project.variants.map((variant) => variant.id)));
+  issues.push(...collectDuplicateIdIssues('filterStacks', project.filterStacks.map((stack) => stack.id)));
+  issues.push(...collectDuplicateIdIssues('automationLanes', project.automationLanes.map((lane) => lane.id)));
+  issues.push(...collectDuplicateIdIssues('midiMappings', project.midiMappings.map((mapping) => mapping.id)));
+  issues.push(...collectDuplicateIdIssues('composition.assetIds', project.composition.assetIds));
+  issues.push(...collectDuplicateIdIssues('composition.exportProfileIds', project.composition.exportProfileIds));
+  issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
+  issues.push(...collectDuplicateIdIssues('composition.scenes', project.composition.scenes.map((scene) => scene.id)));
+  issues.push(...collectDuplicateIdIssues('composition.layers', project.composition.layers.map((layer) => layer.id)));
+
+  if (!sequenceIds.has(project.composition.sequenceId)) {
+    pushMissingReference(issues, 'composition.sequenceId', `Composition "${project.composition.id}" references missing sequence "${project.composition.sequenceId}".`);
+  }
+  if (!variantIds.has(project.composition.variantId)) {
+    pushMissingReference(issues, 'composition.variantId', `Composition "${project.composition.id}" references missing variant "${project.composition.variantId}".`);
+  } else {
+    const sequence = project.sequences.find((candidate) => candidate.id === project.composition.sequenceId);
+    if (sequence && !sequence.variantIds.includes(project.composition.variantId)) {
+      pushMissingReference(issues, 'composition.variantId', `Composition "${project.composition.id}" references variant "${project.composition.variantId}" outside sequence "${project.composition.sequenceId}".`);
+    }
+  }
+  for (const assetId of project.composition.assetIds) {
+    if (!assetIds.has(assetId)) {
+      pushMissingReference(issues, 'composition.assetIds', `Composition "${project.composition.id}" references missing asset "${assetId}".`);
+    }
+  }
+  for (const profileId of project.composition.exportProfileIds) {
+    if (!exportProfileIds.has(profileId)) {
+      pushMissingReference(issues, 'composition.exportProfileIds', `Composition "${project.composition.id}" references missing export profile selection "${profileId}".`);
+    }
+  }
+  for (const scene of project.composition.scenes) {
+    issues.push(...collectDuplicateIdIssues(`composition.scenes.${scene.id}.activation`, scene.activation.map((activation) => activation.id)));
+    issues.push(...collectDuplicateIdIssues(`composition.scenes.${scene.id}.transitions`, scene.transitions.map((transition) => transition.id)));
+    for (const activation of scene.activation) {
+      if (activation.startMs !== undefined && activation.endMs !== undefined && activation.endMs < activation.startMs) {
+        issues.push({
+          code: 'invalid-range',
+          path: `composition.scenes.${scene.id}.activation.${activation.id}`,
+          message: `Scene activation "${activation.id}" cannot end before it starts.`
+        });
+      }
+    }
+    for (const transition of scene.transitions) {
+      if (!sceneIds.has(transition.toSceneId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.transitions.${transition.id}.toSceneId`, `Scene transition "${transition.id}" references missing scene "${transition.toSceneId}".`);
+      }
+      if (transition.maskAssetId && !assetIds.has(transition.maskAssetId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.transitions.${transition.id}.maskAssetId`, `Scene transition "${transition.id}" references missing mask asset "${transition.maskAssetId}".`);
+      }
+      if (transition.overlayAssetId && !assetIds.has(transition.overlayAssetId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.transitions.${transition.id}.overlayAssetId`, `Scene transition "${transition.id}" references missing overlay asset "${transition.overlayAssetId}".`);
+      }
+    }
+    for (const layerId of scene.layerIds) {
+      if (!layerIds.has(layerId)) {
+        pushMissingReference(issues, `composition.scenes.${scene.id}.layerIds`, `Scene "${scene.id}" references missing layer "${layerId}".`);
+      }
+    }
+  }
+  for (const layer of project.composition.layers) {
+    if (!sceneIds.has(layer.sceneId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.sceneId`, `Layer "${layer.id}" references missing scene "${layer.sceneId}".`);
+    }
+    if (layer.assetId && !assetIds.has(layer.assetId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.assetId`, `Layer "${layer.id}" references missing asset "${layer.assetId}".`);
+    }
+    if (layer.cutId && !cutIds.has(layer.cutId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.cutId`, `Layer "${layer.id}" references missing cut "${layer.cutId}".`);
+    }
+    if (layer.clipId && !clipIds.has(layer.clipId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.clipId`, `Layer "${layer.id}" references missing clip "${layer.clipId}".`);
+    }
+    if (layer.stackId && !stackIds.has(layer.stackId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.stackId`, `Layer "${layer.id}" references missing filter stack "${layer.stackId}".`);
+    }
+    if (layer.maskLayerId && !layerIds.has(layer.maskLayerId)) {
+      pushMissingReference(issues, `composition.layers.${layer.id}.maskLayerId`, `Layer "${layer.id}" references missing mask layer "${layer.maskLayerId}".`);
+    }
+  }
+
+  for (const ref of project.analysisRefs) {
+    if (!assetIds.has(ref.assetId)) {
+      pushMissingReference(issues, `analysisRefs.${ref.id}.assetId`, `Analysis ref "${ref.id}" references missing asset "${ref.assetId}".`);
+    }
+  }
+
+  for (const cut of project.cutCandidates) {
+    if (!assetIds.has(cut.assetId)) {
+      pushMissingReference(issues, `cutCandidates.${cut.id}.assetId`, `Cut candidate "${cut.id}" references missing asset "${cut.assetId}".`);
+    }
+    if (cut.analysisRefId && !analysisRefIds.has(cut.analysisRefId)) {
+      pushMissingReference(issues, `cutCandidates.${cut.id}.analysisRefId`, `Cut candidate "${cut.id}" references missing analysis ref "${cut.analysisRefId}".`);
+    }
+    for (const binId of cut.binIds ?? []) {
+      if (!binIds.has(binId)) {
+        pushMissingReference(issues, `cutCandidates.${cut.id}.binIds`, `Cut candidate "${cut.id}" references missing bin "${binId}".`);
+      }
+    }
+  }
+
+  for (const bin of project.bins) {
+    for (const cutId of bin.cutIds) {
+      if (!cutIds.has(cutId)) {
+        pushMissingReference(issues, `bins.${bin.id}.cutIds`, `Bin "${bin.id}" references missing cut "${cutId}".`);
+      }
+    }
+  }
+
+  for (const sequence of project.sequences) {
+    if (sequence.defaultVariantId && !variantIds.has(sequence.defaultVariantId)) {
+      pushMissingReference(issues, `sequences.${sequence.id}.defaultVariantId`, `Sequence "${sequence.id}" references missing variant "${sequence.defaultVariantId}".`);
+    }
+    for (const variantId of sequence.variantIds) {
+      if (!variantIds.has(variantId)) {
+        pushMissingReference(issues, `sequences.${sequence.id}.variantIds`, `Sequence "${sequence.id}" references missing variant "${variantId}".`);
+      }
+    }
+  }
+
+  for (const variant of project.variants) {
+    if (!sequenceIds.has(variant.sequenceId)) {
+      pushMissingReference(issues, `variants.${variant.id}.sequenceId`, `Variant "${variant.id}" references missing sequence "${variant.sequenceId}".`);
+    }
+    if (variant.stackId && !stackIds.has(variant.stackId)) {
+      pushMissingReference(issues, `variants.${variant.id}.stackId`, `Variant "${variant.id}" references missing filter stack "${variant.stackId}".`);
+    }
+    if (variant.musicAlignment?.primaryAssetId && !assetIds.has(variant.musicAlignment.primaryAssetId)) {
+      pushMissingReference(issues, `variants.${variant.id}.musicAlignment.primaryAssetId`, `Variant "${variant.id}" references missing music asset "${variant.musicAlignment.primaryAssetId}".`);
+    }
+    if (variant.musicAlignment?.analysisRefId && !analysisRefIds.has(variant.musicAlignment.analysisRefId)) {
+      pushMissingReference(issues, `variants.${variant.id}.musicAlignment.analysisRefId`, `Variant "${variant.id}" references missing analysis ref "${variant.musicAlignment.analysisRefId}".`);
+    }
+    issues.push(...collectDuplicateIdIssues(`variants.${variant.id}.clips`, variant.clips.map((clip) => clip.id)));
+    issues.push(...collectDuplicateIdIssues(`variants.${variant.id}.markers`, (variant.markers ?? []).map((marker) => marker.id)));
+    issues.push(...collectDuplicateIdIssues(`variants.${variant.id}.sections`, (variant.sections ?? []).map((section) => section.id)));
+
+    for (const clip of variant.clips) {
+      if (!assetIds.has(clip.assetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.assetId`, `Sequence clip "${clip.id}" references missing asset "${clip.assetId}".`);
+      }
+      if (clip.overlayAssetId && !assetIds.has(clip.overlayAssetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.overlayAssetId`, `Sequence clip "${clip.id}" references missing overlay asset "${clip.overlayAssetId}".`);
+      }
+      if (clip.overlayCutId && !cutIds.has(clip.overlayCutId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.overlayCutId`, `Sequence clip "${clip.id}" references missing overlay cut "${clip.overlayCutId}".`);
+      }
+      if (clip.transition === 'mask' && !clip.transitionAssetId) {
+        issues.push({
+          code: 'missing-reference',
+          path: `variants.${variant.id}.clips.${clip.id}.transitionAssetId`,
+          message: `Sequence clip "${clip.id}" uses mask transition without a transition asset.`
+        });
+      }
+      if (clip.transitionAssetId && !assetIds.has(clip.transitionAssetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionAssetId`, `Sequence clip "${clip.id}" references missing transition asset "${clip.transitionAssetId}".`);
+      }
+      if (clip.transitionCutId && !cutIds.has(clip.transitionCutId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionCutId`, `Sequence clip "${clip.id}" references missing transition cut "${clip.transitionCutId}".`);
+      }
+      if (clip.transitionOverlayAssetId && !assetIds.has(clip.transitionOverlayAssetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionOverlayAssetId`, `Sequence clip "${clip.id}" references missing transition overlay asset "${clip.transitionOverlayAssetId}".`);
+      }
+      if (clip.transitionOverlayCutId && !cutIds.has(clip.transitionOverlayCutId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.transitionOverlayCutId`, `Sequence clip "${clip.id}" references missing transition overlay cut "${clip.transitionOverlayCutId}".`);
+      }
+      if (clip.cutId && !cutIds.has(clip.cutId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.cutId`, `Sequence clip "${clip.id}" references missing cut "${clip.cutId}".`);
+      }
+      if (clip.presetId && !presetIds.has(clip.presetId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.presetId`, `Sequence clip "${clip.id}" references missing preset "${clip.presetId}".`);
+      }
+      if (clip.stackOverrideId && !stackIds.has(clip.stackOverrideId)) {
+        pushMissingReference(issues, `variants.${variant.id}.clips.${clip.id}.stackOverrideId`, `Sequence clip "${clip.id}" references missing filter stack "${clip.stackOverrideId}".`);
+      }
+      if (clip.durationMs <= 0) {
+        issues.push({
+          code: 'invalid-range',
+          path: `variants.${variant.id}.clips.${clip.id}.durationMs`,
+          message: `Sequence clip "${clip.id}" must have a positive duration.`
+        });
+      }
+      if (clip.transition === 'mask' && clip.transitionDurationMs !== undefined && clip.transitionDurationMs <= 0) {
+        issues.push({
+          code: 'invalid-range',
+          path: `variants.${variant.id}.clips.${clip.id}.transitionDurationMs`,
+          message: `Sequence clip "${clip.id}" must have a positive mask transition duration.`
+        });
+      }
+    }
+
+    const orderedClips = [...variant.clips].sort((left, right) => compareNumbers(left.timelineStartMs, right.timelineStartMs) || compareStrings(left.id, right.id));
+    orderedClips.forEach((clip, index) => {
+      if (clip.transition === 'mask' && index === orderedClips.length - 1) {
+        issues.push({
+          code: 'invalid-range',
+          path: `variants.${variant.id}.clips.${clip.id}.transition`,
+          message: `Sequence clip "${clip.id}" cannot use a mask transition without a following clip.`
+        });
+      }
+    });
+  }
+
+  const filterIds = new Set(project.filterStacks.flatMap((stack) => stack.filters.map((filter) => filter.id)));
+  for (const stack of project.filterStacks) {
+    issues.push(...collectDuplicateIdIssues(`filterStacks.${stack.id}.filters`, stack.filters.map((filter) => filter.id)));
+    for (const filter of stack.filters) {
+      const definition = getFilterDefinition(filter.type);
+      if (!definition) {
+        issues.push({
+          code: 'unsupported-value',
+          path: `filterStacks.${stack.id}.filters.${filter.id}.type`,
+          message: `Filter "${filter.id}" uses unsupported type "${filter.type}".`
+        });
+      }
+      for (const laneId of filter.automationLaneIds ?? []) {
+        if (!laneIds.has(laneId)) {
+          pushMissingReference(issues, `filterStacks.${stack.id}.filters.${filter.id}.automationLaneIds`, `Filter "${filter.id}" references missing automation lane "${laneId}".`);
+        }
+      }
+      if (definition) {
+        const supportedKeys = new Set(definition.parameters.map((parameter) => parameter.key));
+        for (const parameterKey of Object.keys(filter.parameters ?? {})) {
+          if (!supportedKeys.has(parameterKey as Exclude<AutomationTargetProperty, 'mix'>)) {
+            issues.push({
+              code: 'unsupported-value',
+              path: `filterStacks.${stack.id}.filters.${filter.id}.parameters.${parameterKey}`,
+              message: `Filter "${filter.id}" does not support parameter "${parameterKey}".`
+            });
+          }
+        }
+      }
+    }
+  }
+
+  for (const lane of project.automationLanes) {
+    if (!filterIds.has(lane.target.filterId)) {
+      pushMissingReference(issues, `automationLanes.${lane.id}.target.filterId`, `Automation lane "${lane.id}" references missing filter "${lane.target.filterId}".`);
+    } else {
+      const targetFilter = project.filterStacks
+        .flatMap((stack) => stack.filters)
+        .find((filter) => filter.id === lane.target.filterId);
+      if (targetFilter) {
+        const supportedProperties = new Set(getSupportedAutomationProperties(targetFilter.type));
+        if (!supportedProperties.has(lane.target.property)) {
+          issues.push({
+            code: 'unsupported-value',
+            path: `automationLanes.${lane.id}.target.property`,
+            message: `Automation lane "${lane.id}" targets unsupported property "${lane.target.property}" for filter "${targetFilter.id}".`
+          });
+        }
+      }
+    }
+    if (lane.midiIntent && !midiMappingIds.has(lane.midiIntent.mappingId)) {
+      pushMissingReference(issues, `automationLanes.${lane.id}.midiIntent.mappingId`, `Automation lane "${lane.id}" references missing MIDI mapping "${lane.midiIntent.mappingId}".`);
+    }
+    issues.push(...collectDuplicateIdIssues(`automationLanes.${lane.id}.keyframes`, lane.keyframes.map((keyframe) => keyframe.id)));
+  }
+
+  for (const preset of project.presets) {
+    for (const filter of preset.filters) {
+      if (!isSupportedFilterType(filter.type)) {
+        issues.push({
+          code: 'unsupported-value',
+          path: `presets.${preset.id}.filters.${filter.type}`,
+          message: `Preset "${preset.id}" uses unsupported filter type "${filter.type}".`
+        });
+      }
+    }
+  }
+
+  if (project.defaultSequenceId && !sequenceIds.has(project.defaultSequenceId)) {
+    pushMissingReference(issues, 'defaultSequenceId', `Project references missing default sequence "${project.defaultSequenceId}".`);
+  }
+
+  return issues.sort((left, right) => compareStrings(left.path, right.path) || compareStrings(left.message, right.message));
+}
