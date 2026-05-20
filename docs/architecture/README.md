@@ -17,6 +17,7 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 - `WEBGPU_PREVIEW.md`
 - `UX.md`
 - `IMMERSIVE_WORKSPACES.md`
+- `STUDIO_UX_INTERACTION_SYSTEM.md`
 - `PICO_SERVICES.md`
 - `BEHAVIOURAL_PACKS.md`
 - `BEHAVIOURAL_SPATIAL_SYSTEMS.md`
