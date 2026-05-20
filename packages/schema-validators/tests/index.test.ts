@@ -11,16 +11,18 @@ import {
 } from '../src';
 
 describe('@afterimage/schema-validators', () => {
-  it('parses the v2 canonical project and applies defaults', () => {
+  it('parses the v3 canonical project and applies defaults', () => {
     const parsed = parseProject({
       ...fixtureProject,
       composition: undefined,
       featureFlags: undefined,
       tags: undefined,
-      exportSelections: undefined
+      exportSelections: undefined,
+      captureSessions: undefined,
+      captureLogs: undefined
     });
 
-    expect(parsed.version).toBe(2);
+    expect(parsed.version).toBe(3);
     expect(parsed.composition).toMatchObject({
       id: 'composition-main',
       name: 'Studio Fixture',
@@ -34,6 +36,8 @@ describe('@afterimage/schema-validators', () => {
     expect(parsed.composition.layers[0].id).toBe('layer-clip-intro');
     expect(parsed.featureFlags.proxyGeneration).toBe(false);
     expect(parsed.exportSelections).toEqual([]);
+    expect(parsed.captureSessions).toEqual([]);
+    expect(parsed.captureLogs).toEqual([]);
     expect(parsed.tags).toEqual([]);
   });
 
@@ -67,7 +71,7 @@ describe('@afterimage/schema-validators', () => {
     });
   });
 
-  it('migrates a phase 1 project shape into the v2 canonical project', () => {
+  it('migrates a phase 1 project shape into the v3 canonical project', () => {
     const migrated = parseProject({
       id: 'project-legacy',
       name: 'Legacy Project',
@@ -100,12 +104,45 @@ describe('@afterimage/schema-validators', () => {
     expect(migrated.assets[0].id).toBe('source-alpha');
     expect(migrated.cutCandidates[0].id).toBe('cut-segment-intro');
     expect(migrated.variants[0].clips[0].cutId).toBe('cut-segment-intro');
+    expect(migrated.version).toBe(3);
+    expect(migrated.composition.modulationRoutes).toEqual([]);
+    expect(migrated.composition.entropyStates).toEqual([]);
+    expect(migrated.captureSessions).toEqual([]);
+    expect(migrated.captureLogs).toEqual([]);
+  });
+
+  it('migrates a v2 current-shape project into v3 with empty v3 collections', () => {
+    const { captureSessions: _captureSessions, captureLogs: _captureLogs, ...v3Fixture } = fixtureProject;
+    const migrated = validateProject({
+      ...v3Fixture,
+      version: 2,
+      composition: {
+        ...fixtureProject.composition,
+        modulationRoutes: undefined,
+        entropyStates: undefined
+      }
+    });
+
+    expect(migrated.ok).toBe(true);
+    if (!migrated.ok) {
+      return;
+    }
+    expect(migrated.migrated).toBe(true);
+    expect(migrated.fromVersion).toBe(2);
+    expect(migrated.value.version).toBe(3);
+    expect(migrated.value.composition.modulationRoutes).toEqual([]);
+    expect(migrated.value.composition.entropyStates).toEqual([]);
+    expect(migrated.value.captureSessions).toEqual([]);
+    expect(migrated.value.captureLogs).toEqual([]);
   });
 
   it('silently upgrades stale style contracts in current-shape project files', () => {
     const migrated = parseProject({
       ...fixtureProject,
       version: 2,
+      composition: undefined,
+      captureSessions: undefined,
+      captureLogs: undefined,
       filterStacks: [
         {
           ...fixtureProject.filterStacks[0],
@@ -268,6 +305,56 @@ describe('@afterimage/schema-validators', () => {
           message: 'Scene "scene-main" references missing layer "missing-layer".',
           path: 'composition.scenes.scene-main.layerIds',
           source: 'integrity'
+        }
+      ]
+    });
+  });
+
+  it('rejects invalid v3 modulation and capture schema values', () => {
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        modulationRoutes: [
+          {
+            ...fixtureProject.composition?.modulationRoutes?.[0],
+            capturePolicy: 'capture-everything'
+          }
+        ]
+      }
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: [
+        {
+          keyword: 'enum',
+          message: 'must be equal to one of the allowed values',
+          path: '/composition/modulationRoutes/0/capturePolicy',
+          source: 'schema'
+        }
+      ]
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        entropyStates: [
+          {
+            ...fixtureProject.composition?.entropyStates?.[0],
+            value: 1.5
+          }
+        ]
+      }
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: [
+        {
+          keyword: 'maximum',
+          message: 'must be <= 1',
+          path: '/composition/entropyStates/0/value',
+          source: 'schema'
         }
       ]
     });

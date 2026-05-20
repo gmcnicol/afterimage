@@ -1,5 +1,5 @@
 import { getFilterDefinition, getSupportedAutomationProperties, isSupportedFilterType } from './filters.js';
-import type { AutomationTargetProperty, NormalizedProjectFile, ProjectIntegrityIssue } from './types.js';
+import type { AutomationTargetProperty, ModulationEndpoint, ModulationScope, NormalizedProjectFile, ProjectIntegrityIssue } from './types.js';
 import { compareNumbers, compareStrings } from './utils.js';
 
 function collectDuplicateIdIssues(kind: string, ids: string[]): ProjectIntegrityIssue[] {
@@ -29,6 +29,109 @@ function pushMissingReference(issues: ProjectIntegrityIssue[], path: string, mes
   });
 }
 
+function validateModulationScope(
+  issues: ProjectIntegrityIssue[],
+  path: string,
+  ownerLabel: string,
+  scope: ModulationScope,
+  refs: {
+    compositionId: string;
+    sequenceIds: Set<string>;
+    variantIds: Set<string>;
+    sceneIds: Set<string>;
+    layerIds: Set<string>;
+    clipIds: Set<string>;
+  }
+): void {
+  if (scope.compositionId && scope.compositionId !== refs.compositionId) {
+    pushMissingReference(issues, `${path}.compositionId`, `${ownerLabel} references missing composition "${scope.compositionId}".`);
+  }
+  if (scope.sequenceId && !refs.sequenceIds.has(scope.sequenceId)) {
+    pushMissingReference(issues, `${path}.sequenceId`, `${ownerLabel} references missing sequence "${scope.sequenceId}".`);
+  }
+  if (scope.variantId && !refs.variantIds.has(scope.variantId)) {
+    pushMissingReference(issues, `${path}.variantId`, `${ownerLabel} references missing variant "${scope.variantId}".`);
+  }
+  if (scope.sceneId && !refs.sceneIds.has(scope.sceneId)) {
+    pushMissingReference(issues, `${path}.sceneId`, `${ownerLabel} references missing scene "${scope.sceneId}".`);
+  }
+  if (scope.layerId && !refs.layerIds.has(scope.layerId)) {
+    pushMissingReference(issues, `${path}.layerId`, `${ownerLabel} references missing layer "${scope.layerId}".`);
+  }
+  if (scope.clipId && !refs.clipIds.has(scope.clipId)) {
+    pushMissingReference(issues, `${path}.clipId`, `${ownerLabel} references missing clip "${scope.clipId}".`);
+  }
+}
+
+function validateEndpointReference(
+  issues: ProjectIntegrityIssue[],
+  path: string,
+  ownerLabel: string,
+  endpoint: ModulationEndpoint,
+  refs: {
+    compositionId: string;
+    laneIds: Set<string>;
+    midiBindingIds: Set<string>;
+    captureEventIds: Set<string>;
+    entropyIds: Set<string>;
+    routeIds: Set<string>;
+    filterIds: Set<string>;
+    sceneIds: Set<string>;
+    layerIds: Set<string>;
+  }
+): void {
+  switch (endpoint.kind) {
+    case 'automation-lane':
+      if (!refs.laneIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing automation lane "${endpoint.id}".`);
+      }
+      break;
+    case 'midi-binding':
+      if (!refs.midiBindingIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing MIDI binding "${endpoint.id}".`);
+      }
+      break;
+    case 'capture-event':
+      if (!refs.captureEventIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing capture event "${endpoint.id}".`);
+      }
+      break;
+    case 'entropy-state':
+      if (!refs.entropyIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing entropy state "${endpoint.id}".`);
+      }
+      break;
+    case 'modulation-route':
+      if (!refs.routeIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing modulation route "${endpoint.id}".`);
+      }
+      break;
+    case 'filter':
+      if (!refs.filterIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing filter "${endpoint.id}".`);
+      }
+      break;
+    case 'scene':
+    case 'scene-climate':
+      if (!refs.sceneIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing scene "${endpoint.id}".`);
+      }
+      break;
+    case 'layer':
+      if (!refs.layerIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing layer "${endpoint.id}".`);
+      }
+      break;
+    case 'composition':
+      if (endpoint.id !== refs.compositionId) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing composition "${endpoint.id}".`);
+      }
+      break;
+    case 'manual':
+      break;
+  }
+}
+
 export function collectProjectIntegrityIssues(project: NormalizedProjectFile): ProjectIntegrityIssue[] {
   const issues: ProjectIntegrityIssue[] = [];
   const assetIds = new Set(project.assets.map((asset) => asset.id));
@@ -45,6 +148,12 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   const sceneIds = new Set(project.composition.scenes.map((scene) => scene.id));
   const layerIds = new Set(project.composition.layers.map((layer) => layer.id));
   const clipIds = new Set(project.variants.flatMap((variant) => variant.clips.map((clip) => clip.id)));
+  const seedIds = new Set(project.composition.deterministicSeeds.map((seed) => seed.id));
+  const routeIds = new Set(project.composition.modulationRoutes.map((route) => route.id));
+  const entropyIds = new Set(project.composition.entropyStates.map((state) => state.id));
+  const captureSessionIds = new Set(project.captureSessions.map((session) => session.id));
+  const captureEventIds = new Set(project.captureLogs.flatMap((log) => log.events.map((event) => event.id)));
+  const midiBindingIds = new Set(project.midiMappings.flatMap((mapping) => mapping.bindings.map((binding) => binding.id)));
 
   issues.push(...collectDuplicateIdIssues('assets', project.assets.map((asset) => asset.id)));
   issues.push(...collectDuplicateIdIssues('presets', project.presets.map((preset) => preset.id)));
@@ -59,8 +168,26 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   issues.push(...collectDuplicateIdIssues('composition.assetIds', project.composition.assetIds));
   issues.push(...collectDuplicateIdIssues('composition.exportProfileIds', project.composition.exportProfileIds));
   issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
+  issues.push(...collectDuplicateIdIssues('composition.modulationRoutes', project.composition.modulationRoutes.map((route) => route.id)));
+  issues.push(...collectDuplicateIdIssues('composition.entropyStates', project.composition.entropyStates.map((state) => state.id)));
   issues.push(...collectDuplicateIdIssues('composition.scenes', project.composition.scenes.map((scene) => scene.id)));
   issues.push(...collectDuplicateIdIssues('composition.layers', project.composition.layers.map((layer) => layer.id)));
+  issues.push(...collectDuplicateIdIssues('captureSessions', project.captureSessions.map((session) => session.id)));
+  issues.push(...collectDuplicateIdIssues('captureLogs', project.captureLogs.map((log) => log.id)));
+
+  const filterIds = new Set(project.filterStacks.flatMap((stack) => stack.filters.map((filter) => filter.id)));
+  const scopeRefs = { compositionId: project.composition.id, sequenceIds, variantIds, sceneIds, layerIds, clipIds };
+  const endpointRefs = {
+    compositionId: project.composition.id,
+    laneIds,
+    midiBindingIds,
+    captureEventIds,
+    entropyIds,
+    routeIds,
+    filterIds,
+    sceneIds,
+    layerIds
+  };
 
   if (!sequenceIds.has(project.composition.sequenceId)) {
     pushMissingReference(issues, 'composition.sequenceId', `Composition "${project.composition.id}" references missing sequence "${project.composition.sequenceId}".`);
@@ -81,6 +208,22 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
   for (const profileId of project.composition.exportProfileIds) {
     if (!exportProfileIds.has(profileId)) {
       pushMissingReference(issues, 'composition.exportProfileIds', `Composition "${project.composition.id}" references missing export profile selection "${profileId}".`);
+    }
+  }
+  for (const route of project.composition.modulationRoutes) {
+    validateEndpointReference(issues, `composition.modulationRoutes.${route.id}.source`, `Modulation route "${route.id}" source`, route.source, endpointRefs);
+    validateEndpointReference(issues, `composition.modulationRoutes.${route.id}.target`, `Modulation route "${route.id}" target`, route.target, endpointRefs);
+    validateModulationScope(issues, `composition.modulationRoutes.${route.id}.scope`, `Modulation route "${route.id}"`, route.scope, scopeRefs);
+    if (route.seedId && !seedIds.has(route.seedId)) {
+      pushMissingReference(issues, `composition.modulationRoutes.${route.id}.seedId`, `Modulation route "${route.id}" references missing deterministic seed "${route.seedId}".`);
+    }
+  }
+  for (const state of project.composition.entropyStates) {
+    validateEndpointReference(issues, `composition.entropyStates.${state.id}.source`, `Entropy state "${state.id}" source`, state.source, endpointRefs);
+    validateEndpointReference(issues, `composition.entropyStates.${state.id}.target`, `Entropy state "${state.id}" target`, state.target, endpointRefs);
+    validateModulationScope(issues, `composition.entropyStates.${state.id}.scope`, `Entropy state "${state.id}"`, state.scope, scopeRefs);
+    if (state.seedId && !seedIds.has(state.seedId)) {
+      pushMissingReference(issues, `composition.entropyStates.${state.id}.seedId`, `Entropy state "${state.id}" references missing deterministic seed "${state.seedId}".`);
     }
   }
   for (const scene of project.composition.scenes) {
@@ -255,7 +398,6 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
     });
   }
 
-  const filterIds = new Set(project.filterStacks.flatMap((stack) => stack.filters.map((filter) => filter.id)));
   for (const stack of project.filterStacks) {
     issues.push(...collectDuplicateIdIssues(`filterStacks.${stack.id}.filters`, stack.filters.map((filter) => filter.id)));
     for (const filter of stack.filters) {
@@ -325,6 +467,52 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
 
   if (project.defaultSequenceId && !sequenceIds.has(project.defaultSequenceId)) {
     pushMissingReference(issues, 'defaultSequenceId', `Project references missing default sequence "${project.defaultSequenceId}".`);
+  }
+
+  for (const session of project.captureSessions) {
+    if (session.projectId !== project.id) {
+      pushMissingReference(issues, `captureSessions.${session.id}.projectId`, `Capture session "${session.id}" references missing project "${session.projectId}".`);
+    }
+    if (session.compositionId && session.compositionId !== project.composition.id) {
+      pushMissingReference(issues, `captureSessions.${session.id}.compositionId`, `Capture session "${session.id}" references missing composition "${session.compositionId}".`);
+    }
+    if (session.sequenceId && !sequenceIds.has(session.sequenceId)) {
+      pushMissingReference(issues, `captureSessions.${session.id}.sequenceId`, `Capture session "${session.id}" references missing sequence "${session.sequenceId}".`);
+    }
+    if (session.variantId && !variantIds.has(session.variantId)) {
+      pushMissingReference(issues, `captureSessions.${session.id}.variantId`, `Capture session "${session.id}" references missing variant "${session.variantId}".`);
+    }
+    for (const seedId of session.seedIds) {
+      if (!seedIds.has(seedId)) {
+        pushMissingReference(issues, `captureSessions.${session.id}.seedIds`, `Capture session "${session.id}" references missing deterministic seed "${seedId}".`);
+      }
+    }
+  }
+
+  for (const log of project.captureLogs) {
+    if (!captureSessionIds.has(log.captureSessionId)) {
+      pushMissingReference(issues, `captureLogs.${log.id}.captureSessionId`, `Capture log "${log.id}" references missing capture session "${log.captureSessionId}".`);
+    }
+    issues.push(...collectDuplicateIdIssues(`captureLogs.${log.id}.events`, log.events.map((event) => event.id)));
+    issues.push(...collectDuplicateIdIssues(`captureLogs.${log.id}.eventIndexes`, log.events.map((event) => String(event.index))));
+    for (const event of log.events) {
+      if (!captureSessionIds.has(event.captureId)) {
+        pushMissingReference(issues, `captureLogs.${log.id}.events.${event.id}.captureId`, `Capture event "${event.id}" references missing capture session "${event.captureId}".`);
+      }
+      validateEndpointReference(issues, `captureLogs.${log.id}.events.${event.id}.source`, `Capture event "${event.id}" source`, event.source, endpointRefs);
+      if (event.target) {
+        validateEndpointReference(issues, `captureLogs.${log.id}.events.${event.id}.target`, `Capture event "${event.id}" target`, event.target, endpointRefs);
+      }
+      if (event.routeId && !routeIds.has(event.routeId)) {
+        pushMissingReference(issues, `captureLogs.${log.id}.events.${event.id}.routeId`, `Capture event "${event.id}" references missing modulation route "${event.routeId}".`);
+      }
+      if (event.mappingId && !midiMappingIds.has(event.mappingId)) {
+        pushMissingReference(issues, `captureLogs.${log.id}.events.${event.id}.mappingId`, `Capture event "${event.id}" references missing MIDI mapping "${event.mappingId}".`);
+      }
+      if (event.seedId && !seedIds.has(event.seedId)) {
+        pushMissingReference(issues, `captureLogs.${log.id}.events.${event.id}.seedId`, `Capture event "${event.id}" references missing deterministic seed "${event.seedId}".`);
+      }
+    }
   }
 
   return issues.sort((left, right) => compareStrings(left.path, right.path) || compareStrings(left.message, right.message));

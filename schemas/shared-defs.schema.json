@@ -102,6 +102,50 @@
       "type": "string",
       "enum": ["source", "mask", "overlay", "behaviour", "diagnostic"]
     },
+    "capturePolicy": {
+      "type": "string",
+      "enum": ["ignore", "record", "replay-critical"]
+    },
+    "modulationSourceKind": {
+      "type": "string",
+      "enum": ["automation-lane", "midi-binding", "capture-event", "entropy-state", "manual"]
+    },
+    "modulationTargetKind": {
+      "type": "string",
+      "enum": ["filter", "scene-climate", "layer", "composition"]
+    },
+    "modulationEndpointKind": {
+      "type": "string",
+      "enum": [
+        "automation-lane",
+        "midi-binding",
+        "capture-event",
+        "entropy-state",
+        "manual",
+        "filter",
+        "scene-climate",
+        "layer",
+        "composition",
+        "modulation-route",
+        "scene"
+      ]
+    },
+    "modulationMappingKind": {
+      "type": "string",
+      "enum": ["linear", "exponential", "step", "toggle", "trigger"]
+    },
+    "captureSessionStatus": {
+      "type": "string",
+      "enum": ["open", "completed"]
+    },
+    "captureTimebaseKind": {
+      "type": "string",
+      "enum": ["project-ms", "composition-ms", "sequence-ms"]
+    },
+    "captureEventKind": {
+      "type": "string",
+      "enum": ["input", "modulation", "entropy", "transport", "manual"]
+    },
     "assistedGenerationStrategy": {
       "type": "string",
       "enum": ["manual", "chronological", "marker-aware", "motif", "seeded-constrained"]
@@ -112,6 +156,19 @@
         { "type": "number" },
         { "type": "boolean" },
         { "type": "null" }
+      ]
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "$ref": "#/$defs/jsonPrimitive" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/jsonValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
       ]
     },
     "stringArray": {
@@ -726,6 +783,143 @@
       },
       "additionalProperties": false
     },
+    "modulationEndpoint": {
+      "type": "object",
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/modulationEndpointKind" },
+        "id": { "$ref": "#/$defs/idString" },
+        "property": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "modulationScope": {
+      "type": "object",
+      "properties": {
+        "compositionId": { "$ref": "#/$defs/idString" },
+        "sequenceId": { "$ref": "#/$defs/idString" },
+        "variantId": { "$ref": "#/$defs/idString" },
+        "sceneId": { "$ref": "#/$defs/idString" },
+        "layerId": { "$ref": "#/$defs/idString" },
+        "clipId": { "$ref": "#/$defs/idString" }
+      },
+      "additionalProperties": false
+    },
+    "modulationMapping": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/modulationMappingKind" },
+        "inputMin": { "type": "number" },
+        "inputMax": { "type": "number" },
+        "outputMin": { "type": "number" },
+        "outputMax": { "type": "number" },
+        "curve": { "type": "number" },
+        "clamp": { "type": "boolean", "default": true },
+        "invert": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
+    },
+    "modulationRoute": {
+      "type": "object",
+      "required": ["id", "source", "target", "mapping", "scope", "capturePolicy"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "name": { "type": "string", "minLength": 1 },
+        "source": { "$ref": "#/$defs/modulationEndpoint" },
+        "target": { "$ref": "#/$defs/modulationEndpoint" },
+        "mapping": { "$ref": "#/$defs/modulationMapping" },
+        "scope": { "$ref": "#/$defs/modulationScope" },
+        "capturePolicy": { "$ref": "#/$defs/capturePolicy" },
+        "seedId": { "$ref": "#/$defs/idString" },
+        "enabled": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "entropyState": {
+      "type": "object",
+      "required": ["id", "source", "target", "scope", "value", "capturePolicy"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "source": { "$ref": "#/$defs/modulationEndpoint" },
+        "target": { "$ref": "#/$defs/modulationEndpoint" },
+        "scope": { "$ref": "#/$defs/modulationScope" },
+        "value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "accumulationPolicyId": { "$ref": "#/$defs/idString" },
+        "recoveryPolicyId": { "$ref": "#/$defs/idString" },
+        "capturePolicy": { "$ref": "#/$defs/capturePolicy" },
+        "seedId": { "$ref": "#/$defs/idString" },
+        "enabled": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "captureTimebase": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/captureTimebaseKind" },
+        "fps": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "captureSession": {
+      "type": "object",
+      "required": ["id", "status", "startedAt", "projectId", "timebase", "admittedInputIds", "seedIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "status": { "$ref": "#/$defs/captureSessionStatus" },
+        "startedAt": { "type": "string", "minLength": 1 },
+        "completedAt": { "type": "string", "minLength": 1 },
+        "projectId": { "$ref": "#/$defs/idString" },
+        "compositionId": { "$ref": "#/$defs/idString" },
+        "sequenceId": { "$ref": "#/$defs/idString" },
+        "variantId": { "$ref": "#/$defs/idString" },
+        "timebase": { "$ref": "#/$defs/captureTimebase" },
+        "admittedInputIds": { "$ref": "#/$defs/stringArray" },
+        "seedIds": { "$ref": "#/$defs/stringArray" },
+        "metadata": {
+          "type": "object",
+          "propertyNames": { "type": "string", "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/jsonPrimitive" },
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "captureEvent": {
+      "type": "object",
+      "required": ["id", "captureId", "index", "captureTimeMs", "source", "kind", "replayCritical"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "captureId": { "$ref": "#/$defs/idString" },
+        "index": { "type": "integer", "minimum": 0 },
+        "captureTimeMs": { "type": "integer", "minimum": 0 },
+        "compositionTimeMs": { "type": "integer", "minimum": 0 },
+        "source": { "$ref": "#/$defs/modulationEndpoint" },
+        "target": { "$ref": "#/$defs/modulationEndpoint" },
+        "kind": { "$ref": "#/$defs/captureEventKind" },
+        "replayCritical": { "type": "boolean" },
+        "routeId": { "$ref": "#/$defs/idString" },
+        "mappingId": { "$ref": "#/$defs/idString" },
+        "seedId": { "$ref": "#/$defs/idString" },
+        "payload": { "$ref": "#/$defs/jsonValue" }
+      },
+      "additionalProperties": false
+    },
+    "captureLog": {
+      "type": "object",
+      "required": ["id", "captureSessionId", "events"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "captureSessionId": { "$ref": "#/$defs/idString" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/captureEvent" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
     "sceneClimate": {
       "type": "object",
       "properties": {
@@ -841,6 +1035,16 @@
         "deterministicSeeds": {
           "type": "array",
           "items": { "$ref": "#/$defs/compositionDeterministicSeed" },
+          "default": []
+        },
+        "modulationRoutes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/modulationRoute" },
+          "default": []
+        },
+        "entropyStates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/entropyState" },
           "default": []
         },
         "scenes": {
