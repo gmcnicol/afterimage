@@ -238,6 +238,10 @@ Capture should preserve:
 Capture is not a video file alone. The video file is an artifact of a captured
 composition traversal.
 
+`docs/architecture/DETERMINISTIC_CAPTURE.md` defines capture identity, event
+log shape, normalized timebase, replay resolution, validation, and render graph
+planning implications in detail.
+
 ## Render Boundary
 
 The render graph consumes a resolved composition.

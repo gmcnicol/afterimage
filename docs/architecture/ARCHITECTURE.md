@@ -503,6 +503,10 @@ A reproducible capture/export requires:
 Preview output may be lower fidelity. It must not silently become the final
 artifact.
 
+`docs/architecture/DETERMINISTIC_CAPTURE.md` defines capture identity, session
+scope, event log shape, timebase normalization, replay resolution, validation,
+Studio review boundaries, and render graph planning implications in detail.
+
 ## Runtime Separation
 
 Studio and live runtimes share intent models, not workflows.
