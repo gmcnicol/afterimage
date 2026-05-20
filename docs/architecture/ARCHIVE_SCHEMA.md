@@ -37,6 +37,17 @@ Validation lives in:
 packages/schema-validators/src/index.ts
 ```
 
+## Detailed Contract
+
+`docs/architecture/ARCHIVE_MOTIF_SYSTEM.md` defines the v1 contract for archive
+item identity, segment semantics, motif metadata, atmosphere metadata, import
+acceptance, behavioural seeds, world affinity, recurrence, deterministic
+references, versioning, and Studio inspection.
+
+This document remains the short schema overview. The detailed contract should
+guide future `schemas/archive.schema.json`, `@afterimage/project-model`,
+validator, fixture, and Studio updates.
+
 ## Top-Level File
 
 An archive metadata file describes one source asset or archive source.
@@ -133,3 +144,7 @@ Do not reference array positions. Do not depend on local file order. Do not
 allow generated archive metadata to silently change render meaning without a
 changed sidecar identity or version.
 
+Composition meaning changes only when archive metadata is explicitly accepted
+into project, composition, scene, layer, modulation, behaviour, capture, or
+render graph contracts. Available archive intelligence alone is not runtime
+meaning.
