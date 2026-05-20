@@ -258,6 +258,57 @@
         "value": 1337,
         "label": "Main composition seed"
       }
+    ],
+    "scenes": [
+      {
+        "id": "scene-main",
+        "name": "Main Scene",
+        "climate": {
+          "atmosphere": "liminal",
+          "pressure": 0.35,
+          "entropyBias": 0.12,
+          "cohesion": 0.82,
+          "memory": 0.4,
+          "volatility": 0.18,
+          "motifIds": ["motif-hallway"],
+          "archiveSegmentIds": ["segment-intro"],
+          "materialTags": ["analog"],
+          "behaviourIds": []
+        },
+        "activation": [
+          {
+            "id": "activation-main",
+            "kind": "timeline",
+            "startMs": 0,
+            "endMs": 2000
+          }
+        ],
+        "transitions": [],
+        "layerIds": ["layer-clip-intro"],
+        "archiveReferenceIds": ["archive-source-alpha"]
+      }
+    ],
+    "layers": [
+      {
+        "id": "layer-clip-intro",
+        "name": "Intro Source",
+        "sceneId": "scene-main",
+        "orderIndex": 0,
+        "scope": "source-clip",
+        "contribution": "source",
+        "influence": ["pixels"],
+        "blendIntent": "normal",
+        "mix": 1,
+        "assetId": "asset-alpha",
+        "cutId": "cut-intro",
+        "clipId": "clip-intro",
+        "stackId": "stack-sequence-main",
+        "archiveReferenceIds": ["archive-source-alpha"],
+        "renderIntent": {
+          "passKind": "source",
+          "requiredCapabilities": []
+        }
+      }
     ]
   },
   "defaultSequenceId": "sequence-main",
