@@ -294,6 +294,10 @@ It produces:
 It must remain in Core because it defines meaning. Pico services may process
 signals or execute resulting work, but they must not define entropy semantics.
 
+`docs/architecture/ENTROPY_INTERACTION.md` defines entropy sources, targets,
+accumulation, recovery, seed ownership, capture requirements, and render graph
+lowering in detail.
+
 ## Pico Services Boundary
 
 Pico services are small, restartable, local workers.
