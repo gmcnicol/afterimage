@@ -7,6 +7,7 @@ This directory contains the evolving architectural doctrine, subsystem design, r
 - `ARCHITECTURE.md`
 - `COMPOSITION_MODEL.md`
 - `DATA_MODEL.md`
+- `DETERMINISTIC_CAPTURE.md`
 - `ENTROPY_INTERACTION.md`
 - `MODULATION_MODEL.md`
 - `SCENE_LAYER_HIERARCHY.md`
