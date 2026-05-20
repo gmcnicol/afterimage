@@ -23,6 +23,21 @@ describe('@afterimage/project-model', () => {
     expect(getAssetById(normalized, 'asset-alpha')?.filename).toBe('source-alpha.mp4');
     expect(getDefaultVariant(normalized)?.id).toBe('variant-main');
     expect(getDefaultVariant(normalized)?.musicAlignment?.syncMode).toBe('texture');
+    expect(normalized.composition).toEqual({
+      id: 'composition-main',
+      name: 'Studio Fixture',
+      sequenceId: 'sequence-main',
+      variantId: 'variant-main',
+      assetIds: ['asset-alpha', 'asset-music'],
+      exportProfileIds: ['landscape-master', 'portrait-short-form'],
+      deterministicSeeds: [
+        {
+          id: 'seed-composition-main',
+          value: 1337,
+          label: 'Main composition seed'
+        }
+      ]
+    });
   });
 
   it('creates numbered default sequence variants', () => {
@@ -32,6 +47,30 @@ describe('@afterimage/project-model', () => {
     });
 
     expect(getDefaultVariant(project)?.name).toBe('Sequence 001');
+    expect(project.composition).toMatchObject({
+      id: 'composition-main',
+      name: 'Sequence Name Test',
+      sequenceId: 'sequence-main',
+      variantId: 'variant-main',
+      assetIds: [],
+      deterministicSeeds: []
+    });
+    expect(project.composition.exportProfileIds).toEqual(['landscape-master']);
+  });
+
+  it('defaults composition identity for projects without authored composition', () => {
+    const { composition: _composition, ...projectWithoutComposition } = fixtureProject;
+    const normalized = normalizeProject(projectWithoutComposition);
+
+    expect(normalized.composition).toEqual({
+      id: 'composition-main',
+      name: 'Studio Fixture',
+      sequenceId: 'sequence-main',
+      variantId: 'variant-main',
+      assetIds: ['asset-alpha', 'asset-music'],
+      exportProfileIds: ['landscape-master', 'portrait-short-form'],
+      deterministicSeeds: []
+    });
   });
 
   it('reports duplicate ids and missing references', () => {
@@ -94,6 +133,68 @@ describe('@afterimage/project-model', () => {
         path: 'variants.variant-main.musicAlignment.analysisRefId'
       }
     ]);
+  });
+
+  it('reports invalid composition references', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        id: 'composition-main',
+        name: 'Broken Composition',
+        sequenceId: 'missing-sequence',
+        variantId: 'missing-variant',
+        assetIds: ['asset-alpha', 'asset-alpha', 'missing-asset'],
+        exportProfileIds: ['landscape-master', 'landscape-master', 'missing-profile'],
+        deterministicSeeds: [
+          {
+            id: 'seed-duplicate',
+            value: 1
+          },
+          {
+            id: 'seed-duplicate',
+            value: 2
+          }
+        ]
+      }
+    });
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'duplicate-id',
+        message: 'Duplicate composition.assetIds id "asset-alpha" detected.',
+        path: 'composition.assetIds'
+      },
+      {
+        code: 'duplicate-id',
+        message: 'Duplicate composition.deterministicSeeds id "seed-duplicate" detected.',
+        path: 'composition.deterministicSeeds'
+      },
+      {
+        code: 'duplicate-id',
+        message: 'Duplicate composition.exportProfileIds id "landscape-master" detected.',
+        path: 'composition.exportProfileIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Composition "composition-main" references missing asset "missing-asset".',
+        path: 'composition.assetIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Composition "composition-main" references missing export profile selection "missing-profile".',
+        path: 'composition.exportProfileIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Composition "composition-main" references missing sequence "missing-sequence".',
+        path: 'composition.sequenceId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Composition "composition-main" references missing variant "missing-variant".',
+        path: 'composition.variantId'
+      }
+    ]));
   });
 
   it('reports invalid mask transition references and placement', () => {

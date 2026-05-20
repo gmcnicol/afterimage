@@ -14,15 +14,45 @@ describe('@afterimage/schema-validators', () => {
   it('parses the v2 canonical project and applies defaults', () => {
     const parsed = parseProject({
       ...fixtureProject,
+      composition: undefined,
       featureFlags: undefined,
       tags: undefined,
       exportSelections: undefined
     });
 
     expect(parsed.version).toBe(2);
+    expect(parsed.composition).toEqual({
+      id: 'composition-main',
+      name: 'Studio Fixture',
+      sequenceId: 'sequence-main',
+      variantId: 'variant-main',
+      assetIds: ['asset-alpha', 'asset-music'],
+      exportProfileIds: [],
+      deterministicSeeds: []
+    });
     expect(parsed.featureFlags.proxyGeneration).toBe(false);
     expect(parsed.exportSelections).toEqual([]);
     expect(parsed.tags).toEqual([]);
+  });
+
+  it('parses the canonical project with authored composition identity', () => {
+    const parsed = parseProject(fixtureProject);
+
+    expect(parsed.composition).toEqual({
+      id: 'composition-main',
+      name: 'Studio Fixture',
+      sequenceId: 'sequence-main',
+      variantId: 'variant-main',
+      assetIds: ['asset-alpha', 'asset-music'],
+      exportProfileIds: ['landscape-master', 'portrait-short-form'],
+      deterministicSeeds: [
+        {
+          id: 'seed-composition-main',
+          value: 1337,
+          label: 'Main composition seed'
+        }
+      ]
+    });
   });
 
   it('migrates a phase 1 project shape into the v2 canonical project', () => {
@@ -171,6 +201,35 @@ describe('@afterimage/schema-validators', () => {
           message: 'Automation lane "lane-bloom-mix" targets unsupported property "brightness" for filter "filter-main-bloom".',
           path: 'automationLanes.lane-bloom-mix.target.property',
           source: 'integrity'
+        }
+      ]
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        id: 'composition-main',
+        name: 'Studio Fixture',
+        sequenceId: 'sequence-main',
+        variantId: 'variant-main',
+        assetIds: ['asset-alpha', 'asset-music'],
+        exportProfileIds: ['landscape-master', 'portrait-short-form'],
+        deterministicSeeds: [
+          {
+            id: 'seed-bad',
+            value: -1
+          }
+        ]
+      }
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: [
+        {
+          keyword: 'minimum',
+          message: 'must be >= 0',
+          path: '/composition/deterministicSeeds/0/value',
+          source: 'schema'
         }
       ]
     });
