@@ -368,12 +368,24 @@ describe('@afterimage/schema-validators', () => {
   it('parses archive metadata sidecars and applies collection defaults', () => {
     const parsed = parseArchiveMetadata({
       ...fixtureArchive,
-      recurrence: undefined
+      recurrence: undefined,
+      affinity: undefined
     });
 
     expect(parsed.sourceSystem).toBe('darklife');
     expect(parsed.segments[0].motifIds).toEqual(['motif-hallway']);
     expect(parsed.recurrence).toEqual([]);
+    expect(parsed.affinity).toEqual([]);
+  });
+
+  it('validates archive fixtures with affinity candidates', () => {
+    const parsed = parseArchiveMetadata(fixtureArchive);
+
+    expect(parsed.affinity[0]).toMatchObject({
+      id: 'affinity-hallway-concrete',
+      sourceId: 'motif-hallway',
+      targetId: 'material-concrete'
+    });
   });
 
   it('rejects archive metadata with unsupported recurrence relationships', () => {
@@ -398,6 +410,79 @@ describe('@afterimage/schema-validators', () => {
           source: 'schema'
         }
       ]
+    });
+  });
+
+  it('rejects archive integrity failures separately from schema failures', () => {
+    expect(validateArchiveMetadata({
+      ...fixtureArchive,
+      segments: [
+        ...(fixtureArchive.segments ?? []),
+        {
+          id: 'segment-alpha-hallway',
+          range: {
+            startMs: 4000,
+            endMs: 3000
+          },
+          motifIds: ['motif-missing']
+        }
+      ]
+    })).toEqual({
+      ok: false,
+      code: 'invalid-archive-file',
+      errors: expect.arrayContaining([
+        {
+          keyword: 'duplicate-id',
+          message: 'Duplicate archive.candidates id "segment-alpha-hallway" detected.',
+          path: 'archive.candidates',
+          source: 'integrity'
+        },
+        {
+          keyword: 'invalid-range',
+          message: 'Archive segment "segment-alpha-hallway" cannot end before it starts.',
+          path: 'segments.segment-alpha-hallway.range',
+          source: 'integrity'
+        },
+        {
+          keyword: 'missing-reference',
+          message: 'Archive segment "segment-alpha-hallway" references missing archive item "motif-missing".',
+          path: 'segments.segment-alpha-hallway.motifIds',
+          source: 'integrity'
+        }
+      ])
+    });
+  });
+
+  it('rejects archive sidecars missing required provenance or stable ids', () => {
+    expect(validateArchiveMetadata({
+      ...fixtureArchive,
+      provenance: {
+        sourceKind: 'public-domain',
+        generatorVersion: '0.1.0'
+      },
+      motifs: [
+        {
+          id: 'motif with space',
+          label: 'unstable'
+        }
+      ]
+    })).toEqual({
+      ok: false,
+      code: 'invalid-archive-file',
+      errors: expect.arrayContaining([
+        {
+          keyword: 'missing-provenance',
+          message: 'Archive "archive-source-alpha" is missing required generator provenance.',
+          path: 'provenance.generator',
+          source: 'integrity'
+        },
+        {
+          keyword: 'unstable-id',
+          message: 'Archive motif id "motif with space" is not stable.',
+          path: 'motifs.motif with space',
+          source: 'integrity'
+        }
+      ])
     });
   });
 

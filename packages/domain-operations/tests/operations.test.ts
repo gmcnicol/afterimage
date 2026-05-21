@@ -1,8 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { createEmptyProject, normalizeProject } from '@afterimage/project-model';
-import { fixtureProject } from '../../test-fixtures/src';
+import { createEmptyProject, normalizeProject, type NormalizedProjectFile } from '@afterimage/project-model';
+import { fixtureArchive, fixtureProject } from '../../test-fixtures/src';
 import { validateProject } from '@afterimage/schema-validators';
-import { resolveCompositionIntent } from '../src';
+import {
+  acceptArchiveAffinityCandidate,
+  acceptArchiveAtmosphereCandidate,
+  acceptArchiveBehaviourSeedCandidate,
+  acceptArchiveMaterialCandidate,
+  acceptArchiveMotifCandidate,
+  acceptArchiveMotionCandidate,
+  acceptArchiveRecurrenceCandidate,
+  acceptArchiveSegmentCandidate,
+  collectArchiveDiagnostics,
+  rejectArchiveAffinityCandidate,
+  rejectArchiveAtmosphereCandidate,
+  rejectArchiveBehaviourSeedCandidate,
+  rejectArchiveMaterialCandidate,
+  rejectArchiveMotifCandidate,
+  rejectArchiveMotionCandidate,
+  rejectArchiveRecurrenceCandidate,
+  rejectArchiveSegmentCandidate,
+  resolveCompositionIntent
+} from '../src';
 import {
   addCutToSequence,
   buildNewVariantFromReviewedCuts,
@@ -50,6 +69,19 @@ function makeProject() {
   };
 }
 
+function makeArchiveProject(): NormalizedProjectFile {
+  const project = normalizeProject(fixtureProject);
+
+  return normalizeProject({
+    ...project,
+    composition: {
+      ...project.composition,
+      acceptedArchiveReferences: [],
+      rejectedArchiveReferences: []
+    }
+  });
+}
+
 describe('@afterimage/domain-operations', () => {
   it('resolves the canonical fixture composition intent deterministically', () => {
     const result = resolveCompositionIntent({
@@ -76,6 +108,7 @@ describe('@afterimage/domain-operations', () => {
     expect(result.intent.captureSession?.id).toBe('capture-session-main');
     expect(result.intent.captureLog?.id).toBe('capture-log-main');
     expect(result.intent.archiveReferenceIds).toEqual(['archive-source-alpha']);
+    expect(result.intent.acceptedArchiveReferences.map((reference) => reference.id)).toEqual(['accepted-archive-source-alpha-motif-motif-hallway-composition-main-scene-main']);
   });
 
   it('resolves an empty project through fallback composition identity', () => {
@@ -209,6 +242,164 @@ describe('@afterimage/domain-operations', () => {
         message: 'Layer "layer-clip-intro" references missing archive "archive-source-alpha".',
         path: 'composition.layers.layer-clip-intro.archiveReferenceIds'
       }
+    ]));
+  });
+
+  it('accepts and rejects each M2 archive candidate class', () => {
+    let project = makeArchiveProject();
+
+    const segment = acceptArchiveSegmentCandidate(project, fixtureArchive, 'segment-alpha-hallway', {
+      scope: { compositionId: 'composition-main', sceneId: 'scene-main' },
+      targetIds: ['scene-main']
+    });
+    project = segment.project;
+    const motif = acceptArchiveMotifCandidate(project, fixtureArchive, 'motif-hallway');
+    project = motif.project;
+    const atmosphere = acceptArchiveAtmosphereCandidate(project, fixtureArchive, 'atmosphere-thermal-drift');
+    project = atmosphere.project;
+    const material = acceptArchiveMaterialCandidate(project, fixtureArchive, 'material-concrete');
+    project = material.project;
+    const motion = acceptArchiveMotionCandidate(project, fixtureArchive, 'motion-drift');
+    project = motion.project;
+    const behaviour = acceptArchiveBehaviourSeedCandidate(project, fixtureArchive, 'seed-memory-resurface');
+    project = behaviour.project;
+    const recurrence = acceptArchiveRecurrenceCandidate(project, fixtureArchive, 'recurrence-hallway-thermal');
+    project = recurrence.project;
+    const affinity = acceptArchiveAffinityCandidate(project, fixtureArchive, 'affinity-hallway-concrete');
+    project = affinity.project;
+
+    expect(project.composition.acceptedArchiveReferences.map((reference) => reference.referenceKind)).toEqual([
+      'affinity',
+      'atmosphere',
+      'behaviour-seed',
+      'material',
+      'motif',
+      'motion',
+      'recurrence',
+      'segment'
+    ]);
+
+    project = rejectArchiveSegmentCandidate(project, fixtureArchive, 'segment-alpha-hallway').project;
+    project = rejectArchiveMotifCandidate(project, fixtureArchive, 'motif-hallway').project;
+    project = rejectArchiveAtmosphereCandidate(project, fixtureArchive, 'atmosphere-thermal-drift').project;
+    project = rejectArchiveMaterialCandidate(project, fixtureArchive, 'material-concrete').project;
+    project = rejectArchiveMotionCandidate(project, fixtureArchive, 'motion-drift').project;
+    project = rejectArchiveBehaviourSeedCandidate(project, fixtureArchive, 'seed-memory-resurface').project;
+    project = rejectArchiveRecurrenceCandidate(project, fixtureArchive, 'recurrence-hallway-thermal').project;
+    project = rejectArchiveAffinityCandidate(project, fixtureArchive, 'affinity-hallway-concrete').project;
+
+    expect(project.composition.rejectedArchiveReferences.map((reference) => reference.referenceKind)).toEqual([
+      'affinity',
+      'atmosphere',
+      'behaviour-seed',
+      'material',
+      'motif',
+      'motion',
+      'recurrence',
+      'segment'
+    ]);
+  });
+
+  it('keeps duplicate archive acceptance idempotent', () => {
+    const first = acceptArchiveSegmentCandidate(makeArchiveProject(), fixtureArchive, 'segment-alpha-hallway', {
+      scope: { compositionId: 'composition-main', sceneId: 'scene-main' },
+      targetIds: ['scene-main']
+    });
+    const second = acceptArchiveSegmentCandidate(first.project, fixtureArchive, 'segment-alpha-hallway', {
+      scope: { compositionId: 'composition-main', sceneId: 'scene-main' },
+      targetIds: ['scene-main']
+    });
+
+    expect(first.created).toBe(true);
+    expect(second.created).toBe(false);
+    expect(second.reference).toEqual(first.reference);
+    expect(second.project.composition.acceptedArchiveReferences).toHaveLength(1);
+  });
+
+  it('collects archive staleness, provenance, source, and target diagnostics', () => {
+    const accepted = acceptArchiveSegmentCandidate(makeArchiveProject(), fixtureArchive, 'segment-alpha-hallway', {
+      sidecarContentId: 'archive-source-alpha:v1:stale',
+      targetIds: ['missing-target']
+    });
+    const project = normalizeProject({
+      ...accepted.project,
+      composition: {
+        ...accepted.project.composition,
+        acceptedArchiveReferences: accepted.project.composition.acceptedArchiveReferences.map((reference) => ({
+          ...reference,
+          sourceAssetId: 'asset-missing',
+          sidecarVersion: 2,
+          generator: 'old-generator'
+        }))
+      }
+    });
+    const changedArchive = {
+      ...fixtureArchive,
+      provenance: {
+        ...fixtureArchive.provenance,
+        generator: 'new-generator',
+        rightsStatus: undefined,
+        license: undefined
+      }
+    };
+    const unresolvedArchive = {
+      ...fixtureArchive,
+      id: 'archive-unresolved-source',
+      sourceAssetId: 'asset-external'
+    };
+    const diagnostics = collectArchiveDiagnostics({
+      project,
+      archives: [changedArchive, unresolvedArchive],
+      publishable: true
+    });
+
+    expect(diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'changed-generator-identity',
+        severity: 'warning',
+        path: expect.stringContaining('.generator')
+      }),
+      expect.objectContaining({
+        code: 'incompatible-schema-version',
+        severity: 'export-blocker',
+        path: expect.stringContaining('.sidecarVersion')
+      }),
+      expect.objectContaining({
+        code: 'missing-accepted-target',
+        severity: 'warning',
+        path: expect.stringContaining('.targetIds')
+      }),
+      expect.objectContaining({
+        code: 'missing-rights-license',
+        severity: 'export-blocker',
+        path: 'archives.archive-source-alpha.provenance'
+      }),
+      expect.objectContaining({
+        code: 'missing-source-asset',
+        severity: 'warning',
+        path: expect.stringContaining('.sourceAssetId')
+      }),
+      expect.objectContaining({
+        code: 'stale-sidecar',
+        severity: 'warning',
+        path: expect.stringContaining('.sidecarContentId')
+      }),
+      expect.objectContaining({
+        code: 'unresolved-external-source-id',
+        severity: 'warning',
+        path: 'archives.archive-unresolved-source.sourceAssetId'
+      })
+    ]));
+
+    expect(collectArchiveDiagnostics({
+      project,
+      archives: [],
+      publishable: true
+    })).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'missing-sidecar',
+        severity: 'warning'
+      })
     ]));
   });
 

@@ -1,5 +1,16 @@
 import { getFilterDefinition, getSupportedAutomationProperties, isSupportedFilterType } from './filters.js';
-import type { AutomationTargetProperty, ModulationEndpoint, ModulationScope, NormalizedProjectFile, ProjectIntegrityIssue } from './types.js';
+import type {
+  ArchiveAcceptanceScope,
+  ArchiveMetadataFile,
+  ArchiveReferenceKind,
+  ArchiveWeightedTag,
+  NormalizedArchiveMetadataFile,
+  AutomationTargetProperty,
+  ModulationEndpoint,
+  ModulationScope,
+  NormalizedProjectFile,
+  ProjectIntegrityIssue
+} from './types.js';
 import { compareNumbers, compareStrings } from './utils.js';
 
 export interface ProjectIntegrityContext {
@@ -31,6 +42,80 @@ function pushMissingReference(issues: ProjectIntegrityIssue[], path: string, mes
     path,
     message
   });
+}
+
+function pushUnstableId(issues: ProjectIntegrityIssue[], path: string, id: string, ownerLabel: string): void {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(id)) {
+    issues.push({
+      code: 'unstable-id',
+      path,
+      message: `${ownerLabel} id "${id}" is not stable.`
+    });
+  }
+}
+
+function validateArchiveAcceptanceScope(
+  issues: ProjectIntegrityIssue[],
+  path: string,
+  ownerLabel: string,
+  scope: ArchiveAcceptanceScope,
+  refs: {
+    compositionId: string;
+    sequenceIds: Set<string>;
+    variantIds: Set<string>;
+    sceneIds: Set<string>;
+    layerIds: Set<string>;
+    clipIds: Set<string>;
+  }
+): void {
+  if (scope.compositionId && scope.compositionId !== refs.compositionId) {
+    pushMissingReference(issues, `${path}.compositionId`, `${ownerLabel} references missing composition "${scope.compositionId}".`);
+  }
+  if (scope.sequenceId && !refs.sequenceIds.has(scope.sequenceId)) {
+    pushMissingReference(issues, `${path}.sequenceId`, `${ownerLabel} references missing sequence "${scope.sequenceId}".`);
+  }
+  if (scope.variantId && !refs.variantIds.has(scope.variantId)) {
+    pushMissingReference(issues, `${path}.variantId`, `${ownerLabel} references missing variant "${scope.variantId}".`);
+  }
+  if (scope.sceneId && !refs.sceneIds.has(scope.sceneId)) {
+    pushMissingReference(issues, `${path}.sceneId`, `${ownerLabel} references missing scene "${scope.sceneId}".`);
+  }
+  if (scope.layerId && !refs.layerIds.has(scope.layerId)) {
+    pushMissingReference(issues, `${path}.layerId`, `${ownerLabel} references missing layer "${scope.layerId}".`);
+  }
+  if (scope.clipId && !refs.clipIds.has(scope.clipId)) {
+    pushMissingReference(issues, `${path}.clipId`, `${ownerLabel} references missing clip "${scope.clipId}".`);
+  }
+}
+
+function validateAcceptedTargetIds(
+  issues: ProjectIntegrityIssue[],
+  path: string,
+  ownerLabel: string,
+  targetIds: string[],
+  refs: {
+    compositionId: string;
+    assetIds: Set<string>;
+    sequenceIds: Set<string>;
+    variantIds: Set<string>;
+    sceneIds: Set<string>;
+    layerIds: Set<string>;
+    clipIds: Set<string>;
+  }
+): void {
+  for (const targetId of targetIds) {
+    const targetExists = targetId === refs.compositionId
+      || refs.assetIds.has(targetId)
+      || refs.sequenceIds.has(targetId)
+      || refs.variantIds.has(targetId)
+      || refs.sceneIds.has(targetId)
+      || refs.layerIds.has(targetId)
+      || refs.clipIds.has(targetId);
+
+    if (!targetExists) {
+      pushMissingReference(issues, path, `${ownerLabel} references missing accepted target "${targetId}".`);
+    }
+  }
 }
 
 function validateArchiveReferenceIds(
@@ -191,6 +276,8 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   issues.push(...collectDuplicateIdIssues('composition.assetIds', project.composition.assetIds));
   issues.push(...collectDuplicateIdIssues('composition.exportProfileIds', project.composition.exportProfileIds));
   issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
+  issues.push(...collectDuplicateIdIssues('composition.acceptedArchiveReferences', project.composition.acceptedArchiveReferences.map((reference) => reference.id)));
+  issues.push(...collectDuplicateIdIssues('composition.rejectedArchiveReferences', project.composition.rejectedArchiveReferences.map((reference) => reference.id)));
   issues.push(...collectDuplicateIdIssues('composition.modulationRoutes', project.composition.modulationRoutes.map((route) => route.id)));
   issues.push(...collectDuplicateIdIssues('composition.entropyStates', project.composition.entropyStates.map((state) => state.id)));
   issues.push(...collectDuplicateIdIssues('composition.scenes', project.composition.scenes.map((scene) => scene.id)));
@@ -200,6 +287,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
 
   const filterIds = new Set(project.filterStacks.flatMap((stack) => stack.filters.map((filter) => filter.id)));
   const scopeRefs = { compositionId: project.composition.id, sequenceIds, variantIds, sceneIds, layerIds, clipIds };
+  const acceptedTargetRefs = { compositionId: project.composition.id, assetIds, sequenceIds, variantIds, sceneIds, layerIds, clipIds };
   const endpointRefs = {
     compositionId: project.composition.id,
     laneIds,
@@ -240,6 +328,25 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
     if (route.seedId && !seedIds.has(route.seedId)) {
       pushMissingReference(issues, `composition.modulationRoutes.${route.id}.seedId`, `Modulation route "${route.id}" references missing deterministic seed "${route.seedId}".`);
     }
+  }
+  for (const reference of project.composition.acceptedArchiveReferences) {
+    if (!assetIds.has(reference.sourceAssetId)) {
+      pushMissingReference(issues, `composition.acceptedArchiveReferences.${reference.id}.sourceAssetId`, `Accepted archive reference "${reference.id}" references missing source asset "${reference.sourceAssetId}".`);
+    }
+    validateAcceptedTargetIds(
+      issues,
+      `composition.acceptedArchiveReferences.${reference.id}.targetIds`,
+      `Accepted archive reference "${reference.id}"`,
+      reference.targetIds,
+      acceptedTargetRefs
+    );
+    validateArchiveAcceptanceScope(
+      issues,
+      `composition.acceptedArchiveReferences.${reference.id}.scope`,
+      `Accepted archive reference "${reference.id}"`,
+      reference.scope,
+      scopeRefs
+    );
   }
   for (const state of project.composition.entropyStates) {
     validateEndpointReference(issues, `composition.entropyStates.${state.id}.source`, `Entropy state "${state.id}" source`, state.source, endpointRefs);
@@ -549,6 +656,164 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
       if (event.seedId && !seedIds.has(event.seedId)) {
         pushMissingReference(issues, `captureLogs.${log.id}.events.${event.id}.seedId`, `Capture event "${event.id}" references missing deterministic seed "${event.seedId}".`);
       }
+    }
+  }
+
+  return issues.sort((left, right) => compareStrings(left.path, right.path) || compareStrings(left.message, right.message));
+}
+
+type ArchiveItemRef = {
+  id: string;
+  kind: ArchiveReferenceKind;
+  path: string;
+};
+
+function pushArchiveMissingReference(issues: ProjectIntegrityIssue[], path: string, ownerLabel: string, id: string): void {
+  pushMissingReference(issues, path, `${ownerLabel} references missing archive item "${id}".`);
+}
+
+function validateArchiveWeightedTagRefs(
+  issues: ProjectIntegrityIssue[],
+  tags: ArchiveWeightedTag[],
+  collectionName: 'atmospheres' | 'materials' | 'motion',
+  segmentIds: Set<string>
+): void {
+  for (const tag of tags) {
+    for (const segmentId of tag.segmentIds ?? []) {
+      if (!segmentIds.has(segmentId)) {
+        pushArchiveMissingReference(issues, `${collectionName}.${tag.id}.segmentIds`, `${collectionName} "${tag.id}"`, segmentId);
+      }
+    }
+  }
+}
+
+export function collectArchiveIntegrityIssues(archive: NormalizedArchiveMetadataFile | ArchiveMetadataFile): ProjectIntegrityIssue[] {
+  const normalized = {
+    ...archive,
+    segments: archive.segments ?? [],
+    motifs: archive.motifs ?? [],
+    atmospheres: archive.atmospheres ?? [],
+    materials: archive.materials ?? [],
+    motion: archive.motion ?? [],
+    behaviourSeeds: archive.behaviourSeeds ?? [],
+    recurrence: archive.recurrence ?? [],
+    affinity: archive.affinity ?? []
+  };
+  const issues: ProjectIntegrityIssue[] = [];
+  const itemRefs: ArchiveItemRef[] = [
+    ...normalized.segments.map((item) => ({ id: item.id, kind: 'segment' as const, path: `segments.${item.id}` })),
+    ...normalized.motifs.map((item) => ({ id: item.id, kind: 'motif' as const, path: `motifs.${item.id}` })),
+    ...normalized.atmospheres.map((item) => ({ id: item.id, kind: 'atmosphere' as const, path: `atmospheres.${item.id}` })),
+    ...normalized.materials.map((item) => ({ id: item.id, kind: 'material' as const, path: `materials.${item.id}` })),
+    ...normalized.motion.map((item) => ({ id: item.id, kind: 'motion' as const, path: `motion.${item.id}` })),
+    ...normalized.behaviourSeeds.map((item) => ({ id: item.id, kind: 'behaviour-seed' as const, path: `behaviourSeeds.${item.id}` })),
+    ...normalized.recurrence.map((item) => ({ id: item.id, kind: 'recurrence' as const, path: `recurrence.${item.id}` })),
+    ...normalized.affinity.map((item) => ({ id: item.id, kind: 'affinity' as const, path: `affinity.${item.id}` }))
+  ];
+  const allItemIds = new Set(itemRefs.map((item) => item.id));
+  const segmentIds = new Set(normalized.segments.map((segment) => segment.id));
+  const motifIds = new Set(normalized.motifs.map((motif) => motif.id));
+  const atmosphereIds = new Set(normalized.atmospheres.map((atmosphere) => atmosphere.id));
+  const materialIds = new Set(normalized.materials.map((material) => material.id));
+  const motionIds = new Set(normalized.motion.map((motion) => motion.id));
+  const behaviourSeedIds = new Set(normalized.behaviourSeeds.map((seed) => seed.id));
+
+  issues.push(...collectDuplicateIdIssues('archive.candidates', itemRefs.map((item) => item.id)));
+  pushUnstableId(issues, 'id', normalized.id, 'Archive');
+  for (const item of itemRefs) {
+    pushUnstableId(issues, item.path, item.id, `Archive ${item.kind}`);
+  }
+
+  if (!normalized.provenance.generator) {
+    issues.push({
+      code: 'missing-provenance',
+      path: 'provenance.generator',
+      message: `Archive "${normalized.id}" is missing required generator provenance.`
+    });
+  }
+  if (!normalized.provenance.generatorVersion) {
+    issues.push({
+      code: 'missing-provenance',
+      path: 'provenance.generatorVersion',
+      message: `Archive "${normalized.id}" is missing required generator version provenance.`
+    });
+  }
+
+  for (const segment of normalized.segments) {
+    if (segment.range.endMs < segment.range.startMs) {
+      issues.push({
+        code: 'invalid-range',
+        path: `segments.${segment.id}.range`,
+        message: `Archive segment "${segment.id}" cannot end before it starts.`
+      });
+    }
+    for (const motifId of segment.motifIds ?? []) {
+      if (!motifIds.has(motifId)) {
+        pushArchiveMissingReference(issues, `segments.${segment.id}.motifIds`, `Archive segment "${segment.id}"`, motifId);
+      }
+    }
+    for (const atmosphereId of segment.atmosphereIds ?? []) {
+      if (!atmosphereIds.has(atmosphereId)) {
+        pushArchiveMissingReference(issues, `segments.${segment.id}.atmosphereIds`, `Archive segment "${segment.id}"`, atmosphereId);
+      }
+    }
+    for (const materialId of segment.materialIds ?? []) {
+      if (!materialIds.has(materialId)) {
+        pushArchiveMissingReference(issues, `segments.${segment.id}.materialIds`, `Archive segment "${segment.id}"`, materialId);
+      }
+    }
+    for (const motionId of segment.motionIds ?? []) {
+      if (!motionIds.has(motionId)) {
+        pushArchiveMissingReference(issues, `segments.${segment.id}.motionIds`, `Archive segment "${segment.id}"`, motionId);
+      }
+    }
+    for (const behaviourSeedId of segment.behaviourSeedIds ?? []) {
+      if (!behaviourSeedIds.has(behaviourSeedId)) {
+        pushArchiveMissingReference(issues, `segments.${segment.id}.behaviourSeedIds`, `Archive segment "${segment.id}"`, behaviourSeedId);
+      }
+    }
+  }
+  for (const motif of normalized.motifs) {
+    for (const segmentId of motif.segmentIds ?? []) {
+      if (!segmentIds.has(segmentId)) {
+        pushArchiveMissingReference(issues, `motifs.${motif.id}.segmentIds`, `Archive motif "${motif.id}"`, segmentId);
+      }
+    }
+  }
+  validateArchiveWeightedTagRefs(issues, normalized.atmospheres, 'atmospheres', segmentIds);
+  validateArchiveWeightedTagRefs(issues, normalized.materials, 'materials', segmentIds);
+  validateArchiveWeightedTagRefs(issues, normalized.motion, 'motion', segmentIds);
+  for (const seed of normalized.behaviourSeeds) {
+    for (const segmentId of seed.segmentIds ?? []) {
+      if (!segmentIds.has(segmentId)) {
+        pushArchiveMissingReference(issues, `behaviourSeeds.${seed.id}.segmentIds`, `Archive behaviour seed "${seed.id}"`, segmentId);
+      }
+    }
+    for (const motifId of seed.motifIds ?? []) {
+      if (!motifIds.has(motifId)) {
+        pushArchiveMissingReference(issues, `behaviourSeeds.${seed.id}.motifIds`, `Archive behaviour seed "${seed.id}"`, motifId);
+      }
+    }
+    for (const atmosphereId of seed.atmosphereIds ?? []) {
+      if (!atmosphereIds.has(atmosphereId)) {
+        pushArchiveMissingReference(issues, `behaviourSeeds.${seed.id}.atmosphereIds`, `Archive behaviour seed "${seed.id}"`, atmosphereId);
+      }
+    }
+  }
+  for (const link of normalized.recurrence) {
+    if (!allItemIds.has(link.sourceId)) {
+      pushArchiveMissingReference(issues, `recurrence.${link.id}.sourceId`, `Archive recurrence "${link.id}"`, link.sourceId);
+    }
+    if (!allItemIds.has(link.targetId)) {
+      pushArchiveMissingReference(issues, `recurrence.${link.id}.targetId`, `Archive recurrence "${link.id}"`, link.targetId);
+    }
+  }
+  for (const affinity of normalized.affinity) {
+    if (!allItemIds.has(affinity.sourceId)) {
+      pushArchiveMissingReference(issues, `affinity.${affinity.id}.sourceId`, `Archive affinity "${affinity.id}"`, affinity.sourceId);
+    }
+    if (!allItemIds.has(affinity.targetId)) {
+      pushArchiveMissingReference(issues, `affinity.${affinity.id}.targetId`, `Archive affinity "${affinity.id}"`, affinity.targetId);
     }
   }
 

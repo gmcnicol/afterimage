@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { fixtureProject } from '../../test-fixtures/src';
+import { fixtureArchive, fixtureProject } from '../../test-fixtures/src';
 import {
+  collectArchiveIntegrityIssues,
   collectProjectIntegrityIssues,
   createEmptyProject,
   getAssetById,
   getDefaultVariant,
+  normalizeArchiveMetadataFile,
   normalizeProject,
   resolveProjectPathCandidates
 } from '../src';
@@ -41,6 +43,8 @@ describe('@afterimage/project-model', () => {
     expect(normalized.composition.scenes.map((scene) => scene.id)).toEqual(['scene-main']);
     expect(normalized.composition.modulationRoutes.map((route) => route.id)).toEqual(['route-bloom-midi']);
     expect(normalized.composition.entropyStates.map((state) => state.id)).toEqual(['entropy-scene-pressure']);
+    expect(normalized.composition.acceptedArchiveReferences.map((reference) => reference.id)).toEqual(['accepted-archive-source-alpha-motif-motif-hallway-composition-main-scene-main']);
+    expect(normalized.composition.rejectedArchiveReferences.map((reference) => reference.id)).toEqual(['rejected-archive-source-alpha-motion-motion-drift-composition-main-layer-clip-intro']);
     expect(normalized.captureSessions.map((session) => session.id)).toEqual(['capture-session-main']);
     expect(normalized.captureLogs[0].events.map((event) => event.id)).toEqual(['capture-event-1']);
     expect(normalized.composition.scenes[0]).toMatchObject({
@@ -105,7 +109,9 @@ describe('@afterimage/project-model', () => {
       variantId: 'variant-main',
       assetIds: ['asset-alpha', 'asset-music'],
       exportProfileIds: ['landscape-master', 'portrait-short-form'],
-      deterministicSeeds: []
+      deterministicSeeds: [],
+      acceptedArchiveReferences: [],
+      rejectedArchiveReferences: []
     });
     expect(normalized.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
     expect(normalized.composition.layers[0]).toMatchObject({
@@ -126,7 +132,9 @@ describe('@afterimage/project-model', () => {
         variantId: 'variant-main',
         assetIds: ['asset-alpha', 'asset-music'],
         exportProfileIds: ['landscape-master', 'portrait-short-form'],
-        deterministicSeeds: []
+        deterministicSeeds: [],
+        acceptedArchiveReferences: [],
+        rejectedArchiveReferences: []
       }
     });
 
@@ -559,6 +567,84 @@ describe('@afterimage/project-model', () => {
         path: 'composition.scenes.scene-main.archiveReferenceIds'
       }
     ]);
+  });
+
+  it('normalizes archive affinity candidates deterministically', () => {
+    const normalized = normalizeArchiveMetadataFile({
+      ...fixtureArchive,
+      affinity: [
+        {
+          id: 'affinity-z',
+          sourceId: 'motif-hallway',
+          targetId: 'material-concrete',
+          descriptors: ['zeta', 'alpha']
+        },
+        ...(fixtureArchive.affinity ?? [])
+      ]
+    });
+
+    expect(normalized.affinity.map((candidate) => candidate.id)).toEqual(['affinity-hallway-concrete', 'affinity-z']);
+    expect(normalized.affinity[1].descriptors).toEqual(['alpha', 'zeta']);
+  });
+
+  it('reports duplicate archive candidate ids and missing archive refs', () => {
+    const issues = collectArchiveIntegrityIssues(normalizeArchiveMetadataFile({
+      ...fixtureArchive,
+      segments: [
+        ...(fixtureArchive.segments ?? []),
+        {
+          id: 'segment-alpha-hallway',
+          range: {
+            startMs: 4000,
+            endMs: 3000
+          },
+          motifIds: ['motif-missing']
+        }
+      ],
+      recurrence: [
+        {
+          id: 'recurrence-broken',
+          sourceId: 'motif-hallway',
+          targetId: 'archive-missing',
+          relationship: 'motif-recurrence'
+        }
+      ],
+      affinity: [
+        {
+          id: 'affinity-broken',
+          sourceId: 'motif-hallway',
+          targetId: 'material-missing'
+        }
+      ]
+    }));
+
+    expect(issues).toEqual(expect.arrayContaining([
+      {
+        code: 'duplicate-id',
+        message: 'Duplicate archive.candidates id "segment-alpha-hallway" detected.',
+        path: 'archive.candidates'
+      },
+      {
+        code: 'invalid-range',
+        message: 'Archive segment "segment-alpha-hallway" cannot end before it starts.',
+        path: 'segments.segment-alpha-hallway.range'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Archive segment "segment-alpha-hallway" references missing archive item "motif-missing".',
+        path: 'segments.segment-alpha-hallway.motifIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Archive recurrence "recurrence-broken" references missing archive item "archive-missing".',
+        path: 'recurrence.recurrence-broken.targetId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Archive affinity "affinity-broken" references missing archive item "material-missing".',
+        path: 'affinity.affinity-broken.targetId'
+      }
+    ]));
   });
 
   it('reports invalid mask transition references and placement', () => {
