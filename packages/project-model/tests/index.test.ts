@@ -67,6 +67,60 @@ describe('@afterimage/project-model', () => {
     ]);
   });
 
+  it('normalizes capture log event ordering by index, effective composition time, then id', () => {
+    const baseEvent = fixtureProject.captureLogs?.[0]?.events[0];
+    expect(baseEvent).toBeDefined();
+    if (!baseEvent) {
+      return;
+    }
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      captureLogs: [
+        {
+          id: 'capture-log-main',
+          captureSessionId: 'capture-session-main',
+          events: [
+            {
+              ...baseEvent,
+              id: 'capture-event-b',
+              index: 1,
+              captureTimeMs: 10,
+              compositionTimeMs: 30
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-a',
+              index: 1,
+              captureTimeMs: 20,
+              compositionTimeMs: undefined
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-c',
+              index: 0,
+              captureTimeMs: 100,
+              compositionTimeMs: 100
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(normalized.captureLogs[0].events.map((event) => event.id)).toEqual([
+      'capture-event-c',
+      'capture-event-a',
+      'capture-event-b'
+    ]);
+  });
+
+  it('defaults capture collections for current projects without capture state', () => {
+    const { captureSessions: _captureSessions, captureLogs: _captureLogs, ...projectWithoutCapture } = fixtureProject;
+    const normalized = normalizeProject(projectWithoutCapture);
+
+    expect(normalized.captureSessions).toEqual([]);
+    expect(normalized.captureLogs).toEqual([]);
+  });
+
   it('creates numbered default sequence variants', () => {
     const project = createEmptyProject({
       id: 'project-sequence-name-test',
@@ -409,6 +463,59 @@ describe('@afterimage/project-model', () => {
         code: 'missing-reference',
         message: 'Capture event "event-broken" references missing modulation route "route-missing".',
         path: 'captureLogs.capture-log-broken.events.event-broken.routeId'
+      }
+    ]));
+  });
+
+  it('reports stable capture event duplicate and missing-reference paths', () => {
+    const baseEvent = fixtureProject.captureLogs?.[0]?.events[0];
+    expect(baseEvent).toBeDefined();
+    if (!baseEvent) {
+      return;
+    }
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      captureLogs: [
+        {
+          id: 'capture-log-main',
+          captureSessionId: 'capture-session-missing',
+          events: [
+            {
+              ...baseEvent,
+              id: 'capture-event-duplicate',
+              index: 2
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-duplicate',
+              index: 2,
+              routeId: 'route-missing'
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'duplicate-id',
+        message: 'Duplicate captureLogs.capture-log-main.events id "capture-event-duplicate" detected.',
+        path: 'captureLogs.capture-log-main.events'
+      },
+      {
+        code: 'duplicate-id',
+        message: 'Duplicate captureLogs.capture-log-main.eventIndexes id "2" detected.',
+        path: 'captureLogs.capture-log-main.eventIndexes'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture log "capture-log-main" references missing capture session "capture-session-missing".',
+        path: 'captureLogs.capture-log-main.captureSessionId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-duplicate" references missing modulation route "route-missing".',
+        path: 'captureLogs.capture-log-main.events.capture-event-duplicate.routeId'
       }
     ]));
   });
