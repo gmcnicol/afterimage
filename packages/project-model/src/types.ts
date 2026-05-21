@@ -17,6 +17,15 @@ export type ArchiveRecurrenceRelationship =
   | 'motif-recurrence'
   | 'source-lineage'
   | 'performance-reuse';
+export type ArchiveReferenceKind =
+  | 'segment'
+  | 'motif'
+  | 'atmosphere'
+  | 'material'
+  | 'motion'
+  | 'behaviour-seed'
+  | 'recurrence'
+  | 'affinity';
 export type AudioChangeKind = 'energy-shift' | 'spectral-change' | 'silence-start' | 'silence-end' | 'onset-cluster';
 export type AudioChangeSource = 'astats' | 'aspectralstats' | 'ebur128' | 'silencedetect' | 'derived';
 export type SyncEventSource = 'audio-change' | 'beat' | 'downbeat' | 'midi' | 'manual';
@@ -65,7 +74,8 @@ export type StudioErrorCode =
   | 'analysis-failure'
   | 'render-failure'
   | 'output-path-failure'
-  | 'permission-failure';
+  | 'permission-failure'
+  | 'invalid-archive-file';
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -329,6 +339,16 @@ export interface ArchiveRecurrenceLink {
   explanation?: string;
 }
 
+export interface ArchiveWorldAffinityCandidate {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  label?: string;
+  confidence?: number;
+  weight?: number;
+  descriptors?: string[];
+}
+
 export interface ArchiveMetadataFile {
   id: string;
   version: 1;
@@ -343,6 +363,7 @@ export interface ArchiveMetadataFile {
   motion?: ArchiveWeightedTag[];
   behaviourSeeds?: ArchiveBehaviourSeed[];
   recurrence?: ArchiveRecurrenceLink[];
+  affinity?: ArchiveWorldAffinityCandidate[];
   notes?: string;
 }
 
@@ -353,7 +374,8 @@ export interface NormalizedArchiveMetadataFile extends Omit<ArchiveMetadataFile,
   | 'materials'
   | 'motion'
   | 'behaviourSeeds'
-  | 'recurrence'> {
+  | 'recurrence'
+  | 'affinity'> {
   segments: ArchiveSegment[];
   motifs: ArchiveMotifCandidate[];
   atmospheres: ArchiveWeightedTag[];
@@ -361,6 +383,7 @@ export interface NormalizedArchiveMetadataFile extends Omit<ArchiveMetadataFile,
   motion: ArchiveWeightedTag[];
   behaviourSeeds: ArchiveBehaviourSeed[];
   recurrence: ArchiveRecurrenceLink[];
+  affinity: ArchiveWorldAffinityCandidate[];
 }
 
 export interface CutCandidate {
@@ -542,6 +565,45 @@ export interface CompositionDeterministicSeed {
   label?: string;
 }
 
+export interface ArchiveAcceptanceScope {
+  compositionId?: string;
+  sequenceId?: string;
+  variantId?: string;
+  sceneId?: string;
+  layerId?: string;
+  clipId?: string;
+}
+
+export interface CompositionAcceptedArchiveReference {
+  id: string;
+  archiveId: string;
+  archiveItemId: string;
+  sourceAssetId: string;
+  sidecarVersion: number;
+  sidecarContentId: string;
+  referenceKind: ArchiveReferenceKind;
+  targetIds: string[];
+  scope: ArchiveAcceptanceScope;
+  generator?: string;
+  generatorVersion?: string;
+  note?: string;
+}
+
+export interface CompositionRejectedArchiveReference {
+  id: string;
+  archiveId: string;
+  archiveItemId: string;
+  sourceAssetId: string;
+  sidecarVersion: number;
+  sidecarContentId: string;
+  referenceKind: ArchiveReferenceKind;
+  targetIds: string[];
+  scope: ArchiveAcceptanceScope;
+  generator?: string;
+  generatorVersion?: string;
+  note?: string;
+}
+
 export interface ModulationEndpoint {
   kind: ModulationSourceKind | ModulationTargetKind | EntropyIdentityKind;
   id: string;
@@ -668,6 +730,8 @@ export interface CompositionIdentity {
   assetIds: string[];
   exportProfileIds: string[];
   deterministicSeeds: CompositionDeterministicSeed[];
+  acceptedArchiveReferences?: CompositionAcceptedArchiveReference[];
+  rejectedArchiveReferences?: CompositionRejectedArchiveReference[];
   modulationRoutes?: ModulationRoute[];
   entropyStates?: EntropyState[];
   scenes?: SceneDefinition[];
@@ -744,7 +808,11 @@ export interface NormalizedCompositionIdentity extends Omit<CompositionIdentity,
   | 'scenes'
   | 'layers'
   | 'modulationRoutes'
-  | 'entropyStates'> {
+  | 'entropyStates'
+  | 'acceptedArchiveReferences'
+  | 'rejectedArchiveReferences'> {
+  acceptedArchiveReferences: CompositionAcceptedArchiveReference[];
+  rejectedArchiveReferences: CompositionRejectedArchiveReference[];
   modulationRoutes: ModulationRoute[];
   entropyStates: EntropyState[];
   scenes: NormalizedSceneDefinition[];
@@ -816,7 +884,7 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
 }
 
 export interface ProjectIntegrityIssue {
-  code: 'duplicate-id' | 'missing-reference' | 'invalid-range' | 'unsupported-value';
+  code: 'duplicate-id' | 'missing-reference' | 'invalid-range' | 'unsupported-value' | 'missing-provenance' | 'unstable-id';
   path: string;
   message: string;
 }

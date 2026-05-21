@@ -259,6 +259,44 @@
         "label": "Main composition seed"
       }
     ],
+    "acceptedArchiveReferences": [
+      {
+        "id": "accepted-archive-source-alpha-motif-motif-hallway-composition-main-scene-main",
+        "archiveId": "archive-source-alpha",
+        "archiveItemId": "motif-hallway",
+        "sourceAssetId": "asset-alpha",
+        "sidecarVersion": 1,
+        "sidecarContentId": "archive-source-alpha:v1:2026-05-17T10:00:00.000Z:darklife-local:0.1.0",
+        "referenceKind": "motif",
+        "targetIds": ["scene-main"],
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        },
+        "generator": "darklife-local",
+        "generatorVersion": "0.1.0",
+        "note": "Carry hallway motif into the main scene climate."
+      }
+    ],
+    "rejectedArchiveReferences": [
+      {
+        "id": "rejected-archive-source-alpha-motion-motion-drift-composition-main-layer-clip-intro",
+        "archiveId": "archive-source-alpha",
+        "archiveItemId": "motion-drift",
+        "sourceAssetId": "asset-alpha",
+        "sidecarVersion": 1,
+        "sidecarContentId": "archive-source-alpha:v1:2026-05-17T10:00:00.000Z:darklife-local:0.1.0",
+        "referenceKind": "motion",
+        "targetIds": ["layer-clip-intro"],
+        "scope": {
+          "compositionId": "composition-main",
+          "layerId": "layer-clip-intro"
+        },
+        "generator": "darklife-local",
+        "generatorVersion": "0.1.0",
+        "note": "Do not use drift as a layer driver in the base fixture."
+      }
+    ],
     "modulationRoutes": [
       {
         "id": "route-bloom-midi",
