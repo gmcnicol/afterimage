@@ -146,6 +146,10 @@
       "type": "string",
       "enum": ["input", "modulation", "entropy", "transport", "manual"]
     },
+    "archiveReferenceKind": {
+      "type": "string",
+      "enum": ["segment", "motif", "atmosphere", "material", "motion", "behaviour-seed", "recurrence", "affinity"]
+    },
     "assistedGenerationStrategy": {
       "type": "string",
       "enum": ["manual", "chronological", "marker-aware", "motif", "seeded-constrained"]
@@ -783,6 +787,47 @@
       },
       "additionalProperties": false
     },
+    "archiveAcceptanceScope": {
+      "type": "object",
+      "properties": {
+        "compositionId": { "$ref": "#/$defs/idString" },
+        "sequenceId": { "$ref": "#/$defs/idString" },
+        "variantId": { "$ref": "#/$defs/idString" },
+        "sceneId": { "$ref": "#/$defs/idString" },
+        "layerId": { "$ref": "#/$defs/idString" },
+        "clipId": { "$ref": "#/$defs/idString" }
+      },
+      "additionalProperties": false
+    },
+    "compositionArchiveReference": {
+      "type": "object",
+      "required": [
+        "id",
+        "archiveId",
+        "archiveItemId",
+        "sourceAssetId",
+        "sidecarVersion",
+        "sidecarContentId",
+        "referenceKind",
+        "targetIds",
+        "scope"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "archiveId": { "$ref": "#/$defs/idString" },
+        "archiveItemId": { "$ref": "#/$defs/idString" },
+        "sourceAssetId": { "$ref": "#/$defs/idString" },
+        "sidecarVersion": { "type": "integer", "minimum": 1 },
+        "sidecarContentId": { "type": "string", "minLength": 1 },
+        "referenceKind": { "$ref": "#/$defs/archiveReferenceKind" },
+        "targetIds": { "$ref": "#/$defs/stringArray" },
+        "scope": { "$ref": "#/$defs/archiveAcceptanceScope" },
+        "generator": { "type": "string", "minLength": 1 },
+        "generatorVersion": { "type": "string", "minLength": 1 },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "modulationEndpoint": {
       "type": "object",
       "required": ["kind", "id"],
@@ -1035,6 +1080,16 @@
         "deterministicSeeds": {
           "type": "array",
           "items": { "$ref": "#/$defs/compositionDeterministicSeed" },
+          "default": []
+        },
+        "acceptedArchiveReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/compositionArchiveReference" },
+          "default": []
+        },
+        "rejectedArchiveReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/compositionArchiveReference" },
           "default": []
         },
         "modulationRoutes": {

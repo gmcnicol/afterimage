@@ -49,6 +49,11 @@
       "items": { "$ref": "#/$defs/archiveRecurrenceLink" },
       "default": []
     },
+    "affinity": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/archiveWorldAffinityCandidate" },
+      "default": []
+    },
     "notes": { "type": "string" }
   },
   "additionalProperties": false,
@@ -157,6 +162,20 @@
         },
         "strength": { "type": "number", "minimum": 0, "maximum": 1 },
         "explanation": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "archiveWorldAffinityCandidate": {
+      "type": "object",
+      "required": ["id", "sourceId", "targetId"],
+      "properties": {
+        "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "sourceId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "targetId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
+        "label": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "descriptors": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/stringArray" }
       },
       "additionalProperties": false
     }

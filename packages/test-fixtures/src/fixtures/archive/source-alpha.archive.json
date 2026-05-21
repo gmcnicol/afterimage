@@ -94,5 +94,16 @@
       "strength": 0.57,
       "explanation": "Hallway fragments repeatedly carry warm analog haze."
     }
+  ],
+  "affinity": [
+    {
+      "id": "affinity-hallway-concrete",
+      "sourceId": "motif-hallway",
+      "targetId": "material-concrete",
+      "label": "hallway concrete affinity",
+      "confidence": 0.69,
+      "weight": 0.54,
+      "descriptors": ["institutional", "liminal"]
+    }
   ]
 }

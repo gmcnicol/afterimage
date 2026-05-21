@@ -3,7 +3,10 @@ import { CURRENT_PROJECT_VERSION } from './types.js';
 import type {
   AnalysisFile,
   AnalysisRef,
+  ArchiveAcceptanceScope,
   ArchiveMetadataFile,
+  ArchiveWeightedTag,
+  ArchiveWorldAffinityCandidate,
   AssetRole,
   AudioChangeEvent,
   AudioChangeTrack,
@@ -13,6 +16,8 @@ import type {
   CaptureEvent,
   CaptureLog,
   CaptureSession,
+  CompositionAcceptedArchiveReference,
+  CompositionRejectedArchiveReference,
   CutCandidate,
   EntropyState,
   ExportSelection,
@@ -205,13 +210,47 @@ export function normalizeAnalysisFile(file: AnalysisFile): AnalysisFile {
 export function normalizeArchiveMetadataFile(archive: ArchiveMetadataFile): NormalizedArchiveMetadataFile {
   return {
     ...archive,
-    segments: archive.segments ?? [],
-    motifs: archive.motifs ?? [],
-    atmospheres: archive.atmospheres ?? [],
-    materials: archive.materials ?? [],
-    motion: archive.motion ?? [],
-    behaviourSeeds: archive.behaviourSeeds ?? [],
-    recurrence: archive.recurrence ?? []
+    segments: sortById((archive.segments ?? []).map((segment) => ({
+      ...segment,
+      tags: normalizeStringArray(segment.tags),
+      motifIds: normalizeStringArray(segment.motifIds),
+      atmosphereIds: normalizeStringArray(segment.atmosphereIds),
+      materialIds: normalizeStringArray(segment.materialIds),
+      motionIds: normalizeStringArray(segment.motionIds),
+      behaviourSeedIds: normalizeStringArray(segment.behaviourSeedIds)
+    }))),
+    motifs: sortById((archive.motifs ?? []).map((motif) => ({
+      ...motif,
+      segmentIds: normalizeStringArray(motif.segmentIds),
+      descriptors: normalizeStringArray(motif.descriptors)
+    }))),
+    atmospheres: normalizeArchiveWeightedTags(archive.atmospheres),
+    materials: normalizeArchiveWeightedTags(archive.materials),
+    motion: normalizeArchiveWeightedTags(archive.motion),
+    behaviourSeeds: sortById((archive.behaviourSeeds ?? []).map((seed) => ({
+      ...seed,
+      segmentIds: normalizeStringArray(seed.segmentIds),
+      motifIds: normalizeStringArray(seed.motifIds),
+      atmosphereIds: normalizeStringArray(seed.atmosphereIds),
+      parameters: normalizeJsonRecord(seed.parameters)
+    }))),
+    recurrence: sortById((archive.recurrence ?? []).map((link) => ({ ...link }))),
+    affinity: sortById((archive.affinity ?? []).map(normalizeArchiveWorldAffinityCandidate))
+  };
+}
+
+function normalizeArchiveWeightedTags(tags: ArchiveWeightedTag[] | undefined): ArchiveWeightedTag[] {
+  return sortById((tags ?? []).map((tag) => ({
+    ...tag,
+    segmentIds: normalizeStringArray(tag.segmentIds),
+    descriptors: normalizeStringArray(tag.descriptors)
+  })));
+}
+
+function normalizeArchiveWorldAffinityCandidate(candidate: ArchiveWorldAffinityCandidate): ArchiveWorldAffinityCandidate {
+  return {
+    ...candidate,
+    descriptors: normalizeStringArray(candidate.descriptors)
   };
 }
 
@@ -584,6 +623,33 @@ export function normalizeSceneLayerDefinition(layer: SceneLayerDefinition): Norm
   };
 }
 
+export function normalizeArchiveAcceptanceScope(scope: ArchiveAcceptanceScope | undefined): ArchiveAcceptanceScope {
+  return {
+    compositionId: scope?.compositionId,
+    sequenceId: scope?.sequenceId,
+    variantId: scope?.variantId,
+    sceneId: scope?.sceneId,
+    layerId: scope?.layerId,
+    clipId: scope?.clipId
+  };
+}
+
+export function normalizeAcceptedArchiveReference(reference: CompositionAcceptedArchiveReference): CompositionAcceptedArchiveReference {
+  return {
+    ...reference,
+    targetIds: normalizeStringArray(reference.targetIds),
+    scope: normalizeArchiveAcceptanceScope(reference.scope)
+  };
+}
+
+export function normalizeRejectedArchiveReference(reference: CompositionRejectedArchiveReference): CompositionRejectedArchiveReference {
+  return {
+    ...reference,
+    targetIds: normalizeStringArray(reference.targetIds),
+    scope: normalizeArchiveAcceptanceScope(reference.scope)
+  };
+}
+
 export function normalizeCompositionIdentity(project: ProjectFile): NormalizedCompositionIdentity {
   const sequence = project.composition
     ? project.sequences.find((candidate) => candidate.id === project.composition?.sequenceId)
@@ -612,6 +678,8 @@ export function normalizeCompositionIdentity(project: ProjectFile): NormalizedCo
       ? normalizeSortedStringArray(project.composition.exportProfileIds)
       : normalizeStringArray(enabledExportProfileIds.length > 0 ? enabledExportProfileIds : fallbackExportProfileIds),
     deterministicSeeds: sortById((project.composition?.deterministicSeeds ?? []).map((seed) => ({ ...seed }))),
+    acceptedArchiveReferences: sortById((project.composition?.acceptedArchiveReferences ?? []).map(normalizeAcceptedArchiveReference)),
+    rejectedArchiveReferences: sortById((project.composition?.rejectedArchiveReferences ?? []).map(normalizeRejectedArchiveReference)),
     modulationRoutes: sortById((project.composition?.modulationRoutes ?? []).map(normalizeModulationRoute)),
     entropyStates: sortById((project.composition?.entropyStates ?? []).map(normalizeEntropyState)),
     scenes: sortById(scenes.map(normalizeSceneDefinition)),

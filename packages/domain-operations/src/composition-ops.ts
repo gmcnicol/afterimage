@@ -7,6 +7,7 @@ import {
   getVariantById,
   type CaptureLog,
   type CaptureSession,
+  type CompositionAcceptedArchiveReference,
   type CompositionDeterministicSeed,
   type EntropyState,
   type ExportSelection,
@@ -46,6 +47,7 @@ export interface CompositionIntent {
   captureSession?: CaptureSession;
   captureLog?: CaptureLog;
   archiveReferenceIds: string[];
+  acceptedArchiveReferences: CompositionAcceptedArchiveReference[];
 }
 
 export type ResolveCompositionIntentResult =
@@ -234,7 +236,8 @@ export function resolveCompositionIntent(input: ResolveCompositionIntentInput): 
       entropyStates: input.project.composition.entropyStates,
       captureSession,
       captureLog,
-      archiveReferenceIds: collectArchiveReferenceIds(input.project.composition)
+      archiveReferenceIds: collectArchiveReferenceIds(input.project.composition),
+      acceptedArchiveReferences: input.project.composition.acceptedArchiveReferences
     }
   };
 }
