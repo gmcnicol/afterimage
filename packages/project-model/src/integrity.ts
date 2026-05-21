@@ -2,6 +2,10 @@ import { getFilterDefinition, getSupportedAutomationProperties, isSupportedFilte
 import type { AutomationTargetProperty, ModulationEndpoint, ModulationScope, NormalizedProjectFile, ProjectIntegrityIssue } from './types.js';
 import { compareNumbers, compareStrings } from './utils.js';
 
+export interface ProjectIntegrityContext {
+  availableArchiveIds?: string[];
+}
+
 function collectDuplicateIdIssues(kind: string, ids: string[]): ProjectIntegrityIssue[] {
   const seen = new Set<string>();
   const duplicates = new Set<string>();
@@ -27,6 +31,24 @@ function pushMissingReference(issues: ProjectIntegrityIssue[], path: string, mes
     path,
     message
   });
+}
+
+function validateArchiveReferenceIds(
+  issues: ProjectIntegrityIssue[],
+  path: string,
+  ownerLabel: string,
+  archiveReferenceIds: string[],
+  availableArchiveIds: Set<string> | undefined
+): void {
+  if (!availableArchiveIds) {
+    return;
+  }
+
+  for (const archiveReferenceId of archiveReferenceIds) {
+    if (!availableArchiveIds.has(archiveReferenceId)) {
+      pushMissingReference(issues, path, `${ownerLabel} references missing archive "${archiveReferenceId}".`);
+    }
+  }
 }
 
 function validateModulationScope(
@@ -132,8 +154,9 @@ function validateEndpointReference(
   }
 }
 
-export function collectProjectIntegrityIssues(project: NormalizedProjectFile): ProjectIntegrityIssue[] {
+export function collectProjectIntegrityIssues(project: NormalizedProjectFile, context: ProjectIntegrityContext = {}): ProjectIntegrityIssue[] {
   const issues: ProjectIntegrityIssue[] = [];
+  const availableArchiveIds = context.availableArchiveIds ? new Set(context.availableArchiveIds) : undefined;
   const assetIds = new Set(project.assets.map((asset) => asset.id));
   const presetIds = new Set(project.presets.map((preset) => preset.id));
   const analysisRefIds = new Set(project.analysisRefs.map((ref) => ref.id));
@@ -254,6 +277,13 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
         pushMissingReference(issues, `composition.scenes.${scene.id}.layerIds`, `Scene "${scene.id}" references missing layer "${layerId}".`);
       }
     }
+    validateArchiveReferenceIds(
+      issues,
+      `composition.scenes.${scene.id}.archiveReferenceIds`,
+      `Scene "${scene.id}"`,
+      scene.archiveReferenceIds,
+      availableArchiveIds
+    );
   }
   for (const layer of project.composition.layers) {
     if (!sceneIds.has(layer.sceneId)) {
@@ -274,6 +304,13 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile): P
     if (layer.maskLayerId && !layerIds.has(layer.maskLayerId)) {
       pushMissingReference(issues, `composition.layers.${layer.id}.maskLayerId`, `Layer "${layer.id}" references missing mask layer "${layer.maskLayerId}".`);
     }
+    validateArchiveReferenceIds(
+      issues,
+      `composition.layers.${layer.id}.archiveReferenceIds`,
+      `Layer "${layer.id}"`,
+      layer.archiveReferenceIds,
+      availableArchiveIds
+    );
   }
 
   for (const ref of project.analysisRefs) {

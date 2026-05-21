@@ -541,6 +541,26 @@ describe('@afterimage/project-model', () => {
     ]));
   });
 
+  it('reports missing archive references only when availability context is supplied', () => {
+    const normalized = normalizeProject(fixtureProject);
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual([]);
+    expect(collectProjectIntegrityIssues(normalized, {
+      availableArchiveIds: ['archive-other']
+    })).toEqual([
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-clip-intro" references missing archive "archive-source-alpha".',
+        path: 'composition.layers.layer-clip-intro.archiveReferenceIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Scene "scene-main" references missing archive "archive-source-alpha".',
+        path: 'composition.scenes.scene-main.archiveReferenceIds'
+      }
+    ]);
+  });
+
   it('reports invalid mask transition references and placement', () => {
     const normalized = normalizeProject({
       ...fixtureProject,
