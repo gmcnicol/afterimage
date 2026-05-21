@@ -1,4 +1,5 @@
 export * from './automation-ops.js';
+export * from './archive-ops.js';
 export * from './catalog-ops.js';
 export * from './composition-ops.js';
 export * from './capture-ops.js';

@@ -1,4 +1,5 @@
 import {
+  collectArchiveIntegrityIssues,
   normalizeAnalysisFile,
   normalizeArchiveMetadataFile,
   normalizeMidiMappingFile,
@@ -18,7 +19,7 @@ import {
   presetValidator,
   sequenceValidator
 } from './ajv.js';
-import { validateWithSchema } from './utils.js';
+import { mapIntegrityIssues, validateWithSchema } from './utils.js';
 import { ValidationError, type ValidationResult } from './types.js';
 
 export function validatePreset(input: unknown): ValidationResult<Preset> {
@@ -76,7 +77,22 @@ export function assertAnalysis(input: unknown): asserts input is AnalysisFile {
 }
 
 export function validateArchiveMetadata(input: unknown): ValidationResult<NormalizedArchiveMetadataFile> {
-  return validateWithSchema(archiveValidator, input, normalizeArchiveMetadataFile, 'schema-validation-failure');
+  const result = validateWithSchema(archiveValidator, input, normalizeArchiveMetadataFile, 'schema-validation-failure');
+
+  if (!result.ok) {
+    return result;
+  }
+
+  const integrityIssues = collectArchiveIntegrityIssues(result.value);
+  if (integrityIssues.length > 0) {
+    return {
+      ok: false,
+      code: 'invalid-archive-file',
+      errors: mapIntegrityIssues(integrityIssues)
+    };
+  }
+
+  return result;
 }
 
 export function parseArchiveMetadata(input: unknown): NormalizedArchiveMetadataFile {
