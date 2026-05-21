@@ -138,6 +138,146 @@ export interface RenderPlan {
   command: CommandSpec;
 }
 
+export type RenderGraphPlanMode = 'preview' | 'export' | 'render';
+
+export type RenderGraphNodeKind =
+  | 'project'
+  | 'sequence'
+  | 'variant'
+  | 'input'
+  | 'operation'
+  | 'artifact';
+
+export type RenderGraphEdgeKind =
+  | 'identity'
+  | 'timeline'
+  | 'media-input'
+  | 'artifact-output';
+
+export type RenderGraphArtifactKind = 'video';
+
+export type RenderGraphArtifactRole =
+  | 'preview-output'
+  | 'export-output'
+  | 'render-output';
+
+export type RenderGraphBackend = 'ffmpeg';
+
+export type RenderGraphCapabilityDiagnosticSeverity = 'info' | 'warning' | 'error';
+
+export interface RenderGraphCacheIdentity {
+  namespace: string;
+  key: string;
+  version: 1;
+  algorithm: 'sha256';
+  inputs: string[];
+  status: 'placeholder';
+}
+
+export interface RenderGraphPlanIdentity {
+  schemaVersion: 1;
+  planId: string;
+  projectId: string;
+  sequenceId: string;
+  variantId: string;
+  mode: RenderGraphPlanMode;
+}
+
+export interface RenderGraphInputReference {
+  id: string;
+  assetId: string;
+  path: string;
+  mediaType?: string;
+  role?: string;
+  loop: boolean;
+  inputIndex: number;
+}
+
+export interface RenderGraphNode {
+  id: string;
+  kind: RenderGraphNodeKind;
+  label: string;
+  cacheIdentity?: RenderGraphCacheIdentity;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RenderGraphEdge {
+  id: string;
+  from: string;
+  to: string;
+  kind: RenderGraphEdgeKind;
+  label?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RenderGraphArtifact {
+  id: string;
+  kind: RenderGraphArtifactKind;
+  role: RenderGraphArtifactRole;
+  path: string;
+  profile: RenderProfile;
+  producedBy: string;
+  cacheIdentity: RenderGraphCacheIdentity;
+}
+
+export interface RenderGraphBackendRequirement {
+  id: string;
+  backend: RenderGraphBackend;
+  binary: string;
+  required: boolean;
+  capabilities: string[];
+  provenance?: FfmpegProvenance;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RenderGraphCapabilityDiagnostic {
+  id: string;
+  severity: RenderGraphCapabilityDiagnosticSeverity;
+  code: string;
+  message: string;
+  nodeId?: string;
+  passId?: string;
+  requirementId?: string;
+}
+
+export interface RenderGraphPass {
+  id: string;
+  backend: RenderGraphBackend;
+  label: string;
+  nodeId: string;
+  order: number;
+  inputNodeIds: string[];
+  outputArtifactIds: string[];
+  command: CommandSpec;
+  requirements: string[];
+  diagnostics: string[];
+  cacheIdentity: RenderGraphCacheIdentity;
+  semantics: {
+    operation: RenderGraphPlanMode;
+    profile: RenderProfile;
+    durationMs: number;
+    usesMaskTransitions: boolean;
+    chunkedExportRecommended: boolean;
+  };
+}
+
+export interface RenderGraphPlan {
+  identity: RenderGraphPlanIdentity;
+  target: {
+    outputPath: string;
+    profile: RenderProfile;
+    durationMs: number;
+  };
+  inputs: RenderGraphInputReference[];
+  nodes: RenderGraphNode[];
+  edges: RenderGraphEdge[];
+  passes: RenderGraphPass[];
+  artifacts: RenderGraphArtifact[];
+  backendRequirements: RenderGraphBackendRequirement[];
+  diagnostics: RenderGraphCapabilityDiagnostic[];
+  cacheIdentity: RenderGraphCacheIdentity;
+}
+
 export interface FinalizeRenderRequest {
   concatListPath: string;
   outputPath: string;

@@ -16,4 +16,9 @@ export {
   getTargetRenderDurationMs,
   shouldUseChunkedExport
 } from './render.js';
+export {
+  buildExportRenderGraphPlan,
+  buildPreviewRenderGraphPlan,
+  buildRenderGraphPlan
+} from './render-graph.js';
 export { resolveFfmpegTools } from './tools.js';

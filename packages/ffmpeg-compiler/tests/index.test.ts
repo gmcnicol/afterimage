@@ -5,24 +5,98 @@ import { describe, expect, it } from 'vitest';
 import { getExportProfileById } from '../../export-profiles/src';
 import { fixtureProject } from '../../test-fixtures/src';
 import { parseProject } from '../../schema-validators/src';
-import type { FilterInstance, SupportedFilterType } from '../../project-model/src';
+import type { FilterInstance, ProjectFile, SupportedFilterType } from '../../project-model/src';
 import {
   buildAnalysisPlan,
   buildAudioChangeAnalysisPlan,
   buildExportPlan,
+  buildExportRenderGraphPlan,
   buildFinalizeRenderPlan,
   buildPreviewPlan,
+  buildPreviewRenderGraphPlan,
   buildRenderPlan,
   buildThumbnailPlan,
   buildWaveformPlan,
   executeCommandSpec,
   getToolchainHealth,
   resolveFfmpegTools,
-  type CommandExecutionResult
+  type CommandExecutionResult,
+  type RenderGraphArtifact,
+  type RenderGraphBackendRequirement,
+  type RenderGraphCacheIdentity,
+  type RenderGraphCapabilityDiagnostic,
+  type RenderGraphEdge,
+  type RenderGraphNode,
+  type RenderGraphPass,
+  type RenderGraphPlan
 } from '../src';
 
 describe('@afterimage/ffmpeg-compiler', () => {
   const project = parseProject(fixtureProject);
+
+  function withoutCaptureReplayReferences(projectFile: ProjectFile): ProjectFile {
+    return {
+      ...projectFile,
+      composition: projectFile.composition
+        ? {
+            ...projectFile.composition,
+            modulationRoutes: [],
+            entropyStates: []
+          }
+        : undefined,
+      captureLogs: []
+    };
+  }
+
+  function summarizeRenderGraphPlan(plan: RenderGraphPlan) {
+    const pass = plan.passes[0];
+    return {
+      identity: plan.identity,
+      target: plan.target,
+      inputs: plan.inputs,
+      nodes: plan.nodes.map((node) => ({
+        id: node.id,
+        kind: node.kind
+      })),
+      edges: plan.edges.map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        kind: edge.kind,
+        metadata: edge.metadata
+      })),
+      pass: {
+        id: pass.id,
+        backend: pass.backend,
+        nodeId: pass.nodeId,
+        inputNodeIds: pass.inputNodeIds,
+        outputArtifactIds: pass.outputArtifactIds,
+        command: pass.command,
+        semantics: pass.semantics,
+        cacheKey: pass.cacheIdentity.key
+      },
+      artifacts: plan.artifacts.map((artifact) => ({
+        id: artifact.id,
+        role: artifact.role,
+        path: artifact.path,
+        producedBy: artifact.producedBy,
+        cacheKey: artifact.cacheIdentity.key
+      })),
+      backendRequirements: plan.backendRequirements.map((requirement) => ({
+        id: requirement.id,
+        backend: requirement.backend,
+        binary: requirement.binary,
+        capabilities: requirement.capabilities
+      })),
+      diagnostics: plan.diagnostics.map((diagnostic) => ({
+        code: diagnostic.code,
+        severity: diagnostic.severity,
+        nodeId: diagnostic.nodeId,
+        passId: diagnostic.passId,
+        requirementId: diagnostic.requirementId
+      })),
+      cacheKey: plan.cacheIdentity.key
+    };
+  }
 
   it('builds deterministic analysis, thumbnail, waveform, preview, and export plans', () => {
     expect(buildAnalysisPlan(project, {
@@ -250,6 +324,499 @@ describe('@afterimage/ffmpeg-compiler', () => {
     `);
   });
 
+  it('exposes serializable render graph contract shapes', () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    });
+    const node: RenderGraphNode = plan.nodes[0];
+    const edge: RenderGraphEdge = plan.edges[0];
+    const pass: RenderGraphPass = plan.passes[0];
+    const artifact: RenderGraphArtifact = plan.artifacts[0];
+    const requirement: RenderGraphBackendRequirement = plan.backendRequirements[0];
+    const diagnostic: RenderGraphCapabilityDiagnostic = plan.diagnostics[0];
+    const cacheIdentity: RenderGraphCacheIdentity = plan.cacheIdentity;
+
+    expect(node.kind).toBe('project');
+    expect(edge.kind).toBe('identity');
+    expect(pass.backend).toBe('ffmpeg');
+    expect(pass.command.args).toContain('.afterimage/preview/variant-main.mp4');
+    expect(artifact.role).toBe('preview-output');
+    expect(requirement.capabilities).toEqual(expect.arrayContaining([
+      'filter_complex',
+      'video-codec:libx264',
+      'audio-codec:aac',
+      'container:mp4'
+    ]));
+    expect(diagnostic.severity).toBe('info');
+    expect(cacheIdentity).toEqual(expect.objectContaining({
+      namespace: 'render-graph-plan',
+      version: 1,
+      algorithm: 'sha256',
+      status: 'placeholder'
+    }));
+  });
+
+  it('builds a deterministic canonical preview render graph plan', () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    });
+
+    expect(summarizeRenderGraphPlan(plan)).toMatchInlineSnapshot(`
+      {
+        "artifacts": [
+          {
+            "cacheKey": "fa4f49d749485980b99ecb38a65f4024dfe44d2b39a1295e5f2a78b9b823d917",
+            "id": "artifact:preview:output",
+            "path": ".afterimage/preview/variant-main.mp4",
+            "producedBy": "pass:ffmpeg-render",
+            "role": "preview-output",
+          },
+        ],
+        "backendRequirements": [
+          {
+            "backend": "ffmpeg",
+            "binary": "ffmpeg",
+            "capabilities": [
+              "filter_complex",
+              "video-codec:libx264",
+              "audio-codec:aac",
+              "container:mp4",
+              "pixel-format:yuv420p",
+            ],
+            "id": "requirement:ffmpeg-render",
+          },
+        ],
+        "cacheKey": "eedf6729e623c009888f52d94ee7b17854187764b045fca365c6a4005aed18a0",
+        "diagnostics": [
+          {
+            "code": "FFMPEG_PASS_COMPATIBILITY",
+            "nodeId": "operation:preview:variant-main",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:ffmpeg-render",
+            "severity": "info",
+          },
+        ],
+        "edges": [
+          {
+            "from": "project:project-core-engine-fixture",
+            "kind": "identity",
+            "metadata": undefined,
+            "to": "sequence:sequence-main",
+          },
+          {
+            "from": "sequence:sequence-main",
+            "kind": "timeline",
+            "metadata": undefined,
+            "to": "variant:variant-main",
+          },
+          {
+            "from": "variant:variant-main",
+            "kind": "timeline",
+            "metadata": undefined,
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "input:asset-alpha",
+            "kind": "media-input",
+            "metadata": {
+              "inputIndex": 0,
+              "loop": false,
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "input:asset-music",
+            "kind": "media-input",
+            "metadata": {
+              "inputIndex": 1,
+              "loop": false,
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "operation:preview:variant-main",
+            "kind": "artifact-output",
+            "metadata": undefined,
+            "to": "artifact:preview:output",
+          },
+        ],
+        "identity": {
+          "mode": "preview",
+          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:eedf6729e623c009888f52d94ee7b17854187764b045fca365c6a4005aed18a0",
+          "projectId": "project-core-engine-fixture",
+          "schemaVersion": 1,
+          "sequenceId": "sequence-main",
+          "variantId": "variant-main",
+        },
+        "inputs": [
+          {
+            "assetId": "asset-alpha",
+            "id": "input:asset-alpha",
+            "inputIndex": 0,
+            "loop": false,
+            "mediaType": "video",
+            "path": "fixtures/clips/source-alpha.mp4",
+            "role": "source",
+          },
+          {
+            "assetId": "asset-music",
+            "id": "input:asset-music",
+            "inputIndex": 1,
+            "loop": false,
+            "mediaType": "audio",
+            "path": "fixtures/audio/score-alpha.wav",
+            "role": "music",
+          },
+        ],
+        "nodes": [
+          {
+            "id": "project:project-core-engine-fixture",
+            "kind": "project",
+          },
+          {
+            "id": "sequence:sequence-main",
+            "kind": "sequence",
+          },
+          {
+            "id": "variant:variant-main",
+            "kind": "variant",
+          },
+          {
+            "id": "input:asset-alpha",
+            "kind": "input",
+          },
+          {
+            "id": "input:asset-music",
+            "kind": "input",
+          },
+          {
+            "id": "operation:preview:variant-main",
+            "kind": "operation",
+          },
+          {
+            "id": "artifact:preview:output",
+            "kind": "artifact",
+          },
+        ],
+        "pass": {
+          "backend": "ffmpeg",
+          "cacheKey": "779b8b967367279d0958378f5e1e89753acb890e31f8d215b4d45d4d3a065db4",
+          "command": {
+            "args": [
+              "-y",
+              "-i",
+              "fixtures/clips/source-alpha.mp4",
+              "-i",
+              "fixtures/audio/score-alpha.wav",
+              "-filter_complex",
+              "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.440,eq=contrast=1.020:brightness=0.020:saturation=1.013,gblur=sigma=2.150,chromashift=cbh=3:crh=-3:edge=smear,eq=saturation=1.030,fps=24.000,scale=960:540,setsar=1,format=yuv420p[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]tpad=stop_mode=clone:stop_duration=3.000,trim=duration=5.000,fade=t=out:st=3.000:d=2.000,format=yuv420p[vout];[1:a]atrim=start=0:duration=5.000,asetpts=PTS-STARTPTS[amusic]",
+              "-map",
+              "[vout]",
+              "-c:v",
+              "libx264",
+              "-preset",
+              "fast",
+              "-crf",
+              "26",
+              "-map",
+              "[amusic]",
+              "-c:a",
+              "aac",
+              "-b:a",
+              "128k",
+              "-f",
+              "mp4",
+              ".afterimage/preview/variant-main.mp4",
+            ],
+            "binary": "ffmpeg",
+            "expectedOutputs": [
+              ".afterimage/preview/variant-main.mp4",
+            ],
+            "label": "render:project-core-engine-fixture:variant-main",
+          },
+          "id": "pass:ffmpeg-render",
+          "inputNodeIds": [
+            "input:asset-alpha",
+            "input:asset-music",
+          ],
+          "nodeId": "operation:preview:variant-main",
+          "outputArtifactIds": [
+            "artifact:preview:output",
+          ],
+          "semantics": {
+            "chunkedExportRecommended": false,
+            "durationMs": 5000,
+            "operation": "preview",
+            "profile": {
+              "audioBitrateKbps": 128,
+              "audioCodec": "aac",
+              "container": "mp4",
+              "crf": 26,
+              "frameRate": 24,
+              "height": 540,
+              "pixelFormat": "yuv420p",
+              "videoCodec": "libx264",
+              "videoPreset": "fast",
+              "width": 960,
+            },
+            "usesMaskTransitions": false,
+          },
+        },
+        "target": {
+          "durationMs": 5000,
+          "outputPath": ".afterimage/preview/variant-main.mp4",
+          "profile": {
+            "audioBitrateKbps": 128,
+            "audioCodec": "aac",
+            "container": "mp4",
+            "crf": 26,
+            "frameRate": 24,
+            "height": 540,
+            "pixelFormat": "yuv420p",
+            "videoCodec": "libx264",
+            "videoPreset": "fast",
+            "width": 960,
+          },
+        },
+      }
+    `);
+  });
+
+  it('builds a deterministic canonical export render graph plan', () => {
+    const plan = buildExportRenderGraphPlan(project, {
+      outputPath: 'exports/studio-fixture.mov',
+      profile: getExportProfileById('landscape-master')
+    });
+
+    expect(summarizeRenderGraphPlan(plan)).toMatchInlineSnapshot(`
+      {
+        "artifacts": [
+          {
+            "cacheKey": "8ee27103cb447b76eeb9b928801266464fa3c2158d1757b1fd1680002de83fc6",
+            "id": "artifact:export:output",
+            "path": "exports/studio-fixture.mov",
+            "producedBy": "pass:ffmpeg-render",
+            "role": "export-output",
+          },
+        ],
+        "backendRequirements": [
+          {
+            "backend": "ffmpeg",
+            "binary": "ffmpeg",
+            "capabilities": [
+              "filter_complex",
+              "video-codec:libx264",
+              "audio-codec:aac",
+              "container:mp4",
+              "pixel-format:yuv420p",
+            ],
+            "id": "requirement:ffmpeg-render",
+          },
+        ],
+        "cacheKey": "30ebe7e69f2e76648004f1c592eaab98caf793b811f04706850e90c0761e86f4",
+        "diagnostics": [
+          {
+            "code": "FFMPEG_PASS_COMPATIBILITY",
+            "nodeId": "operation:export:variant-main",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:ffmpeg-render",
+            "severity": "info",
+          },
+        ],
+        "edges": [
+          {
+            "from": "project:project-core-engine-fixture",
+            "kind": "identity",
+            "metadata": undefined,
+            "to": "sequence:sequence-main",
+          },
+          {
+            "from": "sequence:sequence-main",
+            "kind": "timeline",
+            "metadata": undefined,
+            "to": "variant:variant-main",
+          },
+          {
+            "from": "variant:variant-main",
+            "kind": "timeline",
+            "metadata": undefined,
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "input:asset-alpha",
+            "kind": "media-input",
+            "metadata": {
+              "inputIndex": 0,
+              "loop": false,
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "input:asset-music",
+            "kind": "media-input",
+            "metadata": {
+              "inputIndex": 1,
+              "loop": false,
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "operation:export:variant-main",
+            "kind": "artifact-output",
+            "metadata": undefined,
+            "to": "artifact:export:output",
+          },
+        ],
+        "identity": {
+          "mode": "export",
+          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:30ebe7e69f2e76648004f1c592eaab98caf793b811f04706850e90c0761e86f4",
+          "projectId": "project-core-engine-fixture",
+          "schemaVersion": 1,
+          "sequenceId": "sequence-main",
+          "variantId": "variant-main",
+        },
+        "inputs": [
+          {
+            "assetId": "asset-alpha",
+            "id": "input:asset-alpha",
+            "inputIndex": 0,
+            "loop": false,
+            "mediaType": "video",
+            "path": "fixtures/clips/source-alpha.mp4",
+            "role": "source",
+          },
+          {
+            "assetId": "asset-music",
+            "id": "input:asset-music",
+            "inputIndex": 1,
+            "loop": false,
+            "mediaType": "audio",
+            "path": "fixtures/audio/score-alpha.wav",
+            "role": "music",
+          },
+        ],
+        "nodes": [
+          {
+            "id": "project:project-core-engine-fixture",
+            "kind": "project",
+          },
+          {
+            "id": "sequence:sequence-main",
+            "kind": "sequence",
+          },
+          {
+            "id": "variant:variant-main",
+            "kind": "variant",
+          },
+          {
+            "id": "input:asset-alpha",
+            "kind": "input",
+          },
+          {
+            "id": "input:asset-music",
+            "kind": "input",
+          },
+          {
+            "id": "operation:export:variant-main",
+            "kind": "operation",
+          },
+          {
+            "id": "artifact:export:output",
+            "kind": "artifact",
+          },
+        ],
+        "pass": {
+          "backend": "ffmpeg",
+          "cacheKey": "0664e0498414ff80a7951e0b5e8cb40ad0accc06ed98dbc0feb8cfc1b4d2956f",
+          "command": {
+            "args": [
+              "-y",
+              "-i",
+              "fixtures/clips/source-alpha.mp4",
+              "-i",
+              "fixtures/audio/score-alpha.wav",
+              "-filter_complex",
+              "[0:v]trim=start=0.500:duration=2.000,setpts=PTS-STARTPTS,gblur=sigma=1.440,eq=contrast=1.020:brightness=0.020:saturation=1.013,gblur=sigma=2.150,chromashift=cbh=3:crh=-3:edge=smear,eq=saturation=1.030,fps=30.000,scale=1920:1080,setsar=1,format=yuv420p[v0];[v0]concat=n=1:v=1:a=0[vconcat];[vconcat]tpad=stop_mode=clone:stop_duration=3.000,trim=duration=5.000,fade=t=out:st=3.000:d=2.000,format=yuv420p[vout];[1:a]atrim=start=0:duration=5.000,asetpts=PTS-STARTPTS[amusic]",
+              "-map",
+              "[vout]",
+              "-c:v",
+              "libx264",
+              "-preset",
+              "medium",
+              "-crf",
+              "18",
+              "-maxrate",
+              "12000k",
+              "-bufsize",
+              "24000k",
+              "-map",
+              "[amusic]",
+              "-c:a",
+              "aac",
+              "-b:a",
+              "256k",
+              "-f",
+              "mp4",
+              "exports/studio-fixture.mov",
+            ],
+            "binary": "ffmpeg",
+            "expectedOutputs": [
+              "exports/studio-fixture.mov",
+            ],
+            "label": "render:project-core-engine-fixture:variant-main",
+          },
+          "id": "pass:ffmpeg-render",
+          "inputNodeIds": [
+            "input:asset-alpha",
+            "input:asset-music",
+          ],
+          "nodeId": "operation:export:variant-main",
+          "outputArtifactIds": [
+            "artifact:export:output",
+          ],
+          "semantics": {
+            "chunkedExportRecommended": false,
+            "durationMs": 5000,
+            "operation": "export",
+            "profile": {
+              "audioBitrateKbps": 256,
+              "audioCodec": "aac",
+              "container": "mp4",
+              "crf": 18,
+              "frameRate": 30,
+              "height": 1080,
+              "pixelFormat": "yuv420p",
+              "videoBufsizeKbps": 24000,
+              "videoCodec": "libx264",
+              "videoMaxrateKbps": 12000,
+              "videoPreset": "medium",
+              "width": 1920,
+            },
+            "usesMaskTransitions": false,
+          },
+        },
+        "target": {
+          "durationMs": 5000,
+          "outputPath": "exports/studio-fixture.mov",
+          "profile": {
+            "audioBitrateKbps": 256,
+            "audioCodec": "aac",
+            "container": "mp4",
+            "crf": 18,
+            "frameRate": 30,
+            "height": 1080,
+            "pixelFormat": "yuv420p",
+            "videoBufsizeKbps": 24000,
+            "videoCodec": "libx264",
+            "videoMaxrateKbps": 12000,
+            "videoPreset": "medium",
+            "width": 1920,
+          },
+        },
+      }
+    `);
+  });
+
   it('resolves ffmpeg binaries from env override and PATH fallback', () => {
     const fakeBinDir = mkdtempSync(join(tmpdir(), 'afterimage-ffmpeg-'));
     const ffmpegPath = join(fakeBinDir, 'ffmpeg');
@@ -402,7 +969,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
   });
 
   it('compiles signal breakup as visible temporal noise', () => {
-    const plan = buildPreviewPlan(parseProject({
+    const plan = buildPreviewPlan(parseProject(withoutCaptureReplayReferences({
       ...fixtureProject,
       filterStacks: [
         {
@@ -422,7 +989,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
         }
       ],
       automationLanes: []
-    }), {
+    })), {
       outputPath: '.afterimage/preview/variant-signal-breakup.mp4'
     });
 
@@ -445,7 +1012,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
       parameters,
       mix: 1
     };
-    const plan = buildPreviewPlan(parseProject({
+    const plan = buildPreviewPlan(parseProject(withoutCaptureReplayReferences({
       ...fixtureProject,
       filterStacks: [
         {
@@ -454,7 +1021,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
         }
       ],
       automationLanes: []
-    }), {
+    })), {
       outputPath: `.afterimage/preview/variant-${type}.mp4`
     });
 

@@ -237,13 +237,15 @@ function getMusicDurationMs(project: NormalizedProjectFile, variant: Variant): n
   return typeof durationMs === 'number' && durationMs > 0 ? durationMs : undefined;
 }
 
-interface RenderInputDescriptor {
+/** @internal */
+export interface RenderInputDescriptor {
   assetId: string;
   path: string;
   loop?: boolean;
 }
 
-function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): RenderInputDescriptor[] {
+/** @internal */
+export function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): RenderInputDescriptor[] {
   const seen = new Set<string>();
   const inputs: RenderInputDescriptor[] = [];
 
@@ -279,7 +281,8 @@ function collectRenderInputs(project: NormalizedProjectFile, variant: Variant): 
   return inputs;
 }
 
-function usesMaskTransitions(variant: Variant): boolean {
+/** @internal */
+export function usesMaskTransitions(variant: Variant): boolean {
   return variant.clips.some((clip) => clip.transition === 'mask');
 }
 
@@ -682,7 +685,8 @@ function buildMaskedRenderCommand(
   };
 }
 
-function buildRenderCommand(
+/** @internal */
+export function buildRenderCommand(
   project: NormalizedProjectFile,
   variant: Variant,
   sequenceId: string,
