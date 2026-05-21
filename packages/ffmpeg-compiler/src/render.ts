@@ -1,4 +1,3 @@
-import { getExportProfileById, type ExportProfileId } from '@afterimage/export-profiles';
 import {
   getAutomationLaneById,
   getCutCandidateById,
@@ -13,7 +12,6 @@ import {
   type FilterInstance,
   type NormalizedProjectFile,
   type PresetFilter,
-  type ProjectFile,
   type SequenceClip,
   type Variant
 } from '@afterimage/project-model';
@@ -28,7 +26,7 @@ import type {
   RenderRequest,
   ResolvedFfmpegTools
 } from './types.js';
-import { ensureAsset, formatDecimal, formatSeconds, makePlanningTools, normalizeForPlanning, resolveTimeline } from './utils.js';
+import { ensureAsset, formatDecimal, formatSeconds, makePlanningTools } from './utils.js';
 
 function compilePresetFilters(filters: PresetFilter[]): FilterInstance[] {
   return filters.flatMap((filter, index) => {
@@ -799,28 +797,6 @@ export function buildRenderCommand(
   return plan;
 }
 
-export function buildPreviewPlan(
-  project: ProjectFile | NormalizedProjectFile,
-  request: PreviewRequest,
-  tools?: ResolvedFfmpegTools
-): PreviewPlan {
-  const normalizedProject = normalizeForPlanning(project);
-  const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
-
-  return buildRenderCommand(normalizedProject, variant, sequenceId, request, {
-    width: request.width ?? 960,
-    height: request.height ?? 540,
-    frameRate: request.frameRate ?? 24,
-    container: 'mp4',
-    videoCodec: 'libx264',
-    audioCodec: 'aac',
-    pixelFormat: 'yuv420p',
-    crf: 26,
-    videoPreset: 'fast',
-    audioBitrateKbps: 128
-  }, tools) as PreviewPlan;
-}
-
 export function buildConcatList(paths: string[]): string {
   return paths.map((path) => `file '${path.replace(/'/g, `'\\''`)}'`).join('\n') + '\n';
 }
@@ -886,51 +862,4 @@ export function buildFinalizeRenderPlan(
       expectedOutputs: [request.outputPath]
     }
   };
-}
-
-export function buildExportPlan(
-  project: ProjectFile | NormalizedProjectFile,
-  request: ExportRequest,
-  tools?: ResolvedFfmpegTools
-): RenderPlan {
-  const normalizedProject = normalizeForPlanning(project);
-  const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
-
-  return buildRenderCommand(normalizedProject, variant, sequenceId, request, {
-    width: request.profile.width,
-    height: request.profile.height,
-    frameRate: request.profile.frameRate,
-    container: request.profile.container,
-    videoCodec: request.profile.videoCodec,
-    audioCodec: request.profile.audioCodec,
-    pixelFormat: request.profile.pixelFormat,
-    videoProfile: request.profile.videoProfile,
-    crf: request.profile.crf,
-    videoPreset: request.profile.videoPreset,
-    videoMaxrateKbps: request.profile.videoMaxrateKbps,
-    videoBufsizeKbps: request.profile.videoBufsizeKbps,
-    audioBitrateKbps: request.profile.audioBitrateKbps
-  }, tools) as RenderPlan;
-}
-
-export function buildRenderPlan(
-  project: ProjectFile | NormalizedProjectFile,
-  request: RenderRequest,
-  tools?: ResolvedFfmpegTools
-): RenderPlan {
-  const normalizedProject = normalizeForPlanning(project);
-  const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
-
-  return buildRenderCommand(normalizedProject, variant, sequenceId, request, request.profile, tools) as RenderPlan;
-}
-
-export function buildProfileExportPlan(
-  project: ProjectFile | NormalizedProjectFile,
-  request: Omit<ExportRequest, 'profile'> & { profileId: ExportProfileId },
-  tools?: ResolvedFfmpegTools
-): RenderPlan {
-  return buildExportPlan(project, {
-    ...request,
-    profile: getExportProfileById(request.profileId)
-  }, tools);
 }
