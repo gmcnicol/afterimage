@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createEmptyProject } from '@afterimage/project-model';
+import { createEmptyProject, normalizeProject } from '@afterimage/project-model';
+import { fixtureProject } from '../../test-fixtures/src';
 import { validateProject } from '@afterimage/schema-validators';
+import { resolveCompositionIntent } from '../src';
 import {
   addCutToSequence,
   buildNewVariantFromReviewedCuts,
@@ -49,6 +51,232 @@ function makeProject() {
 }
 
 describe('@afterimage/domain-operations', () => {
+  it('resolves the canonical fixture composition intent deterministically', () => {
+    const result = resolveCompositionIntent({
+      project: normalizeProject(fixtureProject),
+      captureSessionId: 'capture-session-main',
+      availableArchiveIds: ['archive-source-alpha']
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.intent.projectId).toBe('project-core-engine-fixture');
+    expect(result.intent.composition.id).toBe('composition-main');
+    expect(result.intent.sequence.id).toBe('sequence-main');
+    expect(result.intent.variant.id).toBe('variant-main');
+    expect(result.intent.referencedAssets.map((asset) => asset.id)).toEqual(['asset-alpha', 'asset-music']);
+    expect(result.intent.exportSelections.map((selection) => selection.profileId)).toEqual(['landscape-master', 'portrait-short-form']);
+    expect(result.intent.deterministicSeeds.map((seed) => seed.id)).toEqual(['seed-composition-main']);
+    expect(result.intent.scenes.map((scene) => scene.id)).toEqual(['scene-main']);
+    expect(result.intent.layers.map((layer) => layer.id)).toEqual(['layer-clip-intro']);
+    expect(result.intent.modulationRoutes.map((route) => route.id)).toEqual(['route-bloom-midi']);
+    expect(result.intent.entropyStates.map((state) => state.id)).toEqual(['entropy-scene-pressure']);
+    expect(result.intent.captureSession?.id).toBe('capture-session-main');
+    expect(result.intent.captureLog?.id).toBe('capture-log-main');
+    expect(result.intent.archiveReferenceIds).toEqual(['archive-source-alpha']);
+  });
+
+  it('resolves an empty project through fallback composition identity', () => {
+    const result = resolveCompositionIntent({
+      project: createEmptyProject({
+        id: 'project-empty-intent',
+        name: 'Empty Intent'
+      })
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.intent.composition.id).toBe('composition-main');
+    expect(result.intent.sequence.id).toBe('sequence-main');
+    expect(result.intent.variant.id).toBe('variant-main');
+    expect(result.intent.referencedAssets).toEqual([]);
+    expect(result.intent.scenes.map((scene) => scene.id)).toEqual(['scene-main']);
+    expect(result.intent.layers).toEqual([]);
+  });
+
+  it('returns resolver diagnostics for missing scene, layer, modulation, and capture references', () => {
+    const project = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        modulationRoutes: [
+          ...fixtureProject.composition?.modulationRoutes ?? [],
+          {
+            id: 'route-broken',
+            source: {
+              kind: 'automation-lane',
+              id: 'lane-missing'
+            },
+            target: {
+              kind: 'filter',
+              id: 'filter-main-bloom',
+              property: 'mix'
+            },
+            mapping: {
+              kind: 'linear'
+            },
+            scope: {
+              sceneId: 'scene-missing',
+              layerId: 'layer-missing'
+            },
+            capturePolicy: 'record'
+          }
+        ],
+        scenes: [
+          {
+            id: 'scene-broken',
+            name: 'Broken Scene',
+            layerIds: ['layer-missing']
+          }
+        ],
+        layers: [
+          {
+            id: 'layer-broken',
+            name: 'Broken Layer',
+            sceneId: 'scene-missing',
+            orderIndex: 0,
+            scope: 'diagnostic',
+            contribution: 'diagnostic',
+            renderIntent: {
+              passKind: 'diagnostic'
+            }
+          }
+        ]
+      },
+      captureLogs: [
+        {
+          id: 'capture-log-broken',
+          captureSessionId: 'capture-missing',
+          events: []
+        }
+      ]
+    });
+    const result = resolveCompositionIntent({ project });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Modulation route "route-broken" source references missing automation lane "lane-missing".',
+        path: 'composition.modulationRoutes.route-broken.source.id'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Modulation route "route-broken" references missing scene "scene-missing".',
+        path: 'composition.modulationRoutes.route-broken.scope.sceneId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Scene "scene-broken" references missing layer "layer-missing".',
+        path: 'composition.scenes.scene-broken.layerIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-broken" references missing scene "scene-missing".',
+        path: 'composition.layers.layer-broken.sceneId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture log "capture-log-broken" references missing capture session "capture-missing".',
+        path: 'captureLogs.capture-log-broken.captureSessionId'
+      }
+    ]));
+  });
+
+  it('returns archive diagnostics only when archive availability context is supplied', () => {
+    const project = normalizeProject(fixtureProject);
+
+    expect(resolveCompositionIntent({ project }).ok).toBe(true);
+
+    const result = resolveCompositionIntent({
+      project,
+      availableArchiveIds: ['archive-other']
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Scene "scene-main" references missing archive "archive-source-alpha".',
+        path: 'composition.scenes.scene-main.archiveReferenceIds'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Layer "layer-clip-intro" references missing archive "archive-source-alpha".',
+        path: 'composition.layers.layer-clip-intro.archiveReferenceIds'
+      }
+    ]));
+  });
+
+  it('resolves explicit sequence and variant overrides and rejects invalid ids', () => {
+    const project = normalizeProject({
+      ...createEmptyProject({
+        id: 'project-overrides',
+        name: 'Overrides'
+      }),
+      sequences: [
+        {
+          id: 'sequence-main',
+          name: 'Main Sequence',
+          variantIds: ['variant-main'],
+          defaultVariantId: 'variant-main'
+        },
+        {
+          id: 'sequence-alt',
+          name: 'Alt Sequence',
+          variantIds: ['variant-alt'],
+          defaultVariantId: 'variant-alt'
+        }
+      ],
+      variants: [
+        {
+          id: 'variant-main',
+          sequenceId: 'sequence-main',
+          name: 'Main Variant',
+          clips: []
+        },
+        {
+          id: 'variant-alt',
+          sequenceId: 'sequence-alt',
+          name: 'Alt Variant',
+          clips: []
+        }
+      ]
+    });
+
+    const sequenceOverride = resolveCompositionIntent({ project, sequenceId: 'sequence-alt' });
+    expect(sequenceOverride.ok).toBe(true);
+    if (sequenceOverride.ok) {
+      expect(sequenceOverride.intent.sequence.id).toBe('sequence-alt');
+      expect(sequenceOverride.intent.variant.id).toBe('variant-alt');
+    }
+
+    const variantOverride = resolveCompositionIntent({ project, sequenceId: 'sequence-alt', variantId: 'variant-alt' });
+    expect(variantOverride.ok).toBe(true);
+    if (variantOverride.ok) {
+      expect(variantOverride.intent.variant.id).toBe('variant-alt');
+    }
+
+    const invalid = resolveCompositionIntent({ project, sequenceId: 'sequence-missing', variantId: 'variant-missing' });
+    expect(invalid.ok).toBe(false);
+    expect(invalid.diagnostics).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Composition intent references missing sequence "sequence-missing".',
+        path: 'sequenceId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Composition intent references missing variant "variant-missing".',
+        path: 'variantId'
+      }
+    ]));
+  });
+
   it('merges imported assets and toggles export profiles', () => {
     const project = mergeImportedAssets(makeProject(), [
       {
