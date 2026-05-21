@@ -14,6 +14,7 @@ import {
   buildFinalizeRenderPlan,
   buildPreviewPlan,
   buildPreviewRenderGraphPlan,
+  buildRenderGraphPlan,
   buildRenderPlan,
   buildThumbnailPlan,
   buildWaveformPlan,
@@ -354,6 +355,27 @@ describe('@afterimage/ffmpeg-compiler', () => {
       algorithm: 'sha256',
       status: 'placeholder'
     }));
+  });
+
+  it('routes public render command planners through FFmpeg render graph passes', () => {
+    const previewRequest = {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    };
+    const exportRequest = {
+      outputPath: 'exports/studio-fixture.mov',
+      profile: getExportProfileById('landscape-master')
+    };
+    const renderRequest = {
+      outputPath: 'exports/studio-fixture-render.mov',
+      profile: getExportProfileById('landscape-master')
+    };
+
+    expect(buildPreviewPlan(project, previewRequest).command)
+      .toEqual(buildPreviewRenderGraphPlan(project, previewRequest).passes[0].command);
+    expect(buildExportPlan(project, exportRequest).command)
+      .toEqual(buildExportRenderGraphPlan(project, exportRequest).passes[0].command);
+    expect(buildRenderPlan(project, renderRequest).command)
+      .toEqual(buildRenderGraphPlan(project, renderRequest, renderRequest.profile, 'render').passes[0].command);
   });
 
   it('builds a deterministic canonical preview render graph plan', () => {
