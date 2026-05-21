@@ -9,14 +9,16 @@ export { executeCommandSpec, getToolchainHealth } from './execution.js';
 export {
   buildConcatList,
   buildExportPlan,
-  buildExportRenderGraphPlan,
   buildFinalizeRenderPlan,
   buildPreviewPlan,
-  buildPreviewRenderGraphPlan,
   buildProfileExportPlan,
-  buildRenderGraphPlan,
   buildRenderPlan,
   getTargetRenderDurationMs,
   shouldUseChunkedExport
 } from './render.js';
+export {
+  buildExportRenderGraphPlan,
+  buildPreviewRenderGraphPlan,
+  buildRenderGraphPlan
+} from './render-graph.js';
 export { resolveFfmpegTools } from './tools.js';
