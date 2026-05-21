@@ -9,9 +9,12 @@ export { executeCommandSpec, getToolchainHealth } from './execution.js';
 export {
   buildConcatList,
   buildExportPlan,
+  buildExportRenderGraphPlan,
   buildFinalizeRenderPlan,
   buildPreviewPlan,
+  buildPreviewRenderGraphPlan,
   buildProfileExportPlan,
+  buildRenderGraphPlan,
   buildRenderPlan,
   getTargetRenderDurationMs,
   shouldUseChunkedExport
