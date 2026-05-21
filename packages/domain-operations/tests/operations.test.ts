@@ -20,6 +20,8 @@ import {
   rejectArchiveMotionCandidate,
   rejectArchiveRecurrenceCandidate,
   rejectArchiveSegmentCandidate,
+  normalizeCaptureReplayEvents,
+  resolveCaptureReplayIntent,
   resolveCompositionIntent
 } from '../src';
 import {
@@ -83,6 +85,36 @@ function makeArchiveProject(): NormalizedProjectFile {
 }
 
 describe('@afterimage/domain-operations', () => {
+  it('resolves the canonical fixture capture replay intent deterministically', () => {
+    const result = resolveCaptureReplayIntent({
+      project: normalizeProject(fixtureProject),
+      captureSessionId: 'capture-session-main',
+      availableArchiveIds: ['archive-source-alpha']
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.intent.projectId).toBe('project-core-engine-fixture');
+    expect(result.intent.composition.id).toBe('composition-main');
+    expect(result.intent.sequence.id).toBe('sequence-main');
+    expect(result.intent.variant.id).toBe('variant-main');
+    expect(result.intent.captureSession?.id).toBe('capture-session-main');
+    expect(result.intent.captureLog.id).toBe('capture-log-main');
+    expect(result.intent.replayEvents.map((event) => event.id)).toEqual(['capture-event-1']);
+    expect(result.intent.replayEvents[0]).toMatchObject({
+      effectiveCompositionTimeMs: 120,
+      replayCritical: true,
+      replayable: true
+    });
+    expect(result.intent.skippedEvents).toEqual([]);
+    expect(result.intent.referencedRoutes.map((route) => route.id)).toEqual(['route-bloom-midi']);
+    expect(result.intent.referencedMappings.map((mapping) => mapping.id)).toEqual(['midi-main']);
+    expect(result.intent.referencedSeeds.map((seed) => seed.id)).toEqual(['seed-composition-main']);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   it('resolves the canonical fixture composition intent deterministically', () => {
     const result = resolveCompositionIntent({
       project: normalizeProject(fixtureProject),
@@ -109,6 +141,199 @@ describe('@afterimage/domain-operations', () => {
     expect(result.intent.captureLog?.id).toBe('capture-log-main');
     expect(result.intent.archiveReferenceIds).toEqual(['archive-source-alpha']);
     expect(result.intent.acceptedArchiveReferences.map((reference) => reference.id)).toEqual(['accepted-archive-source-alpha-motif-motif-hallway-composition-main-scene-main']);
+  });
+
+  it('normalizes capture replay event time and replay-critical filtering deterministically', () => {
+    const baseEvent = fixtureProject.captureLogs?.[0]?.events[0];
+    expect(baseEvent).toBeDefined();
+    if (!baseEvent) {
+      return;
+    }
+    const project = normalizeProject({
+      ...fixtureProject,
+      captureLogs: [
+        {
+          id: 'capture-log-main',
+          captureSessionId: 'capture-session-main',
+          events: [
+            {
+              ...baseEvent,
+              id: 'capture-event-composed',
+              index: 1,
+              captureTimeMs: 90,
+              compositionTimeMs: 20
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-fallback',
+              index: 1,
+              captureTimeMs: 15,
+              compositionTimeMs: undefined
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-noncritical',
+              index: 0,
+              captureTimeMs: 5,
+              compositionTimeMs: undefined,
+              replayCritical: false,
+              routeId: undefined
+            }
+          ]
+        }
+      ]
+    });
+    const captureLog = project.captureLogs[0];
+    const normalized = normalizeCaptureReplayEvents({ project, captureLog });
+    const result = resolveCaptureReplayIntent({ project, captureLogId: 'capture-log-main' });
+
+    expect(normalized.map((event) => event.id)).toEqual([
+      'capture-event-noncritical',
+      'capture-event-fallback',
+      'capture-event-composed'
+    ]);
+    expect(normalized.find((event) => event.id === 'capture-event-fallback')?.effectiveCompositionTimeMs).toBe(15);
+    expect(normalized.find((event) => event.id === 'capture-event-composed')?.effectiveCompositionTimeMs).toBe(20);
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.intent.replayEvents.map((event) => event.id)).toEqual(['capture-event-fallback', 'capture-event-composed']);
+    expect(result.intent.skippedEvents.map((event) => [event.id, event.skipReasons])).toEqual([
+      ['capture-event-noncritical', ['not-replay-critical']]
+    ]);
+
+    const includeNonCritical = resolveCaptureReplayIntent({
+      project,
+      captureLogId: 'capture-log-main',
+      options: {
+        replayCriticalOnly: false
+      }
+    });
+    expect(includeNonCritical.ok).toBe(true);
+    if (includeNonCritical.ok) {
+      expect(includeNonCritical.intent.replayEvents.map((event) => event.id)).toEqual([
+        'capture-event-noncritical',
+        'capture-event-fallback',
+        'capture-event-composed'
+      ]);
+    }
+  });
+
+  it('reports skipped replay events with diagnostics for unresolved capture references', () => {
+    const baseEvent = fixtureProject.captureLogs?.[0]?.events[0];
+    expect(baseEvent).toBeDefined();
+    if (!baseEvent) {
+      return;
+    }
+    const project = normalizeProject({
+      ...fixtureProject,
+      captureLogs: [
+        {
+          id: 'capture-log-main',
+          captureSessionId: 'capture-session-main',
+          events: [
+            {
+              ...baseEvent,
+              id: 'capture-event-missing-route',
+              routeId: 'route-missing'
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-missing-mapping',
+              mappingId: 'mapping-missing'
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-missing-seed',
+              seedId: 'seed-missing'
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-missing-source',
+              source: {
+                kind: 'automation-lane',
+                id: 'lane-missing'
+              }
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-missing-target',
+              target: {
+                kind: 'filter',
+                id: 'filter-missing',
+                property: 'mix'
+              }
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-missing-session',
+              captureId: 'capture-session-missing'
+            }
+          ]
+        }
+      ]
+    });
+    const result = resolveCaptureReplayIntent({ project, captureLogId: 'capture-log-main' });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.intent.replayEvents).toEqual([]);
+    expect(result.intent.skippedEvents.map((event) => [event.id, event.skipReasons])).toEqual([
+      ['capture-event-missing-mapping', ['missing-mapping']],
+      ['capture-event-missing-route', ['missing-route']],
+      ['capture-event-missing-seed', ['missing-seed']],
+      ['capture-event-missing-session', ['missing-session']],
+      ['capture-event-missing-source', ['missing-source']],
+      ['capture-event-missing-target', ['missing-target']]
+    ]);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing-route" references missing modulation route "route-missing".',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing-route.routeId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing-mapping" references missing MIDI mapping "mapping-missing".',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing-mapping.mappingId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing-seed" references missing deterministic seed "seed-missing".',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing-seed.seedId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing-source" source references missing automation lane "lane-missing".',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing-source.source.id'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing-target" target references missing filter "filter-missing".',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing-target.target.id'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing-session" references missing capture session "capture-session-missing".',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing-session.captureId'
+      }
+    ]));
+
+    const missingLog = resolveCaptureReplayIntent({
+      project,
+      captureSessionId: 'capture-session-without-log'
+    });
+    expect(missingLog.ok).toBe(false);
+    expect(missingLog.diagnostics).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Capture replay references missing capture log for session "capture-session-without-log".',
+        path: 'captureLogId'
+      }
+    ]));
   });
 
   it('resolves an empty project through fallback composition identity', () => {
