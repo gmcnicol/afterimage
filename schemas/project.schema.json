@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://afterimage.local/schemas/project.schema.json",
-  "title": "Afterimage Project v2",
+  "title": "Afterimage Project v3",
   "type": "object",
   "required": ["id", "name", "mode", "version", "assets", "presets", "sequences", "variants"],
   "properties": {
     "id": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
     "name": { "type": "string", "minLength": 1 },
     "mode": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/runtimeMode" },
-    "version": { "type": "integer", "const": 2 },
+    "version": { "type": "integer", "const": 3 },
     "description": { "type": "string" },
     "metadata": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/metadata" },
     "assets": {
@@ -67,6 +67,16 @@
       "default": []
     },
     "composition": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/compositionIdentity" },
+    "captureSessions": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/captureSession" },
+      "default": []
+    },
+    "captureLogs": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/captureLog" },
+      "default": []
+    },
     "defaultSequenceId": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/idString" },
     "featureFlags": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/featureFlags" },
     "notes": { "type": "string" },

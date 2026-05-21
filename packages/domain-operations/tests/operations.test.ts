@@ -20,6 +20,7 @@ import {
   setClipTransitionOverlayAsset
 } from '../src/sequence-ops';
 import { addAutomationLane, addLaneKeyframe, updateAutomationLaneTarget } from '../src/automation-ops';
+import { addEntropyState, addModulationRoute, appendCaptureEvent, completeCaptureSession, createCaptureSession, updateEntropyState, updateModulationRoute } from '../src/capture-ops';
 import { mergeImportedAssets, toggleExportProfile } from '../src/project-ops';
 import { addFilterToStack, applyPresetDefinitionToStack, applyPresetToStack, safeRandomizeFilter, updateFilterParameter } from '../src/style-ops';
 import { importCatalogAssetIntoProject, materializeAnalysisCuts } from '../src/catalog-ops';
@@ -63,6 +64,129 @@ describe('@afterimage/domain-operations', () => {
 
     expect(project.assets).toHaveLength(1);
     expect(toggleExportProfile(project, 'square-social').exportSelections.find((selection) => selection.profileId === 'square-social')?.enabled).toBe(true);
+  });
+
+  it('authors v3 modulation, entropy, and deterministic capture contracts', () => {
+    const project = addAutomationLane(makeProject(), {
+      id: 'lane-main-mix',
+      name: 'Main Mix',
+      target: {
+        filterId: 'filter-main-contrast',
+        property: 'mix'
+      },
+      keyframes: []
+    });
+    const withFilter = {
+      ...project,
+      filterStacks: project.filterStacks.map((stack) => stack.id === 'stack-sequence-main' ? {
+        ...stack,
+        filters: [
+          {
+            id: 'filter-main-contrast',
+            type: 'contrast' as const,
+            orderIndex: 0,
+            parameters: {
+              contrast: 1
+            },
+            automationLaneIds: ['lane-main-mix']
+          }
+        ]
+      } : stack),
+      composition: {
+        ...project.composition,
+        deterministicSeeds: [
+          {
+            id: 'seed-main',
+            value: 42
+          }
+        ]
+      }
+    };
+    const routed = addModulationRoute(withFilter, {
+      id: 'route-main',
+      source: {
+        kind: 'automation-lane',
+        id: 'lane-main-mix'
+      },
+      target: {
+        kind: 'filter',
+        id: 'filter-main-contrast',
+        property: 'mix'
+      },
+      mapping: {
+        kind: 'linear'
+      },
+      scope: {
+        compositionId: 'composition-main',
+        sequenceId: 'sequence-main',
+        variantId: 'variant-main'
+      },
+      capturePolicy: 'replay-critical',
+      seedId: 'seed-main'
+    });
+    const entropy = addEntropyState(routed, {
+      id: 'entropy-main',
+      source: {
+        kind: 'modulation-route',
+        id: 'route-main'
+      },
+      target: {
+        kind: 'composition',
+        id: 'composition-main',
+        property: 'mix'
+      },
+      scope: {
+        compositionId: 'composition-main'
+      },
+      value: 0.25,
+      capturePolicy: 'record',
+      seedId: 'seed-main'
+    });
+    const captured = createCaptureSession(entropy, {
+      id: 'capture-main',
+      status: 'open',
+      startedAt: '2026-03-08T10:00:00.000Z',
+      projectId: entropy.id,
+      compositionId: 'composition-main',
+      sequenceId: 'sequence-main',
+      variantId: 'variant-main',
+      timebase: {
+        kind: 'composition-ms'
+      },
+      admittedInputIds: ['lane-main-mix'],
+      seedIds: ['seed-main']
+    });
+    const withEvent = appendCaptureEvent(captured, 'log-capture-main', {
+      id: 'event-main',
+      captureId: 'capture-main',
+      captureTimeMs: 100,
+      compositionTimeMs: 100,
+      source: {
+        kind: 'automation-lane',
+        id: 'lane-main-mix'
+      },
+      target: {
+        kind: 'filter',
+        id: 'filter-main-contrast',
+        property: 'mix'
+      },
+      kind: 'modulation',
+      replayCritical: true,
+      routeId: 'route-main',
+      seedId: 'seed-main',
+      payload: {
+        value: 0.75
+      }
+    });
+    const completed = completeCaptureSession(
+      updateEntropyState(updateModulationRoute(withEvent, 'route-main', { enabled: true }), 'entropy-main', { value: 0.5 }),
+      'capture-main',
+      '2026-03-08T10:01:00.000Z'
+    );
+
+    expect(completed.captureLogs[0].events[0].index).toBe(0);
+    expect(completed.captureSessions[0].status).toBe('completed');
+    expect(validateProject(completed).ok).toBe(true);
   });
 
   it('imports full-video source, transition, and overlay catalog assets as cuts', () => {
