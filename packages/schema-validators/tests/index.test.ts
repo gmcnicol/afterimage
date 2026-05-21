@@ -311,6 +311,12 @@ describe('@afterimage/schema-validators', () => {
   });
 
   it('rejects invalid v3 modulation and capture schema values', () => {
+    const captureEvent = fixtureProject.captureLogs?.[0]?.events[0];
+    expect(captureEvent).toBeDefined();
+    if (!captureEvent) {
+      return;
+    }
+
     expect(validateProject({
       ...fixtureProject,
       composition: {
@@ -355,6 +361,68 @@ describe('@afterimage/schema-validators', () => {
           message: 'must be <= 1',
           path: '/composition/entropyStates/0/value',
           source: 'schema'
+        }
+      ]
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      captureLogs: [
+        {
+          id: 'capture-log-main',
+          captureSessionId: 'capture-session-main',
+          events: [
+            {
+              ...captureEvent,
+              captureTimeMs: -1
+            }
+          ]
+        }
+      ]
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: [
+        {
+          keyword: 'minimum',
+          message: 'must be >= 0',
+          path: '/captureLogs/0/events/0/captureTimeMs',
+          source: 'schema'
+        }
+      ]
+    });
+  });
+
+  it('rejects capture event integrity failures separately from schema failures', () => {
+    const captureEvent = fixtureProject.captureLogs?.[0]?.events[0];
+    expect(captureEvent).toBeDefined();
+    if (!captureEvent) {
+      return;
+    }
+
+    expect(validateProject({
+      ...fixtureProject,
+      captureLogs: [
+        {
+          id: 'capture-log-main',
+          captureSessionId: 'capture-session-main',
+          events: [
+            {
+              ...captureEvent,
+              routeId: 'route-missing'
+            }
+          ]
+        }
+      ]
+    })).toEqual({
+      ok: false,
+      code: 'invalid-project-file',
+      errors: [
+        {
+          keyword: 'missing-reference',
+          message: 'Capture event "capture-event-1" references missing modulation route "route-missing".',
+          path: 'captureLogs.capture-log-main.events.capture-event-1.routeId',
+          source: 'integrity'
         }
       ]
     });

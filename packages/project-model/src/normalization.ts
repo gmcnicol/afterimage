@@ -475,7 +475,7 @@ export function normalizeCaptureLog(log: CaptureLog): CaptureLog {
     ...log,
     events: [...log.events]
       .map(normalizeCaptureEvent)
-      .sort((left, right) => compareNumbers(left.index, right.index) || compareNumbers(left.captureTimeMs, right.captureTimeMs) || compareStrings(left.id, right.id))
+      .sort((left, right) => compareNumbers(left.index, right.index) || compareNumbers(left.compositionTimeMs ?? left.captureTimeMs, right.compositionTimeMs ?? right.captureTimeMs) || compareStrings(left.id, right.id))
   };
 }
 
