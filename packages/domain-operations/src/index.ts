@@ -3,6 +3,7 @@ export * from './archive-ops.js';
 export * from './catalog-ops.js';
 export * from './composition-ops.js';
 export * from './capture-ops.js';
+export * from './capture-replay-ops.js';
 export * from './cut-ops.js';
 export * from './project-ops.js';
 export * from './sequence-ops.js';
