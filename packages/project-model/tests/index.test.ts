@@ -10,7 +10,7 @@ import {
 } from '../src';
 
 describe('@afterimage/project-model', () => {
-  it('normalizes the phase 2 hybrid project deterministically', () => {
+  it('normalizes the v3 hybrid project deterministically', () => {
     const normalized = normalizeProject({
       ...fixtureProject,
       assets: [...fixtureProject.assets].reverse(),
@@ -39,6 +39,10 @@ describe('@afterimage/project-model', () => {
       ]
     });
     expect(normalized.composition.scenes.map((scene) => scene.id)).toEqual(['scene-main']);
+    expect(normalized.composition.modulationRoutes.map((route) => route.id)).toEqual(['route-bloom-midi']);
+    expect(normalized.composition.entropyStates.map((state) => state.id)).toEqual(['entropy-scene-pressure']);
+    expect(normalized.captureSessions.map((session) => session.id)).toEqual(['capture-session-main']);
+    expect(normalized.captureLogs[0].events.map((event) => event.id)).toEqual(['capture-event-1']);
     expect(normalized.composition.scenes[0]).toMatchObject({
       id: 'scene-main',
       name: 'Main Scene',
@@ -258,6 +262,145 @@ describe('@afterimage/project-model', () => {
         code: 'missing-reference',
         message: 'Composition "composition-main" references missing variant "missing-variant".',
         path: 'composition.variantId'
+      }
+    ]));
+  });
+
+  it('reports invalid v3 modulation, entropy, and capture references', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        modulationRoutes: [
+          ...fixtureProject.composition?.modulationRoutes ?? [],
+          {
+            id: 'route-broken',
+            source: {
+              kind: 'automation-lane',
+              id: 'lane-missing'
+            },
+            target: {
+              kind: 'filter',
+              id: 'filter-missing',
+              property: 'mix'
+            },
+            mapping: {
+              kind: 'linear'
+            },
+            scope: {
+              compositionId: 'composition-missing',
+              sequenceId: 'sequence-missing',
+              variantId: 'variant-missing',
+              sceneId: 'scene-missing',
+              layerId: 'layer-missing',
+              clipId: 'clip-missing'
+            },
+            capturePolicy: 'record',
+            seedId: 'seed-missing'
+          }
+        ],
+        entropyStates: [
+          ...fixtureProject.composition?.entropyStates ?? [],
+          {
+            id: 'entropy-broken',
+            source: {
+              kind: 'modulation-route',
+              id: 'route-missing'
+            },
+            target: {
+              kind: 'scene-climate',
+              id: 'scene-missing',
+              property: 'pressure'
+            },
+            scope: {},
+            value: 0.5,
+            capturePolicy: 'record',
+            seedId: 'seed-missing'
+          }
+        ]
+      },
+      captureSessions: [
+        ...(fixtureProject.captureSessions ?? []),
+        {
+          id: 'capture-broken',
+          status: 'open',
+          startedAt: '2026-03-08T10:03:00.000Z',
+          projectId: 'project-missing',
+          compositionId: 'composition-missing',
+          sequenceId: 'sequence-missing',
+          variantId: 'variant-missing',
+          timebase: {
+            kind: 'project-ms'
+          },
+          admittedInputIds: [],
+          seedIds: ['seed-missing']
+        }
+      ],
+      captureLogs: [
+        ...(fixtureProject.captureLogs ?? []),
+        {
+          id: 'capture-log-broken',
+          captureSessionId: 'capture-missing',
+          events: [
+            {
+              id: 'event-broken',
+              captureId: 'capture-missing',
+              index: 0,
+              captureTimeMs: 0,
+              source: {
+                kind: 'midi-binding',
+                id: 'binding-missing'
+              },
+              target: {
+                kind: 'entropy-state',
+                id: 'entropy-missing'
+              },
+              kind: 'input',
+              replayCritical: true,
+              routeId: 'route-missing',
+              mappingId: 'mapping-missing',
+              seedId: 'seed-missing'
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Modulation route "route-broken" source references missing automation lane "lane-missing".',
+        path: 'composition.modulationRoutes.route-broken.source.id'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Modulation route "route-broken" target references missing filter "filter-missing".',
+        path: 'composition.modulationRoutes.route-broken.target.id'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Modulation route "route-broken" references missing deterministic seed "seed-missing".',
+        path: 'composition.modulationRoutes.route-broken.seedId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Entropy state "entropy-broken" source references missing modulation route "route-missing".',
+        path: 'composition.entropyStates.entropy-broken.source.id'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture session "capture-broken" references missing project "project-missing".',
+        path: 'captureSessions.capture-broken.projectId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture log "capture-log-broken" references missing capture session "capture-missing".',
+        path: 'captureLogs.capture-log-broken.captureSessionId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Capture event "event-broken" references missing modulation route "route-missing".',
+        path: 'captureLogs.capture-log-broken.events.event-broken.routeId'
       }
     ]));
   });

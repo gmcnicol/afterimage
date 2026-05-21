@@ -2,7 +2,7 @@
   "id": "project-core-engine-fixture",
   "name": "Studio Fixture",
   "mode": "studio",
-  "version": 2,
+  "version": 3,
   "description": "Tiny deterministic fixture project for Phase 2.",
   "metadata": {
     "createdAt": "2026-03-08T10:00:00.000Z",
@@ -259,6 +259,60 @@
         "label": "Main composition seed"
       }
     ],
+    "modulationRoutes": [
+      {
+        "id": "route-bloom-midi",
+        "name": "Bloom MIDI",
+        "source": {
+          "kind": "midi-binding",
+          "id": "binding-cut-trigger"
+        },
+        "target": {
+          "kind": "filter",
+          "id": "filter-main-bloom",
+          "property": "mix"
+        },
+        "mapping": {
+          "kind": "trigger",
+          "inputMin": 0,
+          "inputMax": 1,
+          "outputMin": 0.5,
+          "outputMax": 0.9
+        },
+        "scope": {
+          "compositionId": "composition-main",
+          "sequenceId": "sequence-main",
+          "variantId": "variant-main"
+        },
+        "capturePolicy": "replay-critical",
+        "seedId": "seed-composition-main",
+        "enabled": true
+      }
+    ],
+    "entropyStates": [
+      {
+        "id": "entropy-scene-pressure",
+        "source": {
+          "kind": "modulation-route",
+          "id": "route-bloom-midi"
+        },
+        "target": {
+          "kind": "scene-climate",
+          "id": "scene-main",
+          "property": "pressure"
+        },
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        },
+        "value": 0.2,
+        "accumulationPolicyId": "accumulate-soft",
+        "recoveryPolicyId": "recover-linear",
+        "capturePolicy": "record",
+        "seedId": "seed-composition-main",
+        "enabled": true
+      }
+    ],
     "scenes": [
       {
         "id": "scene-main",
@@ -311,6 +365,58 @@
       }
     ]
   },
+  "captureSessions": [
+    {
+      "id": "capture-session-main",
+      "status": "completed",
+      "startedAt": "2026-03-08T10:01:00.000Z",
+      "completedAt": "2026-03-08T10:02:00.000Z",
+      "projectId": "project-core-engine-fixture",
+      "compositionId": "composition-main",
+      "sequenceId": "sequence-main",
+      "variantId": "variant-main",
+      "timebase": {
+        "kind": "composition-ms"
+      },
+      "admittedInputIds": ["binding-cut-trigger"],
+      "seedIds": ["seed-composition-main"],
+      "metadata": {
+        "operator": "fixture"
+      }
+    }
+  ],
+  "captureLogs": [
+    {
+      "id": "capture-log-main",
+      "captureSessionId": "capture-session-main",
+      "events": [
+        {
+          "id": "capture-event-1",
+          "captureId": "capture-session-main",
+          "index": 0,
+          "captureTimeMs": 120,
+          "compositionTimeMs": 120,
+          "source": {
+            "kind": "midi-binding",
+            "id": "binding-cut-trigger"
+          },
+          "target": {
+            "kind": "filter",
+            "id": "filter-main-bloom",
+            "property": "mix"
+          },
+          "kind": "input",
+          "replayCritical": true,
+          "routeId": "route-bloom-midi",
+          "mappingId": "midi-main",
+          "seedId": "seed-composition-main",
+          "payload": {
+            "value": 1
+          }
+        }
+      ]
+    }
+  ],
   "defaultSequenceId": "sequence-main",
   "featureFlags": {
     "recordedMidiAutomation": false,
