@@ -61,6 +61,6 @@ describe('@afterimage/studio-contracts', () => {
     expect(input.agent).toBe('preview-render');
     expect(output.kind).toBe('preview');
     expect(output.artifacts?.[0]?.cacheKey).toBe('cache-key');
-    expect(output.diagnostics?.[0]?.code).toBe('CAPTURE_REPLAY_UNSUPPORTED_VALUE');
+    expect(output.diagnostics?.[0]).toEqual(diagnostic);
   });
 });

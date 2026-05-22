@@ -25,4 +25,15 @@ export {
   buildPreviewRenderGraphPlan,
   buildRenderGraphPlan
 } from './render-graph.js';
+export {
+  CAPTURE_REPLAY_MISSING_REFERENCE,
+  CAPTURE_REPLAY_PLANNING_FAILED,
+  CAPTURE_REPLAY_UNSUPPORTED_VALUE,
+  FFMPEG_PASS_COMPATIBILITY,
+  buildCaptureReplayDiagnostics,
+  buildCaptureReplayPlanningFailureDiagnostic,
+  buildFfmpegCompatibilityDiagnostic,
+  mapCaptureReplayDiagnosticSeverity,
+  toCaptureReplayDiagnosticCode
+} from './diagnostics.js';
 export { resolveFfmpegTools } from './tools.js';
