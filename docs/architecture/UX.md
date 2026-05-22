@@ -10,6 +10,9 @@ state changes, and capture the resulting traversal.
 
 ## Interaction Principles
 
+- Make the next action really obvious.
+- Keep interaction responsive; debounce noisy input and move work off the hot
+  path.
 - Control, but not too controlled.
 - Macro gestures over parameter micromanagement.
 - Behavioural steering over exact frame editing.
@@ -30,6 +33,31 @@ exporting deterministic artifacts.
 
 The UI should keep the user near the world. Panels, inspectors, and lists exist
 to support the world surface, not replace it.
+
+Every workflow surface should answer, at a glance:
+
+- where am I?
+- what is the current state?
+- what should I do next?
+- what will happen after I do it?
+
+If the next action is not obvious, the screen has failed regardless of visual
+quality.
+
+## Responsiveness Doctrine
+
+Afterimage is an instrument. It must feel responsive while users scrub, steer,
+type, trigger controls, switch spaces, and review state.
+
+Interaction handlers should stay cheap. Expensive or failure-prone work belongs
+behind async jobs, workers, Pico services, cached planning, or staged preview
+updates. High-frequency interactions such as search, sliders, scrubbers,
+controller input, resize, preview invalidation, and diagnostics refresh should
+be debounced, throttled, coalesced, or scheduled so the UI remains usable.
+
+The user should never wonder whether the app is frozen. Long-running work must
+show queued, running, progress, complete, failed, canceled, and retryable states
+where relevant.
 
 ## Composition Workflow
 
@@ -145,5 +173,9 @@ scene, add a behaviour, bind a controller, or start capture.
 Loading states should say what kind of work is happening: probing media,
 analyzing audio, planning render graph, rendering preview, or exporting a final
 artifact.
+
+Async states should preserve control of the surrounding workspace. Users should
+be able to keep inspecting, navigating, canceling, or queueing valid follow-on
+work while background jobs run.
 
 Failure states should include recovery action and preserve authored intent.
