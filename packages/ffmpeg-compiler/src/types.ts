@@ -159,11 +159,35 @@ export type RenderGraphArtifactKind = 'video';
 export type RenderGraphArtifactRole =
   | 'preview-output'
   | 'export-output'
-  | 'render-output';
+  | 'render-output'
+  | 'finalize-output';
 
 export type RenderGraphBackend = 'ffmpeg';
 
 export type RenderGraphCapabilityDiagnosticSeverity = 'info' | 'warning' | 'error';
+
+export interface RenderGraphToolchainIdentity {
+  backend: RenderGraphBackend;
+  binary: string;
+  source: ResolutionSource;
+  envVar?: string;
+  provenance: FfmpegProvenance;
+}
+
+export interface RenderGraphProvenance {
+  planId?: string;
+  passId?: string;
+  artifactId?: string;
+  projectId?: string;
+  sequenceId?: string;
+  variantId?: string;
+  mode?: RenderGraphPlanMode | 'finalize';
+  role?: RenderGraphArtifactRole;
+  toolchain: RenderGraphToolchainIdentity;
+  cacheKey?: string;
+  parentCacheKeys?: string[];
+  metadata?: Record<string, unknown>;
+}
 
 export interface RenderGraphCacheIdentity {
   namespace: string;
@@ -171,7 +195,9 @@ export interface RenderGraphCacheIdentity {
   version: 1;
   algorithm: 'sha256';
   inputs: string[];
-  status: 'placeholder';
+  status: 'placeholder' | 'derived';
+  invalidatesOn?: string[];
+  provenance?: RenderGraphProvenance;
 }
 
 export interface RenderGraphPlanIdentity {
@@ -218,6 +244,7 @@ export interface RenderGraphArtifact {
   profile: RenderProfile;
   producedBy: string;
   cacheIdentity: RenderGraphCacheIdentity;
+  provenance: RenderGraphProvenance;
 }
 
 export interface RenderGraphBackendRequirement {
@@ -252,6 +279,8 @@ export interface RenderGraphPass {
   requirements: string[];
   diagnostics: string[];
   cacheIdentity: RenderGraphCacheIdentity;
+  invalidatesOn: string[];
+  provenance: RenderGraphProvenance;
   semantics: {
     operation: RenderGraphPlanMode;
     profile: RenderProfile;
@@ -285,6 +314,14 @@ export interface FinalizeRenderRequest {
   profile: RenderProfile;
   durationMs: number;
   musicPath?: string;
+  inputArtifacts?: RenderGraphArtifact[];
+}
+
+export interface FinalizeRenderPlan {
+  outputPath: string;
+  command: CommandSpec;
+  artifact: RenderGraphArtifact;
+  cacheIdentity: RenderGraphCacheIdentity;
 }
 
 export interface ToolVersionInfo {

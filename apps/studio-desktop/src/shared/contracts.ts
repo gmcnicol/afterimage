@@ -20,5 +20,6 @@ export type {
   RunExportRequest,
   RunPreviewRequest,
   SaveProjectRequest,
-  StudioClient as DesktopApi
+  StudioClient as DesktopApi,
+  StudioRenderArtifact
 } from '@afterimage/studio-contracts';
