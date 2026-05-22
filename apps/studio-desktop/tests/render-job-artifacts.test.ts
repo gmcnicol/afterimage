@@ -3,9 +3,11 @@ import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { DesktopJob, StudioAgentOutput } from '@afterimage/studio-contracts';
+import type { RenderGraphCapabilityDiagnostic } from '@afterimage/ffmpeg-compiler';
 import { parseProject } from '@afterimage/schema-validators';
 import { describe, expect, it, vi } from 'vitest';
 import { fixtureProject } from '../../../packages/test-fixtures/src';
+import { toStudioRenderDiagnostic } from '../electron/services/jobs/render-artifacts';
 import { createExportJobs } from '../electron/services/jobs/export-job';
 import { createPreviewJobs } from '../electron/services/jobs/preview-job';
 import type { EnqueueJobInput } from '../electron/services/jobs/types';
@@ -89,6 +91,21 @@ function createLogger(): Logger {
 }
 
 describe('render job artifact metadata', () => {
+  it('preserves every render diagnostic field for Studio outputs', () => {
+    const diagnostic = {
+      id: 'diagnostic:capture-replay:abc',
+      severity: 'warning',
+      code: 'CAPTURE_REPLAY_UNSUPPORTED_VALUE',
+      message: 'Unsupported capture replay event.',
+      path: 'captureLogs.capture-log-main.events.capture-event-unsupported.kind',
+      nodeId: 'operation:preview:variant-main',
+      passId: 'pass:ffmpeg-render',
+      requirementId: 'requirement:ffmpeg-render'
+    } satisfies RenderGraphCapabilityDiagnostic;
+
+    expect(toStudioRenderDiagnostic(diagnostic)).toEqual(diagnostic);
+  });
+
   it('returns the final preview artifact after the temp render is renamed', async () => {
     await withFakeFfmpeg(async () => {
       const projectRoot = mkdtempSync(join(tmpdir(), 'afterimage-preview-job-'));

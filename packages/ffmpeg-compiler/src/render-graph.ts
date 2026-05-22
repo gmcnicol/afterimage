@@ -32,6 +32,11 @@ import type {
   RenderRequest,
   ResolvedFfmpegTools
 } from './types.js';
+import {
+  buildCaptureReplayDiagnostics,
+  buildCaptureReplayPlanningFailureDiagnostic,
+  buildFfmpegCompatibilityDiagnostic
+} from './diagnostics.js';
 import { ensureAsset, makePlanningTools, normalizeForPlanning, resolveTimeline } from './utils.js';
 
 function withoutUndefinedEntries<T extends Record<string, unknown>>(value: T): Record<string, unknown> {
@@ -191,42 +196,6 @@ function captureReplayMetadata(captureReplay: CaptureReplayRenderContext | undef
   };
 }
 
-function toCaptureReplayDiagnostics(
-  captureReplay: CaptureReplayRenderContext | undefined,
-  operationNodeId: string,
-  passId: string,
-  requirementId: string
-): RenderGraphCapabilityDiagnostic[] {
-  if (!captureReplay) {
-    return [];
-  }
-
-  const sources = [
-    ...(captureReplay.diagnostics ?? []),
-    ...(captureReplay.skippedEvents ?? [])
-  ];
-  const seen = new Set<string>();
-
-  return sources.flatMap((source, index) => {
-    const key = `${source.path ?? ''}:${source.code}:${source.message}`;
-    if (seen.has(key)) {
-      return [];
-    }
-    seen.add(key);
-
-    return [{
-      id: `diagnostic:capture-replay:${hashIdentity({ index, key })}`,
-      severity: source.code === 'missing-reference' ? 'error' : 'warning',
-      code: `CAPTURE_REPLAY_${source.code.toUpperCase().replace(/-/g, '_')}`,
-      message: source.message,
-      path: source.path,
-      nodeId: operationNodeId,
-      passId,
-      requirementId
-    } satisfies RenderGraphCapabilityDiagnostic];
-  });
-}
-
 export function buildRenderGraphPlan(
   project: ProjectFile | NormalizedProjectFile,
   request: PreviewRequest | ExportRequest | RenderRequest,
@@ -369,7 +338,7 @@ export function buildRenderGraphPlan(
     cacheKey: artifactCacheIdentity.key
   };
   const requirementId = 'requirement:ffmpeg-render';
-  const diagnosticId = 'diagnostic:ffmpeg-pass-boundary';
+  const passId = 'pass:ffmpeg-render';
   const captureReplayNodeId = normalizedCaptureReplay ? `capture-replay:${normalizedCaptureReplay.identity.captureLogId}` : undefined;
   const inputNodeIds = [
     ...inputReferences.map((input) => input.id),
@@ -511,16 +480,21 @@ export function buildRenderGraphPlan(
     }
   ];
   const diagnostics: RenderGraphCapabilityDiagnostic[] = [
-    {
-      id: diagnosticId,
-      severity: 'info',
-      code: 'FFMPEG_PASS_COMPATIBILITY',
-      message: 'Render graph planning wraps the current FFmpeg command; execution is still performed by the existing command runner.',
+    buildFfmpegCompatibilityDiagnostic({
       nodeId: operationNodeId,
-      passId: 'pass:ffmpeg-render',
+      passId,
       requirementId
-    },
-    ...toCaptureReplayDiagnostics(normalizedCaptureReplay, operationNodeId, 'pass:ffmpeg-render', requirementId)
+    }),
+    ...(normalizedCaptureReplay
+      ? buildCaptureReplayDiagnostics([
+        ...(normalizedCaptureReplay.diagnostics ?? []),
+        ...(normalizedCaptureReplay.skippedEvents ?? [])
+      ], {
+        nodeId: operationNodeId,
+        passId,
+        requirementId
+      })
+      : [])
   ];
   const artifacts: RenderGraphArtifact[] = [
     {
@@ -616,15 +590,9 @@ export function buildExportRenderGraphPlan(
 }
 
 function captureReplayPlanningFailure(error: unknown): CaptureReplayRenderGraphPlanResult {
-  const message = error instanceof Error ? error.message : String(error);
   return {
     ok: false,
-    diagnostics: [{
-      id: `diagnostic:capture-replay-planning:${hashIdentity(message)}`,
-      severity: 'error',
-      code: 'CAPTURE_REPLAY_PLANNING_FAILED',
-      message
-    }]
+    diagnostics: [buildCaptureReplayPlanningFailureDiagnostic(error)]
   };
 }
 
