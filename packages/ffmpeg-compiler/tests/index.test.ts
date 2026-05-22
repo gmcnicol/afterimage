@@ -20,7 +20,11 @@ import {
   buildRenderPlan,
   buildThumbnailPlan,
   buildWaveformPlan,
+  CAPTURE_REPLAY_MISSING_REFERENCE,
+  CAPTURE_REPLAY_PLANNING_FAILED,
+  CAPTURE_REPLAY_UNSUPPORTED_VALUE,
   executeCommandSpec,
+  FFMPEG_PASS_COMPATIBILITY,
   getToolchainHealth,
   resolveFfmpegTools,
   type CommandExecutionResult,
@@ -556,6 +560,117 @@ describe('@afterimage/ffmpeg-compiler', () => {
       })
     ]));
     expect(result.plan.passes[0].semantics.captureReplay?.filterOverrideCount).toBe(1);
+  });
+
+  it('keeps FFmpeg compatibility diagnostics stable on preview and export render graph plans', () => {
+    const preview = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    });
+    const exportPlan = buildExportRenderGraphPlan(project, {
+      outputPath: 'exports/studio-fixture.mov',
+      profile: getExportProfileById('landscape-master')
+    });
+
+    expect(preview.diagnostics[0]).toEqual({
+      id: 'diagnostic:ffmpeg-pass-boundary',
+      severity: 'info',
+      code: FFMPEG_PASS_COMPATIBILITY,
+      message: 'Render graph planning wraps the current FFmpeg command; execution is still performed by the existing command runner.',
+      nodeId: 'operation:preview:variant-main',
+      passId: 'pass:ffmpeg-render',
+      requirementId: 'requirement:ffmpeg-render'
+    });
+    expect(exportPlan.diagnostics[0]).toEqual({
+      ...preview.diagnostics[0],
+      nodeId: 'operation:export:variant-main'
+    });
+  });
+
+  it('dedupes capture replay diagnostics deterministically and preserves graph references', () => {
+    const skippedEvent = {
+      eventId: 'capture-event-unsupported',
+      path: 'captureLogs.capture-log-main.events.capture-event-unsupported.kind',
+      code: 'unsupported-value',
+      message: 'Capture event "capture-event-unsupported" kind "entropy" is not supported for render replay.'
+    };
+    const first = buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }, makeCaptureReplayContext({
+      diagnostics: [skippedEvent],
+      skippedEvents: [skippedEvent]
+    }));
+    const second = buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }, makeCaptureReplayContext({
+      skippedEvents: [skippedEvent, skippedEvent]
+    }));
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    if (!first.ok || !second.ok) {
+      return;
+    }
+
+    const firstReplayDiagnostics = first.plan.diagnostics.filter((diagnostic) => diagnostic.code === CAPTURE_REPLAY_UNSUPPORTED_VALUE);
+    const secondReplayDiagnostics = second.plan.diagnostics.filter((diagnostic) => diagnostic.code === CAPTURE_REPLAY_UNSUPPORTED_VALUE);
+
+    expect(firstReplayDiagnostics).toHaveLength(1);
+    expect(secondReplayDiagnostics).toHaveLength(1);
+    expect(firstReplayDiagnostics[0]).toEqual({
+      id: secondReplayDiagnostics[0].id,
+      severity: 'warning',
+      code: CAPTURE_REPLAY_UNSUPPORTED_VALUE,
+      message: skippedEvent.message,
+      path: skippedEvent.path,
+      nodeId: 'operation:preview:variant-main',
+      passId: 'pass:ffmpeg-render',
+      requirementId: 'requirement:ffmpeg-render'
+    });
+  });
+
+  it('maps capture replay missing-reference diagnostics to errors', () => {
+    const result = buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }, makeCaptureReplayContext({
+      diagnostics: [{
+        eventId: 'capture-event-missing',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing.target.id',
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing" target references missing filter "filter-missing".'
+      }]
+    }));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.plan.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        severity: 'error',
+        code: CAPTURE_REPLAY_MISSING_REFERENCE,
+        path: 'captureLogs.capture-log-main.events.capture-event-missing.target.id'
+      })
+    ]));
+  });
+
+  it('returns capture replay planning failure diagnostics instead of throwing', () => {
+    const result = buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4',
+      variantId: 'variant-missing'
+    }, makeCaptureReplayContext());
+
+    expect(result).toEqual({
+      ok: false,
+      diagnostics: [
+        expect.objectContaining({
+          severity: 'error',
+          code: CAPTURE_REPLAY_PLANNING_FAILED,
+          message: 'Sequence "sequence-main" does not define a variant.'
+        })
+      ]
+    });
+    expect(result.diagnostics[0].id).toMatch(/^diagnostic:capture-replay-planning:/);
   });
 
   it('routes public render command planners through FFmpeg render graph passes', () => {
