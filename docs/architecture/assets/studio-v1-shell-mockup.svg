@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Afterimage Studio v1 dense shell mockup</title>
+  <desc id="desc">Dense wireframe showing a thin top macro navigation bar, full-bleed workspace, and full-width bottom async status bar with right-anchored details.</desc>
+  <defs>
+    <linearGradient id="work" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111821"/>
+      <stop offset="0.55" stop-color="#1b2130"/>
+      <stop offset="1" stop-color="#211c31"/>
+    </linearGradient>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#223347"/>
+      <stop offset="1" stop-color="#322844"/>
+    </linearGradient>
+    <style>
+      .bg { fill: #080a0d; }
+      .top { fill: #10151b; stroke: #26313d; stroke-width: 1; }
+      .status { fill: #0f141a; stroke: #2b3542; stroke-width: 1; }
+      .workspace { fill: url(#work); }
+      .strip { fill: #151c24; stroke: #303b49; stroke-width: 1; }
+      .drawer { fill: #141b23; stroke: #3d4858; stroke-width: 1; }
+      .active { fill: #f2c94c; }
+      .button { fill: #1c2631; stroke: #3b4858; stroke-width: 1; }
+      .text { fill: #d9e2ec; font: 13px Inter, Arial, sans-serif; }
+      .small { fill: #aeb9c5; font: 12px Inter, Arial, sans-serif; }
+      .tiny { fill: #85919f; font: 11px Inter, Arial, sans-serif; }
+      .dark { fill: #11161d; font: 13px Inter, Arial, sans-serif; font-weight: 700; }
+      .label { fill: #eef3f8; font: 14px Inter, Arial, sans-serif; font-weight: 700; }
+      .health { fill: #37d5a4; }
+      .warn { fill: #f2994a; }
+      .danger { fill: #eb5757; }
+      .line { stroke: #576477; stroke-width: 1.5; fill: none; }
+      .softline { stroke: #303b49; stroke-width: 1; fill: none; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1440" height="900"/>
+
+  <rect class="top" x="0" y="0" width="1440" height="48"/>
+  <rect class="button" x="14" y="9" width="88" height="30" rx="3"/>
+  <text class="text" x="36" y="29">Archive</text>
+  <rect class="active" x="108" y="9" width="80" height="30" rx="3"/>
+  <text class="dark" x="132" y="29">World</text>
+  <rect class="button" x="194" y="9" width="118" height="30" rx="3"/>
+  <text class="text" x="219" y="29">Performance</text>
+  <rect class="button" x="318" y="9" width="88" height="30" rx="3"/>
+  <text class="text" x="342" y="29">Capture</text>
+  <text class="small" x="436" y="29">Hollow Weather / Reservoir A</text>
+  <circle class="warn" cx="668" cy="24" r="5"/>
+  <text class="small" x="682" y="29">1 warning</text>
+  <circle class="health" cx="764" cy="24" r="5"/>
+  <text class="small" x="778" y="29">capture trust good</text>
+  <text class="small" x="936" y="29">preview approximate</text>
+
+  <rect class="active" x="1186" y="9" width="112" height="30" rx="3"/>
+  <text class="dark" x="1217" y="29">Rehearse</text>
+  <rect class="button" x="1314" y="9" width="112" height="30" rx="3"/>
+  <circle class="health" cx="1334" cy="24" r="5"/>
+  <text class="text" x="1346" y="29">Observatory</text>
+
+  <rect class="workspace" x="0" y="48" width="1440" height="820"/>
+
+  <rect class="strip" x="0" y="48" width="1440" height="42"/>
+  <text class="label" x="16" y="74">Scene: reservoir pressure rising</text>
+  <text class="small" x="280" y="74">Next: resolve unsupported preview warning or rehearse anyway</text>
+  <rect class="button" x="928" y="56" width="136" height="26" rx="3"/>
+  <text class="small" x="952" y="74">Open warning</text>
+  <rect class="button" x="1074" y="56" width="118" height="26" rx="3"/>
+  <text class="small" x="1102" y="74">Preview</text>
+
+  <rect x="0" y="90" width="238" height="778" fill="#121922" stroke="#303b49" stroke-width="1"/>
+  <text class="label" x="16" y="120">Scene climates</text>
+  <text class="small" x="16" y="150">Reservoir</text>
+  <rect class="active" x="16" y="162" width="206" height="4" rx="2"/>
+  <text class="small" x="16" y="190">Signal room</text>
+  <text class="small" x="16" y="222">Black water</text>
+  <text class="small" x="16" y="254">Recovery state</text>
+  <path class="softline" d="M0 284 L238 284"/>
+  <text class="label" x="16" y="318">Layers</text>
+  <text class="tiny" x="16" y="348">archive fragments</text>
+  <text class="tiny" x="16" y="374">field overlays</text>
+  <text class="tiny" x="16" y="400">motif pressure</text>
+  <text class="tiny" x="16" y="426">capture points</text>
+
+  <rect x="238" y="90" width="882" height="778" fill="#0d1218"/>
+  <circle cx="594" cy="398" r="148" fill="url(#field)" stroke="#536174" stroke-width="2"/>
+  <circle cx="786" cy="512" r="104" fill="#342644" stroke="#876fa0" stroke-width="2"/>
+  <circle cx="732" cy="326" r="54" fill="#245246" stroke="#37d5a4" stroke-width="2"/>
+  <path d="M350 584 C508 424, 744 640, 1010 304" stroke="#f2c94c" stroke-width="5" fill="none" opacity="0.9"/>
+  <path d="M410 270 C562 350, 704 218, 910 414" stroke="#37d5a4" stroke-width="2" fill="none" opacity="0.7"/>
+  <text class="label" x="476" y="742">Main work surface consumes the real estate</text>
+  <text class="small" x="476" y="770">Canvas, scene zones, layer influence, field overlays, capture points</text>
+
+  <rect class="drawer" x="1120" y="90" width="320" height="778"/>
+  <text class="label" x="1138" y="120">Selected layer</text>
+  <text class="small" x="1138" y="150">Archive fragment: L-034</text>
+  <path class="softline" d="M1120 176 L1440 176"/>
+  <text class="tiny" x="1138" y="210">Modulation routes</text>
+  <text class="tiny" x="1138" y="238">Archive provenance</text>
+  <text class="tiny" x="1138" y="266">Render requirements</text>
+  <text class="tiny" x="1138" y="294">Warning: approximated mask pass</text>
+  <rect class="button" x="1138" y="326" width="128" height="28" rx="3"/>
+  <text class="small" x="1162" y="345">Inspect</text>
+  <rect class="button" x="1278" y="326" width="128" height="28" rx="3"/>
+  <text class="small" x="1304" y="345">Dismiss</text>
+
+  <rect class="status" x="0" y="868" width="1440" height="32"/>
+  <text class="small" x="14" y="889">2 running</text>
+  <circle class="health" cx="88" cy="884" r="4"/>
+  <text class="small" x="104" y="889">preview render queued</text>
+  <circle class="warn" cx="268" cy="884" r="4"/>
+  <text class="small" x="284" y="889">sidecar validating</text>
+  <circle class="danger" cx="446" cy="884" r="4"/>
+  <text class="small" x="462" y="889">export failed</text>
+  <text class="tiny" x="1196" y="889">tasks ▸</text>
+
+  <rect class="drawer" x="1092" y="646" width="348" height="222"/>
+  <text class="label" x="1112" y="676">Task details</text>
+  <text class="tiny" x="1112" y="706">Owner: Capture</text>
+  <text class="tiny" x="1112" y="734">Status: failed export</text>
+  <text class="tiny" x="1112" y="762">Reason: missing source asset</text>
+  <rect class="button" x="1112" y="798" width="72" height="28" rx="3"/>
+  <text class="tiny" x="1136" y="816">Retry</text>
+  <rect class="button" x="1196" y="798" width="82" height="28" rx="3"/>
+  <text class="tiny" x="1220" y="816">Inspect</text>
+  <rect class="button" x="1290" y="798" width="74" height="28" rx="3"/>
+  <text class="tiny" x="1310" y="816">Cancel</text>
+</svg>
