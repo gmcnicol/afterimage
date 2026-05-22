@@ -8,6 +8,11 @@
 - When finishing ticket work, always open a GitHub pull request.
 - Open pull requests as normal open PRs, not draft PRs, unless explicitly asked otherwise.
 
+## Screenshots
+- At the end of each ticket with visible UI changes, capture final screenshots for the user.
+- Store screenshots in a stable ignored path such as `screenshots/<ticket-or-branch-slug>/`, not Playwright `test-results`, because test runs may clear that directory.
+- Include direct local links to the screenshots in the final handoff.
+
 ## Tidy First
 - Make small behavior-preserving tidies before implementation when they reduce risk or complexity.
 - Keep tidy work scoped to the area being changed.
