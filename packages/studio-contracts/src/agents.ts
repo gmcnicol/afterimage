@@ -2,6 +2,15 @@ import type { ExportProfileId } from '@afterimage/export-profiles';
 import type { NormalizedProjectFile } from '@afterimage/project-model';
 import type { LibraryAsset } from './library.js';
 
+export interface StudioRenderArtifact {
+  id: string;
+  role: 'preview-output' | 'export-output' | 'render-output' | 'finalize-output';
+  path: string;
+  cacheKey: string;
+  producedBy: string;
+  provenance: Record<string, unknown>;
+}
+
 export interface AnalysisAgentInput {
   project: NormalizedProjectFile;
   projectRoot: string;
@@ -24,6 +33,7 @@ export interface PreviewRenderAgentInput {
 export interface PreviewRenderAgentOutput {
   kind: 'preview';
   outputPath: string;
+  artifacts?: StudioRenderArtifact[];
 }
 
 export interface ExportRenderAgentInput extends PreviewRenderAgentInput {
@@ -33,6 +43,7 @@ export interface ExportRenderAgentInput extends PreviewRenderAgentInput {
 export interface ExportRenderAgentOutput {
   kind: 'export';
   outputPath: string;
+  artifacts?: StudioRenderArtifact[];
 }
 
 export interface LibraryScanAgentInput {
@@ -59,6 +70,7 @@ export interface LibraryAnalysisAgentOutput {
 interface StudioAgentOutputFields {
   project?: NormalizedProjectFile;
   outputPath?: string;
+  artifacts?: StudioRenderArtifact[];
   rootId?: string;
   assetIds?: string[];
 }

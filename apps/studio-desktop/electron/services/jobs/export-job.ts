@@ -3,28 +3,30 @@ import { join } from 'node:path';
 import { getExportProfileById } from '@afterimage/export-profiles';
 import {
   buildConcatList,
-  buildExportPlan,
+  buildExportRenderGraphPlan,
   buildFinalizeRenderPlan,
-  buildRenderPlan,
+  buildRenderGraphPlan,
   executeCommandSpec,
   getTargetRenderDurationMs,
   resolveFfmpegTools,
   shouldUseChunkedExport as shouldUseCompilerChunkedExport,
+  type RenderGraphArtifact,
   type RenderProfile
 } from '@afterimage/ffmpeg-compiler';
 import {
   getDefaultSequence,
   getDefaultVariant,
+  normalizeProject,
   getSequenceById,
   getVariantById,
   type SequenceClip,
   type Variant
 } from '@afterimage/project-model';
-import { parseProject } from '@afterimage/schema-validators';
 import type { DesktopJob, ExportRenderAgentInput, RunExportRequest } from '@afterimage/studio-contracts';
 import type { Logger } from '../logger.js';
 import { ensureArtifactDirs, resolveAvailableOutputPath } from './artifacts.js';
 import { createProgressRunner } from './progress.js';
+import { toStudioRenderArtifact } from './render-artifacts.js';
 import type { EnqueueJob } from './types.js';
 
 function resolveClipOutgoingTransitionMs(clip: SequenceClip, nextClip: SequenceClip | undefined): number {
@@ -154,18 +156,20 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
           const outputPath = await resolveAvailableOutputPath(baseOutputPath);
           const durationMs = getTargetRenderDurationMs(agentInput.project, variant);
           const shouldChunk = shouldUseChunkedExportForVariant(agentInput.project, variant, profile);
+          const artifacts: RenderGraphArtifact[] = [];
 
           if (!shouldChunk) {
-            const plan = buildExportPlan(agentInput.project, {
+            const plan = buildExportRenderGraphPlan(agentInput.project, {
               outputPath,
               profile,
               sequenceId: sequence.id,
               variantId: variant.id
             }, tools);
+            const pass = plan.passes[0];
             report(`Rendering ${profile.name}`, 0.02);
-            await executeCommandSpec(plan.command, {
+            await executeCommandSpec(pass.command, {
               signal,
-              runner: createProgressRunner(plan.command, {
+              runner: createProgressRunner(pass.command, {
                 phaseLabel: `Rendering ${profile.name}`,
                 report,
                 durationMs,
@@ -173,6 +177,7 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
                 endProgress: 0.98
               })
             });
+            artifacts.push(...plan.artifacts);
           } else {
             const chunkRanges = splitClipIndicesForChunkedExport(variant, {
               maxDurationMs: 90_000,
@@ -186,7 +191,7 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
             try {
               for (const [chunkIndex, chunkRange] of chunkRanges.entries()) {
                 const chunkVariant = buildChunkedVariant(variant, chunkIndex, chunkRange.start, chunkRange.end);
-                const chunkProject = parseProject({
+                const chunkProject = normalizeProject({
                   ...agentInput.project,
                   assets: agentInput.project.assets.map((asset) => ({
                     ...asset,
@@ -196,17 +201,18 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
                 });
                 const chunkOutputPath = join(tempRoot, `chunk-${String(chunkIndex + 1).padStart(3, '0')}.${profile.container}`);
                 const chunkDurationMs = getTargetRenderDurationMs(chunkProject, chunkVariant);
-                const chunkPlan = buildRenderPlan(chunkProject, {
+                const chunkPlan = buildRenderGraphPlan(chunkProject, {
                   outputPath: chunkOutputPath,
                   profile,
                   sequenceId: sequence.id,
                   variantId: chunkVariant.id
-                }, tools);
+                }, profile, 'render', tools);
+                const chunkPass = chunkPlan.passes[0];
 
                 report(`Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`, 0.02 + ((chunkIndex / chunkRanges.length) * 0.8));
-                await executeCommandSpec(chunkPlan.command, {
+                await executeCommandSpec(chunkPass.command, {
                   signal,
-                  runner: createProgressRunner(chunkPlan.command, {
+                  runner: createProgressRunner(chunkPass.command, {
                     phaseLabel: `Rendering ${profile.name} chunk ${chunkIndex + 1}/${chunkRanges.length}`,
                     report,
                     durationMs: chunkDurationMs,
@@ -215,6 +221,7 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
                   })
                 });
                 chunkOutputPaths.push(chunkOutputPath);
+                artifacts.push(...chunkPlan.artifacts);
               }
 
               const concatListPath = join(tempRoot, 'chunks.ffconcat');
@@ -227,7 +234,8 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
                 outputPath,
                 profile,
                 durationMs,
-                musicPath
+                musicPath,
+                inputArtifacts: artifacts
               }, tools);
 
               report(`Finalizing ${profile.name}`, 0.84);
@@ -241,6 +249,7 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
                   endProgress: 0.98
                 })
               });
+              artifacts.push(finalizePlan.artifact);
             } finally {
               await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
             }
@@ -249,7 +258,8 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
           await logger.log('info', 'Rendered export profile.', outputPath);
           return {
             kind: 'export',
-            outputPath
+            outputPath,
+            artifacts: artifacts.map(toStudioRenderArtifact)
           };
         }
       });

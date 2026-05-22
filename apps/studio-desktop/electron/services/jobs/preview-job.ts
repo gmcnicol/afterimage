@@ -1,6 +1,6 @@
 import { rename, rm } from 'node:fs/promises';
 import {
-  buildPreviewPlan,
+  buildPreviewRenderGraphPlan,
   executeCommandSpec,
   getTargetRenderDurationMs,
   resolveFfmpegTools
@@ -16,6 +16,7 @@ import type { DesktopJob, PreviewRenderAgentInput, RunPreviewRequest } from '@af
 import type { Logger } from '../logger.js';
 import { ensureArtifactDirs } from './artifacts.js';
 import { createProgressRunner } from './progress.js';
+import { toStudioRenderArtifact } from './render-artifacts.js';
 import type { EnqueueJob } from './types.js';
 
 function resolveTargetRenderDurationMs(project: NormalizedProjectFile, variantId?: string, sequenceId?: string): number {
@@ -42,16 +43,17 @@ export function createPreviewJobs({ logger, enqueue }: { logger: Logger; enqueue
         await ensureArtifactDirs(agentInput.projectRoot);
         const tempOutputPath = `${agentInput.outputPath}.rendering-${Date.now()}.mp4`;
         const durationMs = resolveTargetRenderDurationMs(agentInput.project, agentInput.variantId, agentInput.sequenceId);
-        const plan = buildPreviewPlan(agentInput.project, {
+        const plan = buildPreviewRenderGraphPlan(agentInput.project, {
           outputPath: tempOutputPath,
           sequenceId: agentInput.sequenceId,
           variantId: agentInput.variantId
         }, tools);
+        const pass = plan.passes[0];
         report('Rendering preview cache', 0.02);
         try {
-          await executeCommandSpec(plan.command, {
+          await executeCommandSpec(pass.command, {
             signal,
-            runner: createProgressRunner(plan.command, {
+            runner: createProgressRunner(pass.command, {
               phaseLabel: 'Rendering preview cache',
               report,
               durationMs,
@@ -66,9 +68,15 @@ export function createPreviewJobs({ logger, enqueue }: { logger: Logger; enqueue
           throw error;
         }
         await logger.log('info', 'Rendered preview cache.', agentInput.outputPath);
+        const finalPlan = buildPreviewRenderGraphPlan(agentInput.project, {
+          outputPath: agentInput.outputPath,
+          sequenceId: agentInput.sequenceId,
+          variantId: agentInput.variantId
+        }, tools);
         return {
           kind: 'preview',
-          outputPath: agentInput.outputPath
+          outputPath: agentInput.outputPath,
+          artifacts: finalPlan.artifacts.map(toStudioRenderArtifact)
         };
       }
     });
