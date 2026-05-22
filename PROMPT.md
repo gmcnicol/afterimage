@@ -1,59 +1,9 @@
-# Codex Task Prompt
+# Legacy Codex Prompt
 
-You are working in this repository as a fresh Codex context.
+This file is a historical note from the earlier local-task workflow.
 
-Do ONE TASK only in this run. If there is an in-progress task, continue that one task only. Otherwise, select one eligible backlog task only. Do not start or complete any second task, even if other tasks are nearby, already complete, or easy to finish.
+It is no longer the active task selection process. Linear is the current source
+for milestones and task state, and `TASKS.md` is only a pointer to that policy.
 
-## Required Setup
-
-1. Read `TASKS.md` first.
-2. Review enough of the project to understand the task area before editing.
-3. Pick exactly one non-done task to work on.
-
-## Task Selection
-
-- Ignore every task with `status: done`; completed tasks are historical context only.
-- If any task has `status: in-progress`, pick that task and continue it. Do not also start a backlog task in the same run.
-- Otherwise, pick one highest-priority `status: backlog` task whose dependencies are complete.
-- Do not start multiple tasks.
-- Do not mark more than one task `status: done` in a single run.
-- Do not do opportunistic cleanup outside the selected task.
-
-## Before Starting
-
-- Update `TASKS.md` to mark the selected task as `status: in-progress`.
-- Keep the edit focused so a later context can see which task is active.
-
-## During Work
-
-- Complete the selected task only.
-- Follow existing project patterns and tests.
-- Prefer small, reviewable changes.
-- If the task scope is ambiguous, choose the smallest interpretation that satisfies the acceptance criteria.
-
-## At The End
-
-Update `TASKS.md` before finishing:
-
-- If the task is complete, mark it `status: done`.
-- If the task is not complete, leave it `status: in-progress` and document what remains.
-- Add brief notes for the next context window:
-  - successful approaches
-  - pitfalls or failed approaches
-  - commands/tests run
-  - any remaining risks
-
-Commit changes before finishing:
-
-- Commit focused changes for the selected task.
-- Include the `TASKS.md` status/notes update in the same commit.
-- If the task is incomplete, still commit the useful partial work and documented remaining steps unless the worktree is known to be broken beyond the documented task state.
-- Leave the worktree clean except for explicitly documented external artifacts that should not be committed.
-
-The final response should state:
-
-- which task was selected
-- whether it is complete
-- what changed
-- what verification ran
-- the commit hash
+Use the repository `AGENTS.md`, current user request, active tracker context,
+and implementation documentation instead of this legacy prompt.
