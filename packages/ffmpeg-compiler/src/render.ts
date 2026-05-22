@@ -18,14 +18,19 @@ import {
 import type {
   CommandSpec,
   ExportRequest,
+  FinalizeRenderPlan,
   FinalizeRenderRequest,
   PreviewPlan,
   PreviewRequest,
+  RenderGraphArtifact,
+  RenderGraphProvenance,
+  RenderGraphToolchainIdentity,
   RenderPlan,
   RenderProfile,
   RenderRequest,
   ResolvedFfmpegTools
 } from './types.js';
+import { createCacheIdentity, hashIdentity } from './identity.js';
 import { ensureAsset, formatDecimal, formatSeconds, makePlanningTools } from './utils.js';
 
 function compilePresetFilters(filters: PresetFilter[]): FilterInstance[] {
@@ -804,7 +809,7 @@ export function buildConcatList(paths: string[]): string {
 export function buildFinalizeRenderPlan(
   request: FinalizeRenderRequest,
   tools?: ResolvedFfmpegTools
-): { outputPath: string; command: CommandSpec } {
+): FinalizeRenderPlan {
   const resolvedTools = makePlanningTools(tools);
   const fadeDurationMs = Math.min(2000, request.durationMs);
   const fadeStartMs = Math.max(0, request.durationMs - fadeDurationMs);
@@ -852,14 +857,105 @@ export function buildFinalizeRenderPlan(
   }
 
   args.push('-f', request.profile.container, request.outputPath);
+  const command: CommandSpec = {
+    label: `finalize:${request.outputPath}`,
+    binary: resolvedTools.ffmpeg.path,
+    args,
+    expectedOutputs: [request.outputPath]
+  };
+  const toolchain = {
+    backend: 'ffmpeg',
+    binary: resolvedTools.ffmpeg.path,
+    source: resolvedTools.ffmpeg.source,
+    ...(resolvedTools.ffmpeg.envVar !== undefined ? { envVar: resolvedTools.ffmpeg.envVar } : {}),
+    provenance: resolvedTools.ffmpeg.provenance
+  } satisfies RenderGraphToolchainIdentity;
+  const inputArtifactKeys = request.inputArtifacts?.map((artifact) => artifact.cacheIdentity.key) ?? [];
+  const reusableCommand = {
+    ...command,
+    args: command.args.map((arg) => arg === request.outputPath ? '<render-output>' : arg),
+    expectedOutputs: command.expectedOutputs?.map((output) => output === request.outputPath ? '<render-output>' : output)
+  };
+  const invalidatesOn = [
+    'concat-list',
+    'chunk-artifacts',
+    'profile',
+    'duration',
+    'music',
+    'finalize-command-semantics',
+    'ffmpeg-toolchain'
+  ];
+  const cacheProvenance: RenderGraphProvenance = {
+    mode: 'finalize',
+    passId: 'pass:ffmpeg-finalize',
+    toolchain,
+    parentCacheKeys: inputArtifactKeys,
+    metadata: {
+      concatListPath: request.concatListPath,
+      musicPath: request.musicPath,
+      durationMs: request.durationMs,
+      profile: request.profile
+    }
+  };
+  const cacheIdentity = createCacheIdentity('render-graph-finalize-pass', [
+    `concat:${request.concatListPath}`,
+    `profile:${hashIdentity(request.profile)}`,
+    `toolchain:${hashIdentity(toolchain)}`,
+    ...inputArtifactKeys.map((key) => `input-artifact:${key}`)
+  ], {
+    concatListPath: request.concatListPath,
+    durationMs: request.durationMs,
+    musicPath: request.musicPath,
+    profile: request.profile,
+    command: reusableCommand,
+    toolchain,
+    inputArtifactKeys
+  }, invalidatesOn, cacheProvenance);
+  const artifactId = `artifact:finalize-output:${hashIdentity({
+    role: 'finalize-output',
+    profile: request.profile,
+    contentCacheKey: cacheIdentity.key,
+    outputPath: request.outputPath
+  })}`;
+  const artifactProvenance: RenderGraphProvenance = {
+    mode: 'finalize',
+    role: 'finalize-output',
+    passId: 'pass:ffmpeg-finalize',
+    artifactId,
+    toolchain,
+    parentCacheKeys: [cacheIdentity.key],
+    metadata: {
+      outputPath: request.outputPath,
+      profile: request.profile
+    }
+  };
+  const artifactCacheIdentity = createCacheIdentity('render-graph-artifact', [
+    cacheIdentity.key,
+    `output:${request.outputPath}`
+  ], {
+    outputPath: request.outputPath,
+    profile: request.profile,
+    role: 'finalize-output',
+    contentCacheKey: cacheIdentity.key
+  }, [...invalidatesOn, 'output-path'], artifactProvenance);
+  const artifact: RenderGraphArtifact = {
+    id: artifactId,
+    kind: 'video',
+    role: 'finalize-output',
+    path: request.outputPath,
+    profile: request.profile,
+    producedBy: 'pass:ffmpeg-finalize',
+    cacheIdentity: artifactCacheIdentity,
+    provenance: {
+      ...artifactProvenance,
+      cacheKey: artifactCacheIdentity.key
+    }
+  };
 
   return {
     outputPath: request.outputPath,
-    command: {
-      label: `finalize:${request.outputPath}`,
-      binary: resolvedTools.ffmpeg.path,
-      args,
-      expectedOutputs: [request.outputPath]
-    }
+    command,
+    artifact,
+    cacheIdentity
   };
 }

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { StudioAgentInput, StudioAgentOutput, StudioCommandMap, StudioEventMap, StudioQueryMap } from '../src/index.js';
+import type {
+  StudioAgentInput,
+  StudioAgentOutput,
+  StudioCommandMap,
+  StudioEventMap,
+  StudioQueryMap,
+  StudioRenderArtifact
+} from '../src/index.js';
 
 describe('@afterimage/studio-contracts', () => {
   it('exposes command, query, and event maps as typed contracts', () => {
@@ -13,17 +20,29 @@ describe('@afterimage/studio-contracts', () => {
   });
 
   it('exposes serializable agent boundary contracts', () => {
+    const artifact = {
+      id: 'artifact:preview-output:abc',
+      role: 'preview-output',
+      path: '/tmp/preview.mp4',
+      cacheKey: 'cache-key',
+      producedBy: 'pass:ffmpeg-render',
+      provenance: {
+        mode: 'preview'
+      }
+    } satisfies StudioRenderArtifact;
     const input = {
       agent: 'library-scan',
       rootId: 'root-1',
       rootPath: '/media'
     } satisfies StudioAgentInput;
     const output = {
-      kind: 'library-scan',
-      rootId: 'root-1'
+      kind: 'preview',
+      outputPath: artifact.path,
+      artifacts: [artifact]
     } satisfies StudioAgentOutput;
 
     expect(input.agent).toBe('library-scan');
-    expect(output.kind).toBe('library-scan');
+    expect(output.kind).toBe('preview');
+    expect(output.artifacts?.[0]?.cacheKey).toBe('cache-key');
   });
 });

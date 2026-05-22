@@ -9,6 +9,7 @@ export type {
   LibraryScanAgentOutput,
   PreviewRenderAgentInput,
   PreviewRenderAgentOutput,
+  StudioRenderArtifact,
   StudioAgentInput,
   StudioAgentOutput
 } from './agents.js';
