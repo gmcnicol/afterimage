@@ -29,7 +29,8 @@ import {
   type RenderGraphEdge,
   type RenderGraphNode,
   type RenderGraphPass,
-  type RenderGraphPlan
+  type RenderGraphPlan,
+  type ResolvedFfmpegTools
 } from '../src';
 
 describe('@afterimage/ffmpeg-compiler', () => {
@@ -353,8 +354,95 @@ describe('@afterimage/ffmpeg-compiler', () => {
       namespace: 'render-graph-plan',
       version: 1,
       algorithm: 'sha256',
-      status: 'placeholder'
+      status: 'derived'
     }));
+    expect(cacheIdentity.invalidatesOn).toEqual(expect.arrayContaining(['project-state', 'ffmpeg-toolchain']));
+    expect(pass.provenance.parentCacheKeys).toContain(cacheIdentity.key);
+    expect(artifact.provenance.parentCacheKeys).toContain(pass.cacheIdentity.key);
+  });
+
+  it('keeps render pass cache identities reusable across output paths while deriving artifact identities from the path', () => {
+    const first = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main-a.mp4'
+    });
+    const second = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main-b.mp4'
+    });
+
+    expect(first.cacheIdentity.key).toBe(second.cacheIdentity.key);
+    expect(first.passes[0].cacheIdentity.key).toBe(second.passes[0].cacheIdentity.key);
+    expect(first.artifacts[0].id).not.toBe(second.artifacts[0].id);
+    expect(first.artifacts[0].cacheIdentity.key).not.toBe(second.artifacts[0].cacheIdentity.key);
+  });
+
+  it('changes derived cache identities when project content, profile, capture, archive, or toolchain inputs change', () => {
+    const baseRequest = {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    };
+    const baseKey = buildPreviewRenderGraphPlan(project, baseRequest).passes[0].cacheIdentity.key;
+    const changedContentKey = buildPreviewRenderGraphPlan(parseProject({
+      ...fixtureProject,
+      variants: fixtureProject.variants.map((variant) => variant.id === 'variant-main'
+        ? {
+            ...variant,
+            clips: variant.clips.map((clip, index) => index === 0 ? { ...clip, durationMs: clip.durationMs + 1 } : clip)
+          }
+        : variant)
+    }), baseRequest).passes[0].cacheIdentity.key;
+    const changedProfileKey = buildPreviewRenderGraphPlan(project, {
+      ...baseRequest,
+      width: 1280
+    }).passes[0].cacheIdentity.key;
+    const changedCaptureKey = buildPreviewRenderGraphPlan(parseProject({
+      ...fixtureProject,
+      captureLogs: fixtureProject.captureLogs?.map((log) => ({
+        ...log,
+        events: log.events.map((event) => event.id === 'capture-event-1'
+          ? { ...event, captureTimeMs: event.captureTimeMs + 1, compositionTimeMs: (event.compositionTimeMs ?? event.captureTimeMs) + 1 }
+          : event)
+      }))
+    }), baseRequest).passes[0].cacheIdentity.key;
+    const changedArchiveKey = buildPreviewRenderGraphPlan(parseProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        acceptedArchiveReferences: fixtureProject.composition.acceptedArchiveReferences?.map((reference) => ({
+          ...reference,
+          note: `${reference.note} Updated.`
+        }))
+      }
+    }), baseRequest).passes[0].cacheIdentity.key;
+    const changedTools: ResolvedFfmpegTools = {
+      ffmpeg: {
+        path: '/opt/afterimage/ffmpeg',
+        source: 'env',
+        envVar: 'AFTERIMAGE_FFMPEG_PATH',
+        provenance: {
+          source: 'env',
+          license: 'LGPL',
+          lgplOnly: true,
+          notes: 'test ffmpeg'
+        }
+      },
+      ffprobe: {
+        path: '/opt/afterimage/ffprobe',
+        source: 'env',
+        envVar: 'AFTERIMAGE_FFPROBE_PATH',
+        provenance: {
+          source: 'env',
+          license: 'LGPL',
+          lgplOnly: true,
+          notes: 'test ffprobe'
+        }
+      }
+    };
+    const changedToolchainKey = buildPreviewRenderGraphPlan(project, baseRequest, changedTools).passes[0].cacheIdentity.key;
+
+    expect(changedContentKey).not.toBe(baseKey);
+    expect(changedProfileKey).not.toBe(baseKey);
+    expect(changedCaptureKey).not.toBe(baseKey);
+    expect(changedArchiveKey).not.toBe(baseKey);
+    expect(changedToolchainKey).not.toBe(baseKey);
   });
 
   it('routes public render command planners through FFmpeg render graph passes', () => {
@@ -387,8 +475,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "fa4f49d749485980b99ecb38a65f4024dfe44d2b39a1295e5f2a78b9b823d917",
-            "id": "artifact:preview:output",
+            "cacheKey": "9c88ef2665fb76643a9b5f8bb7bd5c85d63f599a236e56e7c2a4d5289d1ba709",
+            "id": "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
             "path": ".afterimage/preview/variant-main.mp4",
             "producedBy": "pass:ffmpeg-render",
             "role": "preview-output",
@@ -408,7 +496,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:ffmpeg-render",
           },
         ],
-        "cacheKey": "eedf6729e623c009888f52d94ee7b17854187764b045fca365c6a4005aed18a0",
+        "cacheKey": "4b1c106856f211f60c258a30dcd49f0e92e52aa25a0702b64e53cd815fd7a6c9",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -459,12 +547,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:preview:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:preview:output",
+            "to": "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
           },
         ],
         "identity": {
           "mode": "preview",
-          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:eedf6729e623c009888f52d94ee7b17854187764b045fca365c6a4005aed18a0",
+          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:4b1c106856f211f60c258a30dcd49f0e92e52aa25a0702b64e53cd815fd7a6c9",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -516,13 +604,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:preview:output",
+            "id": "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "779b8b967367279d0958378f5e1e89753acb890e31f8d215b4d45d4d3a065db4",
+          "cacheKey": "48d2f1c447cf87da08a269ae08f427024c0fb068cec52e3db29861c3293f699f",
           "command": {
             "args": [
               "-y",
@@ -563,7 +651,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
           ],
           "nodeId": "operation:preview:variant-main",
           "outputArtifactIds": [
-            "artifact:preview:output",
+            "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -614,8 +702,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "8ee27103cb447b76eeb9b928801266464fa3c2158d1757b1fd1680002de83fc6",
-            "id": "artifact:export:output",
+            "cacheKey": "e261ac848317a8987ddf32a5d1d627a260a5f3a1a7953a5829d7ffa248b272f7",
+            "id": "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
             "path": "exports/studio-fixture.mov",
             "producedBy": "pass:ffmpeg-render",
             "role": "export-output",
@@ -635,7 +723,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:ffmpeg-render",
           },
         ],
-        "cacheKey": "30ebe7e69f2e76648004f1c592eaab98caf793b811f04706850e90c0761e86f4",
+        "cacheKey": "cfef8c914816ee80cfe84839913b26cc4f17725b6d79f016751c6c4f38837818",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -686,12 +774,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:export:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:export:output",
+            "to": "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
           },
         ],
         "identity": {
           "mode": "export",
-          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:30ebe7e69f2e76648004f1c592eaab98caf793b811f04706850e90c0761e86f4",
+          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:cfef8c914816ee80cfe84839913b26cc4f17725b6d79f016751c6c4f38837818",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -743,13 +831,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:export:output",
+            "id": "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "0664e0498414ff80a7951e0b5e8cb40ad0accc06ed98dbc0feb8cfc1b4d2956f",
+          "cacheKey": "7e5ef4ebae56ced07e9a283fe7456226acb096b1ed7fd4e826fc05c6f06c8935",
           "command": {
             "args": [
               "-y",
@@ -794,7 +882,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
           ],
           "nodeId": "operation:export:variant-main",
           "outputArtifactIds": [
-            "artifact:export:output",
+            "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -1186,10 +1274,16 @@ describe('@afterimage/ffmpeg-compiler', () => {
       outputPath: 'exports/studio-fixture.mp4',
       profile,
       durationMs: 5000
-    }).command.args;
+    });
 
     expect(exportArgs).toEqual(expect.arrayContaining(['-maxrate', '12000k', '-bufsize', '24000k']));
-    expect(finalizeArgs).toEqual(expect.arrayContaining(['-maxrate', '12000k', '-bufsize', '24000k']));
+    expect(finalizeArgs.command.args).toEqual(expect.arrayContaining(['-maxrate', '12000k', '-bufsize', '24000k']));
+    expect(finalizeArgs.outputPath).toBe('exports/studio-fixture.mp4');
+    expect(finalizeArgs.cacheIdentity.status).toBe('derived');
+    expect(finalizeArgs.cacheIdentity.invalidatesOn).toEqual(expect.arrayContaining(['concat-list', 'ffmpeg-toolchain']));
+    expect(finalizeArgs.artifact.role).toBe('finalize-output');
+    expect(finalizeArgs.artifact.path).toBe('exports/studio-fixture.mp4');
+    expect(finalizeArgs.artifact.provenance.parentCacheKeys).toContain(finalizeArgs.cacheIdentity.key);
   });
 
   it('trims overlay and transition assets from selected cut starts', () => {

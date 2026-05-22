@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import type {
   NormalizedProjectFile,
   ProjectFile
 } from '@afterimage/project-model';
+import { createCacheIdentity, hashIdentity } from './identity.js';
 import {
   buildRenderCommand,
   collectRenderInputs,
@@ -17,46 +17,20 @@ import type {
   RenderGraphArtifact,
   RenderGraphArtifactRole,
   RenderGraphBackendRequirement,
-  RenderGraphCacheIdentity,
   RenderGraphCapabilityDiagnostic,
   RenderGraphInputReference,
   RenderGraphNode,
   RenderGraphPass,
   RenderGraphPlan,
   RenderGraphPlanMode,
+  RenderGraphProvenance,
+  RenderGraphToolchainIdentity,
   RenderPlan,
   RenderProfile,
   RenderRequest,
   ResolvedFfmpegTools
 } from './types.js';
 import { ensureAsset, makePlanningTools, normalizeForPlanning, resolveTimeline } from './utils.js';
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(',')}]`;
-  }
-
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, entryValue]) => entryValue !== undefined)
-    .sort(([left], [right]) => left.localeCompare(right));
-
-  return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableStringify(entryValue)}`).join(',')}}`;
-}
-
-function createCacheIdentity(namespace: string, inputs: string[], value: unknown): RenderGraphCacheIdentity {
-  return {
-    namespace,
-    key: createHash('sha256').update(stableStringify(value)).digest('hex'),
-    version: 1,
-    algorithm: 'sha256',
-    inputs,
-    status: 'placeholder'
-  };
-}
 
 function withoutUndefinedEntries<T extends Record<string, unknown>>(value: T): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value).filter(([, entryValue]) => entryValue !== undefined));
@@ -129,6 +103,37 @@ function getArtifactRole(mode: RenderGraphPlanMode): RenderGraphArtifactRole {
   return 'render-output';
 }
 
+function toToolchainIdentity(tools: ResolvedFfmpegTools): RenderGraphToolchainIdentity {
+  return withoutUndefinedEntries({
+    backend: 'ffmpeg',
+    binary: tools.ffmpeg.path,
+    source: tools.ffmpeg.source,
+    envVar: tools.ffmpeg.envVar,
+    provenance: tools.ffmpeg.provenance
+  }) as unknown as RenderGraphToolchainIdentity;
+}
+
+function normalizeCommandForReusablePass(command: RenderPlan['command'], outputPath: string): RenderPlan['command'] {
+  return {
+    ...command,
+    args: command.args.map((arg) => arg === outputPath ? '<render-output>' : arg),
+    expectedOutputs: command.expectedOutputs?.map((output) => output === outputPath ? '<render-output>' : output)
+  };
+}
+
+function createArtifactId(value: {
+  role: RenderGraphArtifactRole;
+  projectId: string;
+  sequenceId: string;
+  variantId: string;
+  mode: RenderGraphPlanMode;
+  profile: RenderProfile;
+  contentCacheKey: string;
+  outputPath: string;
+}): string {
+  return `artifact:${value.role}:${hashIdentity(value)}`;
+}
+
 export function buildRenderGraphPlan(
   project: ProjectFile | NormalizedProjectFile,
   request: PreviewRequest | ExportRequest | RenderRequest,
@@ -142,6 +147,8 @@ export function buildRenderGraphPlan(
   const graphProfile = normalizeRenderProfileForGraph(profile);
   const commandPlan = buildRenderCommand(normalizedProject, variant, sequenceId, request, graphProfile, resolvedTools) as RenderPlan | PreviewPlan;
   const inputs = collectRenderInputs(normalizedProject, variant);
+  const role = getArtifactRole(mode);
+  const toolchain = toToolchainIdentity(resolvedTools);
   const inputReferences: RenderGraphInputReference[] = inputs.map((input, inputIndex) => {
     const asset = ensureAsset(normalizedProject, input.assetId);
     return {
@@ -156,33 +163,108 @@ export function buildRenderGraphPlan(
   });
   const durationMs = getTargetRenderDurationMs(normalizedProject, variant);
   const operationNodeId = `operation:${mode}:${variant.id}`;
-  const artifactId = `artifact:${mode}:output`;
   const cacheInputs = [
     `project:${normalizedProject.id}`,
     `sequence:${sequenceId}`,
     `variant:${variant.id}`,
+    `profile:${hashIdentity(graphProfile)}`,
+    `toolchain:${hashIdentity(toolchain)}`,
     ...inputReferences.map((input) => `asset:${input.assetId}:${input.path}`)
+  ];
+  const reusableCommand = normalizeCommandForReusablePass(commandPlan.command, request.outputPath);
+  const baseInvalidatesOn = [
+    'project-state',
+    `project:${normalizedProject.id}`,
+    `sequence:${sequenceId}`,
+    `variant:${variant.id}`,
+    'profile',
+    'input-assets',
+    'capture-sessions',
+    'capture-logs',
+    'accepted-archive-references',
+    'rejected-archive-references',
+    'render-command-semantics',
+    'ffmpeg-toolchain'
   ];
   const baseCacheValue = {
     mode,
+    sequenceId,
+    variantId: variant.id,
+    project: normalizedProject,
+    profile: graphProfile,
+    inputs: inputReferences,
+    command: reusableCommand,
+    toolchain
+  };
+  const baseProvenance: RenderGraphProvenance = {
     projectId: normalizedProject.id,
     sequenceId,
     variantId: variant.id,
-    outputPath: request.outputPath,
-    profile: graphProfile,
-    inputs: inputReferences,
-    command: commandPlan.command
+    mode,
+    toolchain,
+    metadata: {
+      profile: graphProfile,
+      inputAssetIds: inputReferences.map((input) => input.assetId)
+    }
   };
-  const planCacheIdentity = createCacheIdentity('render-graph-plan', cacheInputs, baseCacheValue);
+  const planCacheIdentity = createCacheIdentity('render-graph-plan', cacheInputs, baseCacheValue, baseInvalidatesOn, baseProvenance);
+  const planId = `render-graph:${mode}:${normalizedProject.id}:${sequenceId}:${variant.id}:${planCacheIdentity.key}`;
+  planCacheIdentity.provenance = {
+    ...baseProvenance,
+    planId,
+    cacheKey: planCacheIdentity.key
+  };
+  const passProvenance: RenderGraphProvenance = {
+    ...baseProvenance,
+    planId,
+    passId: 'pass:ffmpeg-render',
+    parentCacheKeys: [planCacheIdentity.key]
+  };
   const passCacheIdentity = createCacheIdentity('render-graph-pass', [...cacheInputs, planCacheIdentity.key], {
     ...baseCacheValue,
     pass: operationNodeId
+  }, baseInvalidatesOn, passProvenance);
+  passCacheIdentity.provenance = {
+    ...passProvenance,
+    cacheKey: passCacheIdentity.key
+  };
+  const artifactId = createArtifactId({
+    role,
+    projectId: normalizedProject.id,
+    sequenceId,
+    variantId: variant.id,
+    mode,
+    profile: graphProfile,
+    contentCacheKey: passCacheIdentity.key,
+    outputPath: request.outputPath
   });
-  const artifactCacheIdentity = createCacheIdentity('render-graph-artifact', [passCacheIdentity.key], {
+  const artifactInvalidatesOn = [
+    ...baseInvalidatesOn,
+    'output-path'
+  ];
+  const artifactProvenance: RenderGraphProvenance = {
+    ...baseProvenance,
+    planId,
+    passId: 'pass:ffmpeg-render',
+    artifactId,
+    role,
+    parentCacheKeys: [passCacheIdentity.key],
+    metadata: {
+      profile: graphProfile,
+      outputPath: request.outputPath
+    }
+  };
+  const artifactCacheIdentity = createCacheIdentity('render-graph-artifact', [passCacheIdentity.key, `output:${request.outputPath}`], {
     outputPath: request.outputPath,
     profile: graphProfile,
-    producer: operationNodeId
-  });
+    role,
+    producer: operationNodeId,
+    contentCacheKey: passCacheIdentity.key
+  }, artifactInvalidatesOn, artifactProvenance);
+  artifactCacheIdentity.provenance = {
+    ...artifactProvenance,
+    cacheKey: artifactCacheIdentity.key
+  };
   const requirementId = 'requirement:ffmpeg-render';
   const diagnosticId = 'diagnostic:ffmpeg-pass-boundary';
   const inputNodeIds = inputReferences.map((input) => input.id);
@@ -243,7 +325,7 @@ export function buildRenderGraphPlan(
       cacheIdentity: artifactCacheIdentity,
       metadata: {
         path: request.outputPath,
-        role: getArtifactRole(mode)
+        role
       }
     }
   ];
@@ -318,11 +400,15 @@ export function buildRenderGraphPlan(
     {
       id: artifactId,
       kind: 'video',
-      role: getArtifactRole(mode),
+      role,
       path: request.outputPath,
       profile: graphProfile,
       producedBy: 'pass:ffmpeg-render',
-      cacheIdentity: artifactCacheIdentity
+      cacheIdentity: artifactCacheIdentity,
+      provenance: {
+        ...artifactProvenance,
+        cacheKey: artifactCacheIdentity.key
+      }
     }
   ];
   const passes: RenderGraphPass[] = [
@@ -338,6 +424,11 @@ export function buildRenderGraphPlan(
       requirements: [requirementId],
       diagnostics: [diagnosticId],
       cacheIdentity: passCacheIdentity,
+      invalidatesOn: baseInvalidatesOn,
+      provenance: {
+        ...passProvenance,
+        cacheKey: passCacheIdentity.key
+      },
       semantics: {
         operation: mode,
         profile: graphProfile,
@@ -351,7 +442,7 @@ export function buildRenderGraphPlan(
   return {
     identity: {
       schemaVersion: 1,
-      planId: `render-graph:${mode}:${normalizedProject.id}:${sequenceId}:${variant.id}:${planCacheIdentity.key}`,
+      planId,
       projectId: normalizedProject.id,
       sequenceId,
       variantId: variant.id,
