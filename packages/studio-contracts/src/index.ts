@@ -10,6 +10,7 @@ export type {
   PreviewRenderAgentInput,
   PreviewRenderAgentOutput,
   StudioRenderArtifact,
+  StudioRenderDiagnostic,
   StudioAgentInput,
   StudioAgentOutput
 } from './agents.js';

@@ -9,6 +9,8 @@ import type { FilterInstance, ProjectFile, SupportedFilterType } from '../../pro
 import {
   buildAnalysisPlan,
   buildAudioChangeAnalysisPlan,
+  buildCaptureReplayExportRenderGraphPlan,
+  buildCaptureReplayPreviewRenderGraphPlan,
   buildExportPlan,
   buildExportRenderGraphPlan,
   buildFinalizeRenderPlan,
@@ -22,6 +24,7 @@ import {
   getToolchainHealth,
   resolveFfmpegTools,
   type CommandExecutionResult,
+  type CaptureReplayRenderContext,
   type RenderGraphArtifact,
   type RenderGraphBackendRequirement,
   type RenderGraphCacheIdentity,
@@ -97,6 +100,32 @@ describe('@afterimage/ffmpeg-compiler', () => {
         requirementId: diagnostic.requirementId
       })),
       cacheKey: plan.cacheIdentity.key
+    };
+  }
+
+  function makeCaptureReplayContext(patch: Partial<CaptureReplayRenderContext> = {}): CaptureReplayRenderContext {
+    return {
+      identity: {
+        projectId: 'project-core-engine-fixture',
+        compositionId: 'composition-main',
+        sequenceId: 'sequence-main',
+        variantId: 'variant-main',
+        captureSessionId: 'capture-session-main',
+        captureLogId: 'capture-log-main',
+        replayEventIds: ['capture-event-1']
+      },
+      filterOverrides: [{
+        eventId: 'capture-event-1',
+        routeId: 'route-bloom-midi',
+        seedId: 'seed-composition-main',
+        captureTimeMs: 120,
+        compositionTimeMs: 120,
+        filterId: 'filter-main-bloom',
+        property: 'mix',
+        value: 0.9,
+        mappingKind: 'trigger'
+      }],
+      ...patch
     };
   }
 
@@ -443,6 +472,90 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(changedCaptureKey).not.toBe(baseKey);
     expect(changedArchiveKey).not.toBe(baseKey);
     expect(changedToolchainKey).not.toBe(baseKey);
+  });
+
+  it('builds deterministic capture replay preview and export render graph plans', () => {
+    const preview = buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }, makeCaptureReplayContext());
+    const exportPlan = buildCaptureReplayExportRenderGraphPlan(project, {
+      outputPath: 'exports/studio-fixture.mov',
+      profile: getExportProfileById('landscape-master')
+    }, makeCaptureReplayContext());
+
+    expect(preview.ok).toBe(true);
+    expect(exportPlan.ok).toBe(true);
+    if (!preview.ok || !exportPlan.ok) {
+      return;
+    }
+    expect(preview.plan.nodes.map((node) => node.kind)).toContain('capture-replay');
+    expect(preview.plan.edges.map((edge) => edge.kind)).toContain('capture-input');
+    expect(preview.plan.passes[0].semantics.captureReplay).toEqual(expect.objectContaining({
+      captureLogId: 'capture-log-main',
+      filterOverrideCount: 1
+    }));
+    expect(exportPlan.plan.passes[0].semantics.captureReplay?.captureLogId).toBe('capture-log-main');
+    expect(buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }, makeCaptureReplayContext())).toEqual(preview);
+  });
+
+  it('changes capture replay cache identities from capture context and preserves replay provenance', () => {
+    const baseRequest = {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    };
+    const livePlan = buildPreviewRenderGraphPlan(project, baseRequest);
+    const capturePlan = buildCaptureReplayPreviewRenderGraphPlan(project, baseRequest, makeCaptureReplayContext());
+    const changedCapturePlan = buildCaptureReplayPreviewRenderGraphPlan(project, baseRequest, makeCaptureReplayContext({
+      identity: {
+        ...makeCaptureReplayContext().identity,
+        captureLogId: 'capture-log-alt',
+        replayEventIds: ['capture-event-alt']
+      },
+      filterOverrides: [{
+        ...makeCaptureReplayContext().filterOverrides[0],
+        eventId: 'capture-event-alt',
+        value: 0.5
+      }]
+    }));
+
+    expect(capturePlan.ok).toBe(true);
+    expect(changedCapturePlan.ok).toBe(true);
+    if (!capturePlan.ok || !changedCapturePlan.ok) {
+      return;
+    }
+    expect(capturePlan.plan.passes[0].cacheIdentity.key).not.toBe(livePlan.passes[0].cacheIdentity.key);
+    expect(changedCapturePlan.plan.passes[0].cacheIdentity.key).not.toBe(capturePlan.plan.passes[0].cacheIdentity.key);
+    expect(capturePlan.plan.cacheIdentity.provenance?.metadata?.captureReplay).toEqual(expect.objectContaining({
+      captureSessionId: 'capture-session-main',
+      captureLogId: 'capture-log-main'
+    }));
+  });
+
+  it('surfaces unsupported capture replay events as render graph diagnostics while planning supported overrides', () => {
+    const result = buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }, makeCaptureReplayContext({
+      skippedEvents: [{
+        eventId: 'capture-event-unsupported',
+        path: 'captureLogs.capture-log-main.events.capture-event-unsupported.kind',
+        code: 'unsupported-value',
+        message: 'Capture event "capture-event-unsupported" kind "entropy" is not supported for render replay.'
+      }]
+    }));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.plan.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'CAPTURE_REPLAY_UNSUPPORTED_VALUE',
+        severity: 'warning',
+        path: 'captureLogs.capture-log-main.events.capture-event-unsupported.kind'
+      })
+    ]));
+    expect(result.plan.passes[0].semantics.captureReplay?.filterOverrideCount).toBe(1);
   });
 
   it('routes public render command planners through FFmpeg render graph passes', () => {

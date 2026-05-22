@@ -2,15 +2,20 @@ import {
   collectProjectIntegrityIssues,
   getDefaultSequence,
   getDefaultVariant,
+  getSupportedAutomationProperties,
   getMidiMappingById,
   getSequenceById,
   getVariantById,
+  type AutomationTargetProperty,
   type CaptureEvent,
   type CaptureLog,
   type CaptureSession,
   type CompositionDeterministicSeed,
+  type FilterInstance,
   type MidiMappingFile,
   type ModulationEndpoint,
+  type ModulationMapping,
+  type ModulationMappingKind,
   type ModulationRoute,
   type NormalizedCompositionIdentity,
   type NormalizedProjectFile,
@@ -86,6 +91,51 @@ export type ResolveCaptureReplayIntentResult =
       intent?: undefined;
     };
 
+export interface CaptureReplayFilterOverrideEvent {
+  eventId: string;
+  routeId?: string;
+  seedId?: string;
+  captureTimeMs: number;
+  compositionTimeMs: number;
+  filterId: string;
+  property: AutomationTargetProperty;
+  value: number;
+  mappingKind: Extract<ModulationMappingKind, 'linear' | 'step' | 'trigger'>;
+}
+
+export interface CaptureReplaySkippedRenderEvent {
+  eventId: string;
+  path: string;
+  code: ProjectIntegrityIssue['code'];
+  message: string;
+}
+
+export interface CaptureReplayRenderState {
+  projectId: string;
+  compositionId: string;
+  sequenceId: string;
+  variantId: string;
+  captureSessionId?: string;
+  captureLogId: string;
+  replayEventIds: string[];
+  filterOverrides: CaptureReplayFilterOverrideEvent[];
+  skippedEvents: CaptureReplaySkippedRenderEvent[];
+}
+
+export type ResolveCaptureReplayRenderStateResult =
+  | {
+      ok: true;
+      intent: CaptureReplayIntent;
+      renderState: CaptureReplayRenderState;
+      diagnostics: ProjectIntegrityIssue[];
+    }
+  | {
+      ok: false;
+      diagnostics: ProjectIntegrityIssue[];
+      intent?: undefined;
+      renderState?: undefined;
+    };
+
 function compareStrings(left: string, right: string): number {
   return left.localeCompare(right);
 }
@@ -99,6 +149,14 @@ function compareReplayEvents(left: NormalizedCaptureReplayEvent, right: Normaliz
 function pushDiagnostic(issues: ProjectIntegrityIssue[], path: string, message: string): void {
   issues.push({
     code: 'missing-reference',
+    path,
+    message
+  });
+}
+
+function pushUnsupportedDiagnostic(issues: ProjectIntegrityIssue[], path: string, message: string): void {
+  issues.push({
+    code: 'unsupported-value',
     path,
     message
   });
@@ -132,6 +190,12 @@ function findRoute(project: NormalizedProjectFile, routeId: string | undefined):
 
 function findSeed(project: NormalizedProjectFile, seedId: string | undefined): CompositionDeterministicSeed | undefined {
   return seedId ? project.composition.deterministicSeeds.find((seed) => seed.id === seedId) : undefined;
+}
+
+function findFilter(project: NormalizedProjectFile, filterId: string): FilterInstance | undefined {
+  return project.filterStacks
+    .flatMap((stack) => stack.filters)
+    .find((filter) => filter.id === filterId);
 }
 
 function endpointExists(project: NormalizedProjectFile, endpoint: ModulationEndpoint): boolean {
@@ -412,6 +476,159 @@ export function resolveCaptureReplayIntent(input: ResolveCaptureReplayIntentInpu
       referencedMappings: collectReferenced(replayEvents, (event) => event.mapping),
       referencedSeeds: collectReferenced(replayEvents, (event) => event.seed),
       diagnostics: replayDiagnostics
+    }
+  };
+}
+
+function getPayloadValue(event: NormalizedCaptureReplayEvent): number | undefined {
+  const payload = event.event.payload;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return undefined;
+  }
+
+  const value = (payload as Record<string, unknown>).value;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function mapCaptureValue(value: number, mapping: ModulationMapping): number {
+  const inputMin = mapping.inputMin ?? 0;
+  const inputMax = mapping.inputMax ?? 1;
+  const outputMin = mapping.outputMin ?? 0;
+  const outputMax = mapping.outputMax ?? 1;
+
+  if (mapping.kind === 'trigger') {
+    return outputMax;
+  }
+
+  if (mapping.kind === 'step') {
+    const threshold = inputMax !== inputMin ? inputMax : inputMin;
+    return value >= threshold ? outputMax : outputMin;
+  }
+
+  const span = inputMax === inputMin ? 1 : inputMax - inputMin;
+  let ratio = (value - inputMin) / span;
+  if (mapping.clamp !== false) {
+    ratio = Math.min(1, Math.max(0, ratio));
+  }
+  if (mapping.invert === true) {
+    ratio = 1 - ratio;
+  }
+  return outputMin + ((outputMax - outputMin) * ratio);
+}
+
+function resolveRenderOverride(
+  project: NormalizedProjectFile,
+  captureLogId: string,
+  event: NormalizedCaptureReplayEvent
+): { override?: CaptureReplayFilterOverrideEvent; diagnostics: ProjectIntegrityIssue[] } {
+  const diagnostics: ProjectIntegrityIssue[] = [];
+  const path = `captureLogs.${captureLogId}.events.${event.id}`;
+
+  if (event.event.kind !== 'input' && event.event.kind !== 'modulation') {
+    pushUnsupportedDiagnostic(diagnostics, `${path}.kind`, `Capture event "${event.id}" kind "${event.event.kind}" is not supported for render replay.`);
+    return { diagnostics };
+  }
+
+  if (!event.event.target || event.event.target.kind !== 'filter') {
+    pushUnsupportedDiagnostic(diagnostics, `${path}.target`, `Capture event "${event.id}" target is not a supported filter replay target.`);
+    return { diagnostics };
+  }
+
+  const filter = findFilter(project, event.event.target.id);
+  const property = event.event.target.property;
+  if (!filter || !property) {
+    pushUnsupportedDiagnostic(diagnostics, `${path}.target`, `Capture event "${event.id}" does not resolve to a supported filter property.`);
+    return { diagnostics };
+  }
+
+  const supportedProperties = new Set(getSupportedAutomationProperties(filter.type));
+  if (!supportedProperties.has(property as AutomationTargetProperty)) {
+    pushUnsupportedDiagnostic(diagnostics, `${path}.target.property`, `Capture event "${event.id}" targets unsupported property "${property}" for filter "${filter.id}".`);
+    return { diagnostics };
+  }
+
+  if (!event.route) {
+    pushUnsupportedDiagnostic(diagnostics, `${path}.routeId`, `Capture event "${event.id}" has no modulation route mapping for render replay.`);
+    return { diagnostics };
+  }
+
+  if (event.route.mapping.kind !== 'linear' && event.route.mapping.kind !== 'step' && event.route.mapping.kind !== 'trigger') {
+    pushUnsupportedDiagnostic(diagnostics, `${path}.routeId`, `Capture event "${event.id}" mapping "${event.route.mapping.kind}" is not supported for render replay.`);
+    return { diagnostics };
+  }
+
+  const payloadValue = getPayloadValue(event);
+  if (payloadValue === undefined) {
+    pushUnsupportedDiagnostic(diagnostics, `${path}.payload.value`, `Capture event "${event.id}" payload.value must be numeric for render replay.`);
+    return { diagnostics };
+  }
+
+  return {
+    diagnostics,
+    override: {
+      eventId: event.id,
+      routeId: event.route.id,
+      seedId: event.seed?.id,
+      captureTimeMs: event.captureTimeMs,
+      compositionTimeMs: event.effectiveCompositionTimeMs,
+      filterId: filter.id,
+      property: property as AutomationTargetProperty,
+      value: mapCaptureValue(payloadValue, event.route.mapping),
+      mappingKind: event.route.mapping.kind
+    }
+  };
+}
+
+export function resolveCaptureReplayRenderState(input: ResolveCaptureReplayIntentInput): ResolveCaptureReplayRenderStateResult {
+  const intentResult = resolveCaptureReplayIntent(input);
+  if (!intentResult.ok) {
+    return intentResult;
+  }
+
+  const filterOverrides: CaptureReplayFilterOverrideEvent[] = [];
+  const skippedEvents: CaptureReplaySkippedRenderEvent[] = intentResult.intent.skippedEvents.flatMap((event) => event.diagnostics.map((diagnostic) => ({
+    eventId: event.id,
+    path: diagnostic.path,
+    code: diagnostic.code,
+    message: diagnostic.message
+  })));
+  const renderDiagnostics: ProjectIntegrityIssue[] = [];
+
+  for (const event of intentResult.intent.replayEvents) {
+    const result = resolveRenderOverride(input.project, intentResult.intent.captureLog.id, event);
+    if (result.override) {
+      filterOverrides.push(result.override);
+    }
+    renderDiagnostics.push(...result.diagnostics);
+    skippedEvents.push(...result.diagnostics.map((diagnostic) => ({
+      eventId: event.id,
+      path: diagnostic.path,
+      code: diagnostic.code,
+      message: diagnostic.message
+    })));
+  }
+
+  filterOverrides.sort((left, right) => left.compositionTimeMs - right.compositionTimeMs || compareStrings(left.eventId, right.eventId));
+
+  const diagnostics = uniqueDiagnostics([
+    ...intentResult.diagnostics,
+    ...renderDiagnostics
+  ]);
+
+  return {
+    ok: true,
+    intent: intentResult.intent,
+    diagnostics,
+    renderState: {
+      projectId: intentResult.intent.projectId,
+      compositionId: intentResult.intent.composition.id,
+      sequenceId: intentResult.intent.sequence.id,
+      variantId: intentResult.intent.variant.id,
+      captureSessionId: intentResult.intent.captureSession?.id,
+      captureLogId: intentResult.intent.captureLog.id,
+      replayEventIds: intentResult.intent.replayEvents.map((event) => event.id),
+      filterOverrides,
+      skippedEvents
     }
   };
 }
