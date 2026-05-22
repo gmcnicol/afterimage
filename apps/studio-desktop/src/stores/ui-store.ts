@@ -12,6 +12,13 @@ export type StudioTab =
   | 'export'
   | 'diagnostics';
 
+export type StudioSpace =
+  | 'archive'
+  | 'world'
+  | 'performance'
+  | 'capture'
+  | 'observatory';
+
 export interface UiNotification {
   id: string;
   message: string;
@@ -19,14 +26,19 @@ export interface UiNotification {
 }
 
 interface UiStoreState {
+  currentSpace: StudioSpace;
   currentTab: StudioTab;
   selectedAssetId?: string;
   selectedCutId?: string;
   selectedVariantId?: string;
   selectedFilterId?: string;
+  selectedTaskId?: string;
   previewPath?: string;
   notifications: UiNotification[];
+  setCurrentSpace: (space: StudioSpace) => void;
   setCurrentTab: (tab: StudioTab) => void;
+  setWorkspaceSurface: (space: StudioSpace, tab: StudioTab) => void;
+  selectTask: (taskId?: string) => void;
   selectAsset: (assetId?: string) => void;
   selectCut: (cutId?: string) => void;
   selectVariant: (variantId?: string) => void;
@@ -36,10 +48,50 @@ interface UiStoreState {
   removeNotification: (notificationId: string) => void;
 }
 
+export function getStudioSpaceForTab(tab: StudioTab): StudioSpace {
+  switch (tab) {
+    case 'project':
+    case 'catalog':
+    case 'media':
+      return 'archive';
+    case 'export':
+      return 'capture';
+    case 'diagnostics':
+      return 'observatory';
+    default:
+      return 'world';
+  }
+}
+
+export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
+  switch (space) {
+    case 'archive':
+      return 'project';
+    case 'world':
+      return 'cuts';
+    case 'performance':
+      return 'sequence';
+    case 'capture':
+      return 'export';
+    case 'observatory':
+      return 'diagnostics';
+  }
+}
+
 export const useUiStore = create<UiStoreState>((set) => ({
+  currentSpace: 'archive',
   currentTab: 'project',
   notifications: [],
-  setCurrentTab: (currentTab) => set({ currentTab }),
+  setCurrentSpace: (currentSpace) => set({
+    currentSpace,
+    currentTab: getDefaultTabForSpace(currentSpace)
+  }),
+  setCurrentTab: (currentTab) => set({
+    currentTab,
+    currentSpace: getStudioSpaceForTab(currentTab)
+  }),
+  setWorkspaceSurface: (currentSpace, currentTab) => set({ currentSpace, currentTab }),
+  selectTask: (selectedTaskId) => set({ selectedTaskId }),
   selectAsset: (selectedAssetId) => set({ selectedAssetId }),
   selectCut: (selectedCutId) => set({ selectedCutId }),
   selectVariant: (selectedVariantId) => set({ selectedVariantId }),
