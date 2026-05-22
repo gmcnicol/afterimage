@@ -38,7 +38,14 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
 
   try {
     const window = await electronApp.firstWindow();
-    await expect(window.locator('nav[aria-label="Workflow navigation"]')).toBeVisible();
+    await expect(window.getByRole('navigation', { name: 'Studio spaces' })).toBeVisible();
+    await expect(window.locator('nav[aria-label="Workflow navigation"]')).toHaveCount(0);
+    await expect(window.getByRole('button', { name: 'Archive' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'World' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Performance' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Capture' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Observatory' })).toBeVisible();
+    await expect(window.getByLabel('Async task status')).toBeVisible();
 
     const runtimeInfo = await window.evaluate(async () => {
       return await window.afterimage?.invoke('query', 'shell.getRuntimeInfo', undefined);
@@ -73,18 +80,32 @@ test('loads a project and can open Media and Export without renderer crashes', a
       pageErrors.push(error.message);
     });
 
-    await expect(window.locator('.studio-hero__headline h2')).toHaveText('Project');
-    await expect(window.locator('.studio-shell__project-title')).toHaveText('Studio Fixture');
+    const spaces = window.getByRole('navigation', { name: 'Studio spaces' });
+    await expect(window.getByLabel('Archive workspace')).toBeVisible();
+    await expect(window.getByLabel('Archive workspace').getByText('Studio Fixture')).toBeVisible();
     await expect(window.getByRole('heading', { name: 'Project Home' })).toBeVisible();
 
-    await window.locator('nav[aria-label="Workflow navigation"]').getByRole('button', { name: /^Media/ }).click();
+    await window.getByRole('button', { name: /^Media/ }).click();
     await expect(window.getByRole('heading', { name: 'Media Library' })).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Analysis Queue' })).toBeVisible();
-    await expect(window.getByRole('button', { name: /Source Alpha/ })).toBeVisible();
+    await expect(window.getByText('Score Alpha')).toBeVisible();
 
-    await window.locator('nav[aria-label="Workflow navigation"]').getByRole('button', { name: /^Export/ }).click();
-    await expect(window.getByRole('heading', { name: 'Export Profiles' })).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Render Queue' })).toBeVisible();
+    await spaces.getByRole('button', { name: 'World' }).click();
+    await expect(window.getByLabel('World workspace')).toBeVisible();
+    await expect(window.getByPlaceholder('Filter cuts by id or tag')).toBeVisible();
+
+    await spaces.getByRole('button', { name: 'Performance' }).click();
+    await expect(window.getByLabel('Performance workspace')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Sequence Builder' })).toBeVisible();
+
+    await spaces.getByRole('button', { name: 'Capture' }).click();
+    await expect(window.getByLabel('Capture workspace')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Export', exact: true })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Export Queue' })).toBeVisible();
+
+    await spaces.getByRole('button', { name: 'Observatory' }).click();
+    await expect(window.getByLabel('Observatory workspace')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
+    await expect(window.getByLabel('Async task status')).toBeVisible();
 
     expect(pageErrors).toEqual([]);
   } finally {
