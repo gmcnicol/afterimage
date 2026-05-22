@@ -22,6 +22,7 @@ import {
   rejectArchiveSegmentCandidate,
   normalizeCaptureReplayEvents,
   resolveCaptureReplayIntent,
+  resolveCaptureReplayRenderState,
   resolveCompositionIntent
 } from '../src';
 import {
@@ -113,6 +114,139 @@ describe('@afterimage/domain-operations', () => {
     expect(result.intent.referencedMappings.map((mapping) => mapping.id)).toEqual(['midi-main']);
     expect(result.intent.referencedSeeds.map((seed) => seed.id)).toEqual(['seed-composition-main']);
     expect(result.diagnostics).toEqual([]);
+  });
+
+  it('resolves the canonical fixture capture replay render state deterministically', () => {
+    const result = resolveCaptureReplayRenderState({
+      project: normalizeProject(fixtureProject),
+      captureSessionId: 'capture-session-main',
+      availableArchiveIds: ['archive-source-alpha']
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.renderState).toMatchObject({
+      projectId: 'project-core-engine-fixture',
+      compositionId: 'composition-main',
+      sequenceId: 'sequence-main',
+      variantId: 'variant-main',
+      captureSessionId: 'capture-session-main',
+      captureLogId: 'capture-log-main',
+      replayEventIds: ['capture-event-1'],
+      skippedEvents: []
+    });
+    expect(result.renderState.filterOverrides).toEqual([{
+      eventId: 'capture-event-1',
+      routeId: 'route-bloom-midi',
+      seedId: 'seed-composition-main',
+      captureTimeMs: 120,
+      compositionTimeMs: 120,
+      filterId: 'filter-main-bloom',
+      property: 'mix',
+      value: 0.9,
+      mappingKind: 'trigger'
+    }]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it('reports unsupported capture replay render semantics without applying them', () => {
+    const baseEvent = fixtureProject.captureLogs?.[0]?.events[0];
+    expect(baseEvent).toBeDefined();
+    if (!baseEvent) {
+      return;
+    }
+    const project = normalizeProject({
+      ...fixtureProject,
+      captureLogs: [
+        {
+          id: 'capture-log-main',
+          captureSessionId: 'capture-session-main',
+          events: [
+            {
+              ...baseEvent,
+              id: 'capture-event-entropy',
+              index: 0,
+              kind: 'entropy'
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-scene-target',
+              index: 1,
+              target: {
+                kind: 'scene-climate',
+                id: 'scene-main',
+                property: 'pressure'
+              }
+            },
+            {
+              ...baseEvent,
+              id: 'capture-event-nonnumeric',
+              index: 2,
+              payload: {
+                value: 'hot'
+              }
+            }
+          ]
+        }
+      ]
+    });
+    const result = resolveCaptureReplayRenderState({
+      project,
+      captureLogId: 'capture-log-main',
+      availableArchiveIds: ['archive-source-alpha']
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.renderState.filterOverrides).toEqual([]);
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'unsupported-value',
+        path: 'captureLogs.capture-log-main.events.capture-event-entropy.kind'
+      }),
+      expect.objectContaining({
+        code: 'unsupported-value',
+        path: 'captureLogs.capture-log-main.events.capture-event-scene-target.target'
+      }),
+      expect.objectContaining({
+        code: 'unsupported-value',
+        path: 'captureLogs.capture-log-main.events.capture-event-nonnumeric.payload.value'
+      })
+    ]));
+
+    const unsupportedMapping = resolveCaptureReplayRenderState({
+      project: normalizeProject({
+        ...fixtureProject,
+        composition: {
+          ...fixtureProject.composition,
+          modulationRoutes: fixtureProject.composition.modulationRoutes?.map((route) => route.id === 'route-bloom-midi'
+            ? {
+                ...route,
+                mapping: {
+                  ...route.mapping,
+                  kind: 'exponential'
+                }
+              }
+            : route)
+        }
+      }),
+      captureLogId: 'capture-log-main',
+      availableArchiveIds: ['archive-source-alpha']
+    });
+    expect(unsupportedMapping.ok).toBe(true);
+    if (unsupportedMapping.ok) {
+      expect(unsupportedMapping.renderState.filterOverrides).toEqual([]);
+      expect(unsupportedMapping.diagnostics).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          code: 'unsupported-value',
+          path: 'captureLogs.capture-log-main.events.capture-event-1.routeId'
+        })
+      ]));
+    }
   });
 
   it('resolves the canonical fixture composition intent deterministically', () => {

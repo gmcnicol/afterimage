@@ -19,6 +19,8 @@ export {
   buildRenderPlan
 } from './render-plan.js';
 export {
+  buildCaptureReplayExportRenderGraphPlan,
+  buildCaptureReplayPreviewRenderGraphPlan,
   buildExportRenderGraphPlan,
   buildPreviewRenderGraphPlan,
   buildRenderGraphPlan
