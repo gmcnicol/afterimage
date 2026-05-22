@@ -81,6 +81,9 @@ reproduced.
 
 ## UX Laws
 
+- Make the next action obvious.
+- Keep interaction responsive; debounce noisy input and run expensive work
+  asynchronously.
 - Macro over micro.
 - Progressive revelation.
 - Atmosphere-first interaction.
