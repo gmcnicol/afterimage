@@ -117,6 +117,35 @@ describe('render job artifact metadata', () => {
     });
   });
 
+  it('returns capture replay preview artifacts and diagnostics when capture IDs are supplied', async () => {
+    await withFakeFfmpeg(async () => {
+      const projectRoot = mkdtempSync(join(tmpdir(), 'afterimage-capture-preview-job-'));
+      const outputPath = join(projectRoot, '.afterimage', 'preview', 'cache.mp4');
+      const { enqueue, run } = createCapturingEnqueue();
+      const { runPreview } = createPreviewJobs({ logger: createLogger(), enqueue });
+
+      runPreview({
+        project: parseProject(fixtureProject),
+        projectRoot,
+        outputPath,
+        captureSessionId: 'capture-session-main',
+        captureLogId: 'capture-log-main',
+        availableArchiveIds: ['archive-source-alpha']
+      });
+      const result = await run();
+
+      expect(result.kind).toBe('preview');
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.diagnostics?.map((diagnostic) => diagnostic.code)).toContain('FFMPEG_PASS_COMPATIBILITY');
+      expect(result.artifacts?.[0]?.provenance.metadata).toEqual(expect.objectContaining({
+        captureReplay: expect.objectContaining({
+          captureLogId: 'capture-log-main',
+          filterOverrideCount: 1
+        })
+      }));
+    });
+  });
+
   it('returns the final export artifact for non-chunked exports', async () => {
     await withFakeFfmpeg(async () => {
       const projectRoot = mkdtempSync(join(tmpdir(), 'afterimage-export-job-'));
@@ -139,6 +168,37 @@ describe('render job artifact metadata', () => {
         role: 'export-output',
         path: `${outputBasePath}-landscape-master.mp4`,
         producedBy: 'pass:ffmpeg-render'
+      }));
+    });
+  });
+
+  it('returns capture replay export artifacts and diagnostics for non-chunked exports', async () => {
+    await withFakeFfmpeg(async () => {
+      const projectRoot = mkdtempSync(join(tmpdir(), 'afterimage-capture-export-job-'));
+      const outputBasePath = join(projectRoot, 'exports', 'render');
+      await mkdir(join(projectRoot, 'exports'), { recursive: true });
+      const { enqueue, run } = createCapturingEnqueue();
+      const { runExport } = createExportJobs({ logger: createLogger(), enqueue });
+
+      runExport({
+        project: parseProject(fixtureProject),
+        projectRoot,
+        outputPath: outputBasePath,
+        profileIds: ['landscape-master'],
+        captureSessionId: 'capture-session-main',
+        captureLogId: 'capture-log-main',
+        availableArchiveIds: ['archive-source-alpha']
+      });
+      const result = await run();
+
+      expect(result.kind).toBe('export');
+      expect(result.artifacts).toHaveLength(1);
+      expect(result.diagnostics?.map((diagnostic) => diagnostic.code)).toContain('FFMPEG_PASS_COMPATIBILITY');
+      expect(result.artifacts?.[0]?.provenance.metadata).toEqual(expect.objectContaining({
+        captureReplay: expect.objectContaining({
+          captureLogId: 'capture-log-main',
+          filterOverrideCount: 1
+        })
       }));
     });
   });

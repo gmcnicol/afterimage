@@ -25,6 +25,8 @@ import type {
   RenderGraphPlanMode,
   RenderGraphProvenance,
   RenderGraphToolchainIdentity,
+  CaptureReplayRenderContext,
+  CaptureReplayRenderGraphPlanResult,
   RenderPlan,
   RenderProfile,
   RenderRequest,
@@ -34,6 +36,10 @@ import { ensureAsset, makePlanningTools, normalizeForPlanning, resolveTimeline }
 
 function withoutUndefinedEntries<T extends Record<string, unknown>>(value: T): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value).filter(([, entryValue]) => entryValue !== undefined));
+}
+
+function compareStrings(left: string, right: string): number {
+  return left.localeCompare(right);
 }
 
 function normalizeRenderProfileForGraph(profile: RenderProfile): RenderProfile {
@@ -134,18 +140,109 @@ function createArtifactId(value: {
   return `artifact:${value.role}:${hashIdentity(value)}`;
 }
 
+function normalizeCaptureReplayContext(captureReplay: CaptureReplayRenderContext | undefined): CaptureReplayRenderContext | undefined {
+  if (!captureReplay) {
+    return undefined;
+  }
+
+  return {
+    identity: {
+      ...captureReplay.identity,
+      replayEventIds: [...captureReplay.identity.replayEventIds].sort(compareStrings)
+    },
+    filterOverrides: [...captureReplay.filterOverrides]
+      .sort((left, right) => left.compositionTimeMs - right.compositionTimeMs || compareStrings(left.eventId, right.eventId))
+      .map((override) => ({ ...override })),
+    skippedEvents: [...(captureReplay.skippedEvents ?? [])]
+      .sort((left, right) => compareStrings(left.eventId ?? '', right.eventId ?? '') || compareStrings(left.path ?? '', right.path ?? '') || compareStrings(left.code, right.code))
+      .map((event) => ({ ...event })),
+    diagnostics: [...(captureReplay.diagnostics ?? [])]
+      .sort((left, right) => compareStrings(left.eventId ?? '', right.eventId ?? '') || compareStrings(left.path ?? '', right.path ?? '') || compareStrings(left.code, right.code))
+      .map((diagnostic) => ({ ...diagnostic }))
+  };
+}
+
+function captureReplayCacheInputs(captureReplay: CaptureReplayRenderContext | undefined): string[] {
+  if (!captureReplay) {
+    return [];
+  }
+
+  return [
+    `capture-session:${captureReplay.identity.captureSessionId ?? 'none'}`,
+    `capture-log:${captureReplay.identity.captureLogId}`,
+    `capture-events:${captureReplay.identity.replayEventIds.join(',')}`,
+    `capture-overrides:${hashIdentity(captureReplay.filterOverrides)}`,
+    `capture-skipped:${hashIdentity(captureReplay.skippedEvents ?? [])}`,
+    `capture-diagnostics:${hashIdentity(captureReplay.diagnostics ?? [])}`
+  ];
+}
+
+function captureReplayMetadata(captureReplay: CaptureReplayRenderContext | undefined): Record<string, unknown> | undefined {
+  if (!captureReplay) {
+    return undefined;
+  }
+
+  return {
+    captureSessionId: captureReplay.identity.captureSessionId,
+    captureLogId: captureReplay.identity.captureLogId,
+    replayEventIds: captureReplay.identity.replayEventIds,
+    filterOverrideCount: captureReplay.filterOverrides.length,
+    skippedEventCount: captureReplay.skippedEvents?.length ?? 0
+  };
+}
+
+function toCaptureReplayDiagnostics(
+  captureReplay: CaptureReplayRenderContext | undefined,
+  operationNodeId: string,
+  passId: string,
+  requirementId: string
+): RenderGraphCapabilityDiagnostic[] {
+  if (!captureReplay) {
+    return [];
+  }
+
+  const sources = [
+    ...(captureReplay.diagnostics ?? []),
+    ...(captureReplay.skippedEvents ?? [])
+  ];
+  const seen = new Set<string>();
+
+  return sources.flatMap((source, index) => {
+    const key = `${source.path ?? ''}:${source.code}:${source.message}`;
+    if (seen.has(key)) {
+      return [];
+    }
+    seen.add(key);
+
+    return [{
+      id: `diagnostic:capture-replay:${hashIdentity({ index, key })}`,
+      severity: source.code === 'missing-reference' ? 'error' : 'warning',
+      code: `CAPTURE_REPLAY_${source.code.toUpperCase().replace(/-/g, '_')}`,
+      message: source.message,
+      path: source.path,
+      nodeId: operationNodeId,
+      passId,
+      requirementId
+    } satisfies RenderGraphCapabilityDiagnostic];
+  });
+}
+
 export function buildRenderGraphPlan(
   project: ProjectFile | NormalizedProjectFile,
   request: PreviewRequest | ExportRequest | RenderRequest,
   profile: RenderProfile,
   mode: RenderGraphPlanMode,
-  tools?: ResolvedFfmpegTools
+  tools?: ResolvedFfmpegTools,
+  captureReplay?: CaptureReplayRenderContext
 ): RenderGraphPlan {
   const normalizedProject = normalizeForPlanning(project);
+  const normalizedCaptureReplay = normalizeCaptureReplayContext(captureReplay);
   const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
   const resolvedTools = makePlanningTools(tools);
   const graphProfile = normalizeRenderProfileForGraph(profile);
-  const commandPlan = buildRenderCommand(normalizedProject, variant, sequenceId, request, graphProfile, resolvedTools) as RenderPlan | PreviewPlan;
+  const commandPlan = buildRenderCommand(normalizedProject, variant, sequenceId, request, graphProfile, resolvedTools, {
+    captureReplay: normalizedCaptureReplay
+  }) as RenderPlan | PreviewPlan;
   const inputs = collectRenderInputs(normalizedProject, variant);
   const role = getArtifactRole(mode);
   const toolchain = toToolchainIdentity(resolvedTools);
@@ -169,6 +266,7 @@ export function buildRenderGraphPlan(
     `variant:${variant.id}`,
     `profile:${hashIdentity(graphProfile)}`,
     `toolchain:${hashIdentity(toolchain)}`,
+    ...captureReplayCacheInputs(normalizedCaptureReplay),
     ...inputReferences.map((input) => `asset:${input.assetId}:${input.path}`)
   ];
   const reusableCommand = normalizeCommandForReusablePass(commandPlan.command, request.outputPath);
@@ -183,6 +281,7 @@ export function buildRenderGraphPlan(
     'capture-logs',
     'accepted-archive-references',
     'rejected-archive-references',
+    'capture-replay-context',
     'render-command-semantics',
     'ffmpeg-toolchain'
   ];
@@ -193,9 +292,11 @@ export function buildRenderGraphPlan(
     project: normalizedProject,
     profile: graphProfile,
     inputs: inputReferences,
+    captureReplay: normalizedCaptureReplay,
     command: reusableCommand,
     toolchain
   };
+  const captureMetadata = captureReplayMetadata(normalizedCaptureReplay);
   const baseProvenance: RenderGraphProvenance = {
     projectId: normalizedProject.id,
     sequenceId,
@@ -204,7 +305,8 @@ export function buildRenderGraphPlan(
     toolchain,
     metadata: {
       profile: graphProfile,
-      inputAssetIds: inputReferences.map((input) => input.assetId)
+      inputAssetIds: inputReferences.map((input) => input.assetId),
+      ...(captureMetadata ? { captureReplay: captureMetadata } : {})
     }
   };
   const planCacheIdentity = createCacheIdentity('render-graph-plan', cacheInputs, baseCacheValue, baseInvalidatesOn, baseProvenance);
@@ -251,7 +353,8 @@ export function buildRenderGraphPlan(
     parentCacheKeys: [passCacheIdentity.key],
     metadata: {
       profile: graphProfile,
-      outputPath: request.outputPath
+      outputPath: request.outputPath,
+      ...(captureMetadata ? { captureReplay: captureMetadata } : {})
     }
   };
   const artifactCacheIdentity = createCacheIdentity('render-graph-artifact', [passCacheIdentity.key, `output:${request.outputPath}`], {
@@ -267,7 +370,11 @@ export function buildRenderGraphPlan(
   };
   const requirementId = 'requirement:ffmpeg-render';
   const diagnosticId = 'diagnostic:ffmpeg-pass-boundary';
-  const inputNodeIds = inputReferences.map((input) => input.id);
+  const captureReplayNodeId = normalizedCaptureReplay ? `capture-replay:${normalizedCaptureReplay.identity.captureLogId}` : undefined;
+  const inputNodeIds = [
+    ...inputReferences.map((input) => input.id),
+    ...(captureReplayNodeId ? [captureReplayNodeId] : [])
+  ];
   const nodes: RenderGraphNode[] = [
     {
       id: `project:${normalizedProject.id}`,
@@ -307,6 +414,16 @@ export function buildRenderGraphPlan(
         inputIndex: input.inputIndex
       })
     })),
+    ...(normalizedCaptureReplay && captureReplayNodeId ? [{
+      id: captureReplayNodeId,
+      kind: 'capture-replay' as const,
+      label: normalizedCaptureReplay.identity.captureLogId,
+      metadata: withoutUndefinedEntries({
+        ...captureMetadata,
+        filterOverrides: normalizedCaptureReplay.filterOverrides,
+        skippedEvents: normalizedCaptureReplay.skippedEvents
+      })
+    }] : []),
     {
       id: operationNodeId,
       kind: 'operation',
@@ -315,7 +432,8 @@ export function buildRenderGraphPlan(
       metadata: {
         backend: 'ffmpeg',
         mode,
-        usesMaskTransitions: usesMaskTransitions(variant)
+        usesMaskTransitions: usesMaskTransitions(variant),
+        ...(captureMetadata ? { captureReplay: captureMetadata } : {})
       }
     },
     {
@@ -358,6 +476,13 @@ export function buildRenderGraphPlan(
         loop: input.loop
       }
     })),
+    ...(captureReplayNodeId ? [{
+      id: `edge:${captureReplayNodeId}:${operationNodeId}`,
+      from: captureReplayNodeId,
+      to: operationNodeId,
+      kind: 'capture-input' as const,
+      metadata: captureMetadata
+    }] : []),
     {
       id: `edge:${operationNodeId}:${artifactId}`,
       from: operationNodeId,
@@ -394,7 +519,8 @@ export function buildRenderGraphPlan(
       nodeId: operationNodeId,
       passId: 'pass:ffmpeg-render',
       requirementId
-    }
+    },
+    ...toCaptureReplayDiagnostics(normalizedCaptureReplay, operationNodeId, 'pass:ffmpeg-render', requirementId)
   ];
   const artifacts: RenderGraphArtifact[] = [
     {
@@ -422,7 +548,7 @@ export function buildRenderGraphPlan(
       outputArtifactIds: [artifactId],
       command: commandPlan.command,
       requirements: [requirementId],
-      diagnostics: [diagnosticId],
+      diagnostics: diagnostics.map((diagnostic) => diagnostic.id),
       cacheIdentity: passCacheIdentity,
       invalidatesOn: baseInvalidatesOn,
       provenance: {
@@ -434,7 +560,16 @@ export function buildRenderGraphPlan(
         profile: graphProfile,
         durationMs,
         usesMaskTransitions: usesMaskTransitions(variant),
-        chunkedExportRecommended: mode === 'export' ? shouldUseChunkedExport(normalizedProject, variant, graphProfile) : false
+        chunkedExportRecommended: mode === 'export' ? shouldUseChunkedExport(normalizedProject, variant, graphProfile) : false,
+        ...(normalizedCaptureReplay ? {
+          captureReplay: {
+            captureSessionId: normalizedCaptureReplay.identity.captureSessionId,
+            captureLogId: normalizedCaptureReplay.identity.captureLogId,
+            replayEventIds: normalizedCaptureReplay.identity.replayEventIds,
+            filterOverrideCount: normalizedCaptureReplay.filterOverrides.length,
+            skippedEventCount: normalizedCaptureReplay.skippedEvents?.length ?? 0
+          }
+        } : {})
       }
     }
   ];
@@ -478,4 +613,53 @@ export function buildExportRenderGraphPlan(
   tools?: ResolvedFfmpegTools
 ): RenderGraphPlan {
   return buildRenderGraphPlan(project, request, toRenderProfile(request, 'export'), 'export', tools);
+}
+
+function captureReplayPlanningFailure(error: unknown): CaptureReplayRenderGraphPlanResult {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    ok: false,
+    diagnostics: [{
+      id: `diagnostic:capture-replay-planning:${hashIdentity(message)}`,
+      severity: 'error',
+      code: 'CAPTURE_REPLAY_PLANNING_FAILED',
+      message
+    }]
+  };
+}
+
+export function buildCaptureReplayPreviewRenderGraphPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: PreviewRequest,
+  captureReplay: CaptureReplayRenderContext,
+  tools?: ResolvedFfmpegTools
+): CaptureReplayRenderGraphPlanResult {
+  try {
+    const plan = buildRenderGraphPlan(project, request, toRenderProfile(request, 'preview'), 'preview', tools, captureReplay);
+    return {
+      ok: true,
+      plan,
+      diagnostics: plan.diagnostics
+    };
+  } catch (error) {
+    return captureReplayPlanningFailure(error);
+  }
+}
+
+export function buildCaptureReplayExportRenderGraphPlan(
+  project: ProjectFile | NormalizedProjectFile,
+  request: ExportRequest,
+  captureReplay: CaptureReplayRenderContext,
+  tools?: ResolvedFfmpegTools
+): CaptureReplayRenderGraphPlanResult {
+  try {
+    const plan = buildRenderGraphPlan(project, request, toRenderProfile(request, 'export'), 'export', tools, captureReplay);
+    return {
+      ok: true,
+      plan,
+      diagnostics: plan.diagnostics
+    };
+  } catch (error) {
+    return captureReplayPlanningFailure(error);
+  }
 }

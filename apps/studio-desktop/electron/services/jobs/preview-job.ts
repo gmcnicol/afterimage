@@ -1,5 +1,6 @@
 import { rename, rm } from 'node:fs/promises';
 import {
+  buildCaptureReplayPreviewRenderGraphPlan,
   buildPreviewRenderGraphPlan,
   executeCommandSpec,
   getTargetRenderDurationMs,
@@ -15,8 +16,9 @@ import {
 import type { DesktopJob, PreviewRenderAgentInput, RunPreviewRequest } from '@afterimage/studio-contracts';
 import type { Logger } from '../logger.js';
 import { ensureArtifactDirs } from './artifacts.js';
+import { hasCaptureReplaySelector, requireCaptureReplayPlan, resolveStudioCaptureReplayContext } from './capture-replay.js';
 import { createProgressRunner } from './progress.js';
-import { toStudioRenderArtifact } from './render-artifacts.js';
+import { toStudioRenderArtifact, toStudioRenderDiagnostic } from './render-artifacts.js';
 import type { EnqueueJob } from './types.js';
 
 function resolveTargetRenderDurationMs(project: NormalizedProjectFile, variantId?: string, sequenceId?: string): number {
@@ -43,11 +45,17 @@ export function createPreviewJobs({ logger, enqueue }: { logger: Logger; enqueue
         await ensureArtifactDirs(agentInput.projectRoot);
         const tempOutputPath = `${agentInput.outputPath}.rendering-${Date.now()}.mp4`;
         const durationMs = resolveTargetRenderDurationMs(agentInput.project, agentInput.variantId, agentInput.sequenceId);
-        const plan = buildPreviewRenderGraphPlan(agentInput.project, {
+        const captureReplay = hasCaptureReplaySelector(agentInput)
+          ? resolveStudioCaptureReplayContext(agentInput)
+          : undefined;
+        const previewRequest = {
           outputPath: tempOutputPath,
           sequenceId: agentInput.sequenceId,
           variantId: agentInput.variantId
-        }, tools);
+        };
+        const plan = captureReplay
+          ? requireCaptureReplayPlan(buildCaptureReplayPreviewRenderGraphPlan(agentInput.project, previewRequest, captureReplay, tools))
+          : buildPreviewRenderGraphPlan(agentInput.project, previewRequest, tools);
         const pass = plan.passes[0];
         report('Rendering preview cache', 0.02);
         try {
@@ -68,15 +76,19 @@ export function createPreviewJobs({ logger, enqueue }: { logger: Logger; enqueue
           throw error;
         }
         await logger.log('info', 'Rendered preview cache.', agentInput.outputPath);
-        const finalPlan = buildPreviewRenderGraphPlan(agentInput.project, {
+        const finalRequest = {
           outputPath: agentInput.outputPath,
           sequenceId: agentInput.sequenceId,
           variantId: agentInput.variantId
-        }, tools);
+        };
+        const finalPlan = captureReplay
+          ? requireCaptureReplayPlan(buildCaptureReplayPreviewRenderGraphPlan(agentInput.project, finalRequest, captureReplay, tools))
+          : buildPreviewRenderGraphPlan(agentInput.project, finalRequest, tools);
         return {
           kind: 'preview',
           outputPath: agentInput.outputPath,
-          artifacts: finalPlan.artifacts.map(toStudioRenderArtifact)
+          artifacts: finalPlan.artifacts.map(toStudioRenderArtifact),
+          ...(captureReplay ? { diagnostics: finalPlan.diagnostics.map(toStudioRenderDiagnostic) } : {})
         };
       }
     });
