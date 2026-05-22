@@ -21,6 +21,50 @@ contracts: composition, scene/layer hierarchy, modulation, entropy, archive,
 capture, render graph, and backend capability semantics. UI state may help the
 user inspect and perform. UI state must not become hidden composition state.
 
+## Non-Negotiable UX Rules
+
+### Make The Next Action Obvious
+
+Every Studio space must make it really obvious what the user can or should do
+next.
+
+At any moment, the interface should expose:
+
+- current workspace and mode
+- current world, scene, capture, or artifact state
+- one dominant valid primary action
+- relevant secondary actions
+- what happens after the primary action
+- why any expected action is unavailable
+
+If users need to infer the next step from layout, hidden logs, disabled buttons,
+or institutional knowledge, the screen is not ready for implementation.
+
+### Keep Interaction Responsive
+
+Studio must feel responsive even when media, render planning, archive sidecars,
+diagnostics, preview generation, and export work are busy.
+
+UI interactions should update immediately where they affect local selection,
+focus, navigation, toggles, disclosure, command intent, or temporary control
+state. Expensive work should be asynchronous and report progress through jobs,
+workers, Pico services, cached planning, or staged preview updates.
+
+High-frequency interaction paths must be debounced, throttled, coalesced, or
+scheduled as appropriate:
+
+- search and filter inputs
+- sliders and macro controls
+- scrubbers and timeline movement
+- controller or MIDI input
+- preview invalidation
+- diagnostics refresh
+- resize and layout recalculation
+
+The UI should show pending, running, complete, failed, canceled, and retryable
+states when work leaves the immediate interaction path. The user should never
+mistake background work for a frozen app.
+
 ## Current V1 Anchor
 
 The current repository already defines:
@@ -43,7 +87,54 @@ The current repository already defines:
 
 ## UX Laws
 
-### 1. Keep The User Near The World
+### 1. Make The Next Action Obvious
+
+Each space should make the primary next step unmistakable.
+
+Rationale: Afterimage is an instrument for active composition and performance.
+Unclear next steps break flow faster than imperfect visual styling.
+
+Good examples:
+
+- Archive Space highlights accepted candidates and the next action to send them
+  to World Space
+- World Space shows the selected scene, render readiness, and primary action to
+  rehearse, capture, or resolve blockers
+- Performance Space keeps capture arm, record, recovery, and scene activation
+  states visible
+- Capture Space makes replay, retry, export, and artifact review paths explicit
+
+Anti-patterns:
+
+- multiple competing primary buttons
+- disabled actions with no reason
+- empty states that only describe the problem
+- screens that require reading logs to know what to do
+
+### 2. Keep Interaction Responsive
+
+Interaction stays immediate; work happens asynchronously.
+
+Rationale: Studio must feel like a playable instrument and review surface, not
+a blocking batch tool.
+
+Good examples:
+
+- debounced search and filters
+- slider movement updates local intent immediately and schedules expensive
+  preview work
+- render planning, probing, preview generation, and export run through jobs
+- progress, cancellation, retry, and completion states are visible
+- navigation and inspection remain usable while background work runs
+
+Anti-patterns:
+
+- blocking the whole workspace while probing media
+- recalculating expensive previews on every keypress or slider tick
+- hiding queued work behind a spinner with no progress or recovery
+- allowing rapid input to produce stale or out-of-order state
+
+### 3. Keep The User Near The World
 
 The main experience is the world surface, not a dashboard.
 
@@ -62,7 +153,7 @@ Anti-patterns:
 - controls that bury the canvas
 - route changes that feel like leaving the world
 
-### 2. Macro Over Micro
+### 4. Macro Over Micro
 
 Primary controls steer pressure, cohesion, entropy, memory, emergence,
 transition bias, affinity, and recovery.
@@ -84,7 +175,7 @@ Anti-patterns:
 - unbounded sliders
 - exposing shader uniforms or FFmpeg filter names as creative controls
 
-### 3. Atmosphere First
+### 5. Atmosphere First
 
 Scenes are climates. Archive metadata, aesthetic packs, materials, and
 behaviours should be presented through atmosphere and intent before files and
@@ -102,7 +193,7 @@ Anti-patterns:
 - clip bins as the primary model
 - treating atmosphere as loose labels with no semantic mapping
 
-### 4. Progressive Revelation
+### 6. Progressive Revelation
 
 Show the smallest useful surface first, then let the user drill into detail.
 
@@ -118,7 +209,7 @@ Anti-patterns:
 - graph spaghetti editor
 - inspector that exposes every field at once
 
-### 5. Deterministic Trust Is Visible
+### 7. Deterministic Trust Is Visible
 
 The user must always know whether state is live, captured, preview, final,
 unsupported, stale, or dirty.
@@ -137,7 +228,7 @@ Anti-patterns:
 - treating preview as final
 - allowing uncaptured performance gestures to look replayable
 
-### 6. Capture Is A First-Class State
+### 8. Capture Is A First-Class State
 
 Capture is a replayable traversal, not a video file.
 
@@ -153,7 +244,7 @@ Anti-patterns:
 - job queue status replacing semantic capture state
 - failed export recovery hidden behind backend logs
 
-### 7. Thin UI, Strong Meaning
+### 9. Thin UI, Strong Meaning
 
 The interface should be dense, legible, and purposeful. It should not become
 ornamental, marketing-like, or bloated.
@@ -171,7 +262,7 @@ Anti-patterns:
 - repeated explanatory copy inside the app
 - controls that look important but do not map to Core state
 
-### 8. Timeline Is Support, Not Metaphor
+### 10. Timeline Is Support, Not Metaphor
 
 The timeline provides time, cues, scene changes, transitions, capture events,
 and export ranges. It is not the product metaphor.
@@ -188,7 +279,7 @@ Anti-patterns:
 - frame-by-frame micromanagement as the primary workflow
 - clip placement hiding scene climate
 
-### 9. Warnings Are Product State
+### 11. Warnings Are Product State
 
 Unsupported, stale, approximate, missing, and non-deterministic states must be
 visible in the relevant workspace.
@@ -205,7 +296,7 @@ Anti-patterns:
 - disabled controls with no reason
 - silent fallbacks in final export
 
-### 10. Context Moves Between Spaces
+### 12. Context Moves Between Spaces
 
 Switching spaces preserves project, world, scene, capture state, active output
 target, and relevant selection.
@@ -226,6 +317,10 @@ Anti-patterns:
 
 Future screens, components, and Penpot files should be reviewed against:
 
+- Is it really obvious what the user should do next?
+- Does it stay responsive while expensive work runs asynchronously?
+- Are high-frequency interactions debounced, throttled, coalesced, or
+  scheduled?
 - Does it map to Core meaning?
 - Is live/captured/preview/final state clear?
 - Is the primary action obvious and valid?
@@ -786,6 +881,14 @@ Loading states should name the real work:
 - replaying capture
 - exporting final artifact
 
+Async work states should keep the surrounding workspace responsive:
+
+- local selection and navigation remain interactive
+- queued work is visible
+- progress is visible when measurable
+- cancellation or retry is available where safe
+- stale results cannot overwrite newer user intent
+
 Failure states should preserve authored intent and provide recovery:
 
 - retry
@@ -820,6 +923,9 @@ This document does not introduce:
 A Studio UX addition should be able to answer:
 
 - Which workspace owns this moment?
+- What should the user do next?
+- Does the UI remain responsive while work runs?
+- Which interactions need debounce, throttle, coalescing, or scheduling?
 - Which Core contract does this control map to?
 - Is the state live, captured, preview, or final?
 - Is the action valid right now?
