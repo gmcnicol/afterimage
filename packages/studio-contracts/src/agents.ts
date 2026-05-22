@@ -11,6 +11,17 @@ export interface StudioRenderArtifact {
   provenance: Record<string, unknown>;
 }
 
+export interface StudioRenderDiagnostic {
+  id: string;
+  severity: 'info' | 'warning' | 'error';
+  code: string;
+  message: string;
+  path?: string;
+  nodeId?: string;
+  passId?: string;
+  requirementId?: string;
+}
+
 export interface AnalysisAgentInput {
   project: NormalizedProjectFile;
   projectRoot: string;
@@ -28,12 +39,16 @@ export interface PreviewRenderAgentInput {
   outputPath: string;
   sequenceId?: string;
   variantId?: string;
+  captureSessionId?: string;
+  captureLogId?: string;
+  availableArchiveIds?: string[];
 }
 
 export interface PreviewRenderAgentOutput {
   kind: 'preview';
   outputPath: string;
   artifacts?: StudioRenderArtifact[];
+  diagnostics?: StudioRenderDiagnostic[];
 }
 
 export interface ExportRenderAgentInput extends PreviewRenderAgentInput {
@@ -44,6 +59,7 @@ export interface ExportRenderAgentOutput {
   kind: 'export';
   outputPath: string;
   artifacts?: StudioRenderArtifact[];
+  diagnostics?: StudioRenderDiagnostic[];
 }
 
 export interface LibraryScanAgentInput {
@@ -71,6 +87,7 @@ interface StudioAgentOutputFields {
   project?: NormalizedProjectFile;
   outputPath?: string;
   artifacts?: StudioRenderArtifact[];
+  diagnostics?: StudioRenderDiagnostic[];
   rootId?: string;
   assetIds?: string[];
 }

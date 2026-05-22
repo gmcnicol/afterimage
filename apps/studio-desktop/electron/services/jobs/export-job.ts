@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { getExportProfileById } from '@afterimage/export-profiles';
 import {
   buildConcatList,
+  buildCaptureReplayExportRenderGraphPlan,
   buildExportRenderGraphPlan,
   buildFinalizeRenderPlan,
   buildRenderGraphPlan,
@@ -11,6 +12,7 @@ import {
   resolveFfmpegTools,
   shouldUseChunkedExport as shouldUseCompilerChunkedExport,
   type RenderGraphArtifact,
+  type RenderGraphCapabilityDiagnostic,
   type RenderProfile
 } from '@afterimage/ffmpeg-compiler';
 import {
@@ -25,8 +27,9 @@ import {
 import type { DesktopJob, ExportRenderAgentInput, RunExportRequest } from '@afterimage/studio-contracts';
 import type { Logger } from '../logger.js';
 import { ensureArtifactDirs, resolveAvailableOutputPath } from './artifacts.js';
+import { hasCaptureReplaySelector, requireCaptureReplayPlan, resolveStudioCaptureReplayContext } from './capture-replay.js';
 import { createProgressRunner } from './progress.js';
-import { toStudioRenderArtifact } from './render-artifacts.js';
+import { toStudioRenderArtifact, toStudioRenderDiagnostic } from './render-artifacts.js';
 import type { EnqueueJob } from './types.js';
 
 function resolveClipOutgoingTransitionMs(clip: SequenceClip, nextClip: SequenceClip | undefined): number {
@@ -126,6 +129,9 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
         outputPath: input.outputPath,
         sequenceId: input.sequenceId,
         variantId: input.variantId,
+        captureSessionId: input.captureSessionId,
+        captureLogId: input.captureLogId,
+        availableArchiveIds: input.availableArchiveIds,
         profileId
       };
 
@@ -157,15 +163,23 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
           const durationMs = getTargetRenderDurationMs(agentInput.project, variant);
           const shouldChunk = shouldUseChunkedExportForVariant(agentInput.project, variant, profile);
           const artifacts: RenderGraphArtifact[] = [];
+          let renderDiagnostics: RenderGraphCapabilityDiagnostic[] = [];
+          const captureReplay = hasCaptureReplaySelector(agentInput)
+            ? resolveStudioCaptureReplayContext(agentInput)
+            : undefined;
 
           if (!shouldChunk) {
-            const plan = buildExportRenderGraphPlan(agentInput.project, {
+            const exportRequest = {
               outputPath,
               profile,
               sequenceId: sequence.id,
               variantId: variant.id
-            }, tools);
+            };
+            const plan = captureReplay
+              ? requireCaptureReplayPlan(buildCaptureReplayExportRenderGraphPlan(agentInput.project, exportRequest, captureReplay, tools))
+              : buildExportRenderGraphPlan(agentInput.project, exportRequest, tools);
             const pass = plan.passes[0];
+            renderDiagnostics = plan.diagnostics;
             report(`Rendering ${profile.name}`, 0.02);
             await executeCommandSpec(pass.command, {
               signal,
@@ -179,6 +193,9 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
             });
             artifacts.push(...plan.artifacts);
           } else {
+            if (captureReplay) {
+              throw new Error('Capture replay export planning does not support chunked export.');
+            }
             const chunkRanges = splitClipIndicesForChunkedExport(variant, {
               maxDurationMs: 90_000,
               maxSegments: 36
@@ -259,7 +276,8 @@ export function createExportJobs({ logger, enqueue }: { logger: Logger; enqueue:
           return {
             kind: 'export',
             outputPath,
-            artifacts: artifacts.map(toStudioRenderArtifact)
+            artifacts: artifacts.map(toStudioRenderArtifact),
+            ...(captureReplay ? { diagnostics: renderDiagnostics.map(toStudioRenderDiagnostic) } : {})
           };
         }
       });

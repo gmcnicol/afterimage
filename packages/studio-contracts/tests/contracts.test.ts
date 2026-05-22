@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import type { NormalizedProjectFile } from '@afterimage/project-model';
 import type {
   StudioAgentInput,
   StudioAgentOutput,
   StudioCommandMap,
   StudioEventMap,
   StudioQueryMap,
-  StudioRenderArtifact
+  StudioRenderArtifact,
+  StudioRenderDiagnostic
 } from '../src/index.js';
 
 describe('@afterimage/studio-contracts', () => {
@@ -31,18 +33,34 @@ describe('@afterimage/studio-contracts', () => {
       }
     } satisfies StudioRenderArtifact;
     const input = {
-      agent: 'library-scan',
-      rootId: 'root-1',
-      rootPath: '/media'
+      agent: 'preview-render',
+      project: {} as NormalizedProjectFile,
+      projectRoot: '/project',
+      outputPath: artifact.path,
+      captureSessionId: 'capture-session-main',
+      captureLogId: 'capture-log-main',
+      availableArchiveIds: ['archive-source-alpha']
     } satisfies StudioAgentInput;
+    const diagnostic = {
+      id: 'diagnostic:capture-replay:abc',
+      severity: 'warning',
+      code: 'CAPTURE_REPLAY_UNSUPPORTED_VALUE',
+      message: 'Unsupported capture replay event.',
+      path: 'captureLogs.capture-log-main.events.capture-event-unsupported.kind',
+      nodeId: 'operation:preview:variant-main',
+      passId: 'pass:ffmpeg-render',
+      requirementId: 'requirement:ffmpeg-render'
+    } satisfies StudioRenderDiagnostic;
     const output = {
       kind: 'preview',
       outputPath: artifact.path,
-      artifacts: [artifact]
+      artifacts: [artifact],
+      diagnostics: [diagnostic]
     } satisfies StudioAgentOutput;
 
-    expect(input.agent).toBe('library-scan');
+    expect(input.agent).toBe('preview-render');
     expect(output.kind).toBe('preview');
     expect(output.artifacts?.[0]?.cacheKey).toBe('cache-key');
+    expect(output.diagnostics?.[0]?.code).toBe('CAPTURE_REPLAY_UNSUPPORTED_VALUE');
   });
 });

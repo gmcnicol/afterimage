@@ -144,6 +144,7 @@ export type RenderGraphNodeKind =
   | 'project'
   | 'sequence'
   | 'variant'
+  | 'capture-replay'
   | 'input'
   | 'operation'
   | 'artifact';
@@ -151,6 +152,7 @@ export type RenderGraphNodeKind =
 export type RenderGraphEdgeKind =
   | 'identity'
   | 'timeline'
+  | 'capture-input'
   | 'media-input'
   | 'artifact-output';
 
@@ -262,10 +264,59 @@ export interface RenderGraphCapabilityDiagnostic {
   severity: RenderGraphCapabilityDiagnosticSeverity;
   code: string;
   message: string;
+  path?: string;
   nodeId?: string;
   passId?: string;
   requirementId?: string;
 }
+
+export interface CaptureReplayIdentity {
+  projectId: string;
+  compositionId: string;
+  sequenceId: string;
+  variantId: string;
+  captureLogId: string;
+  captureSessionId?: string;
+  replayEventIds: string[];
+}
+
+export interface CaptureReplayFilterOverride {
+  eventId: string;
+  routeId?: string;
+  seedId?: string;
+  captureTimeMs: number;
+  compositionTimeMs: number;
+  filterId: string;
+  property: string;
+  value: number;
+  mappingKind: 'linear' | 'step' | 'trigger';
+}
+
+export interface CaptureReplayDiagnosticSource {
+  eventId?: string;
+  path?: string;
+  code: string;
+  message: string;
+}
+
+export interface CaptureReplayRenderContext {
+  identity: CaptureReplayIdentity;
+  filterOverrides: CaptureReplayFilterOverride[];
+  skippedEvents?: CaptureReplayDiagnosticSource[];
+  diagnostics?: CaptureReplayDiagnosticSource[];
+}
+
+export type CaptureReplayRenderGraphPlanResult =
+  | {
+      ok: true;
+      plan: RenderGraphPlan;
+      diagnostics: RenderGraphCapabilityDiagnostic[];
+    }
+  | {
+      ok: false;
+      diagnostics: RenderGraphCapabilityDiagnostic[];
+      plan?: undefined;
+    };
 
 export interface RenderGraphPass {
   id: string;
@@ -287,6 +338,13 @@ export interface RenderGraphPass {
     durationMs: number;
     usesMaskTransitions: boolean;
     chunkedExportRecommended: boolean;
+    captureReplay?: {
+      captureSessionId?: string;
+      captureLogId: string;
+      replayEventIds: string[];
+      filterOverrideCount: number;
+      skippedEventCount: number;
+    };
   };
 }
 

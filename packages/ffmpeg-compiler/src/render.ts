@@ -17,6 +17,7 @@ import {
 } from '@afterimage/project-model';
 import type {
   CommandSpec,
+  CaptureReplayRenderContext,
   ExportRequest,
   FinalizeRenderPlan,
   FinalizeRenderRequest,
@@ -121,6 +122,43 @@ function applyAutomationToFilter(project: NormalizedProjectFile, filter: FilterI
   return next;
 }
 
+interface RenderCommandOptions {
+  captureReplay?: CaptureReplayRenderContext;
+}
+
+function applyCaptureReplayToFilter(filter: FilterInstance, timeMs: number, options?: RenderCommandOptions): FilterInstance {
+  const overrides = (options?.captureReplay?.filterOverrides ?? [])
+    .filter((override) => override.filterId === filter.id && override.compositionTimeMs <= timeMs)
+    .sort((left, right) => left.compositionTimeMs - right.compositionTimeMs || left.eventId.localeCompare(right.eventId));
+  const latestByProperty = new Map<string, typeof overrides[number]>();
+
+  for (const override of overrides) {
+    latestByProperty.set(override.property, override);
+  }
+
+  if (latestByProperty.size === 0) {
+    return filter;
+  }
+
+  let next = {
+    ...filter,
+    parameters: { ...(filter.parameters ?? {}) }
+  };
+
+  for (const [property, override] of latestByProperty) {
+    if (property === 'mix') {
+      next.mix = override.value;
+    } else {
+      next.parameters = {
+        ...next.parameters,
+        [property]: override.value
+      };
+    }
+  }
+
+  return next;
+}
+
 function compileFilterExpression(filter: FilterInstance): string {
   const definition = getFilterDefinition(filter.type);
   if (!definition) {
@@ -180,9 +218,10 @@ interface ClipRenderSegment {
   filterExpressions: string[];
 }
 
-function collectClipRenderSegments(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip): ClipRenderSegment[] {
+function collectClipRenderSegments(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip, options?: RenderCommandOptions): ClipRenderSegment[] {
   const filters = collectAuthoredClipFilters(project, variant, clip);
   const boundaryTimes = new Set<number>([clip.timelineStartMs, clip.timelineStartMs + clip.durationMs]);
+  const filterIds = new Set(filters.map((filter) => filter.id));
 
   for (const filter of filters) {
     for (const laneId of filter.automationLaneIds ?? []) {
@@ -198,6 +237,16 @@ function collectClipRenderSegments(project: NormalizedProjectFile, variant: Vari
           boundaryTimes.add(keyframe.timeMs);
         }
       }
+    }
+  }
+
+  for (const override of options?.captureReplay?.filterOverrides ?? []) {
+    if (
+      filterIds.has(override.filterId)
+      && override.compositionTimeMs > clip.timelineStartMs
+      && override.compositionTimeMs < clip.timelineStartMs + clip.durationMs
+    ) {
+      boundaryTimes.add(override.compositionTimeMs);
     }
   }
 
@@ -218,6 +267,7 @@ function collectClipRenderSegments(project: NormalizedProjectFile, variant: Vari
       durationMs: segmentDurationMs,
       filterExpressions: filters
         .map((filter) => applyAutomationToFilter(project, filter, sampleTimeMs))
+        .map((filter) => applyCaptureReplayToFilter(filter, sampleTimeMs, options))
         .filter((filter) => filter.enabled !== false)
         .map(compileFilterExpression)
     });
@@ -372,9 +422,10 @@ export function getTargetRenderDurationMs(project: NormalizedProjectFile, varian
     ?? (usesMaskTransitions(variant) ? getRenderedVariantDurationMs(variant) : getVariantDuration(variant));
 }
 
-function getClipFilterExpressionsAtTime(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip, timeMs: number): string[] {
+function getClipFilterExpressionsAtTime(project: NormalizedProjectFile, variant: Variant, clip: SequenceClip, timeMs: number, options?: RenderCommandOptions): string[] {
   return collectAuthoredClipFilters(project, variant, clip)
     .map((filter) => applyAutomationToFilter(project, filter, timeMs))
+    .map((filter) => applyCaptureReplayToFilter(filter, timeMs, options))
     .filter((filter) => filter.enabled !== false)
     .map(compileFilterExpression);
 }
@@ -499,7 +550,8 @@ function buildMaskedRenderCommand(
   sequenceId: string,
   request: RenderRequest | ExportRequest | PreviewRequest,
   profile: RenderProfile,
-  tools?: ResolvedFfmpegTools
+  tools?: ResolvedFfmpegTools,
+  options?: RenderCommandOptions
 ): RenderPlan | PreviewPlan {
   const resolvedTools = makePlanningTools(tools);
   const inputs = collectRenderInputs(project, variant);
@@ -532,7 +584,7 @@ function buildMaskedRenderCommand(
 
     if (bodyDurationMs > 0) {
       const sampleTimeMs = clip.timelineStartMs + incomingTransitionMs + Math.round(bodyDurationMs / 2);
-      const filterExpressions = getClipFilterExpressionsAtTime(project, variant, clip, sampleTimeMs);
+      const filterExpressions = getClipFilterExpressionsAtTime(project, variant, clip, sampleTimeMs, options);
       appendVideoSegmentWithOptionalOverlay(filterSegments, {
         clipInputIndex,
         overlayInputIndex: clipOverlayInputIndex,
@@ -588,7 +640,7 @@ function buildMaskedRenderCommand(
         overlaySourceStartMs: clipOverlaySourceStartMs,
         sourceStartMs: clip.sourceStartMs + clip.durationMs - outgoingTransitionMs,
         durationMs: outgoingTransitionMs,
-        filterExpressions: getClipFilterExpressionsAtTime(project, variant, clip, clip.timelineStartMs + clip.durationMs - Math.round(outgoingTransitionMs / 2)),
+        filterExpressions: getClipFilterExpressionsAtTime(project, variant, clip, clip.timelineStartMs + clip.durationMs - Math.round(outgoingTransitionMs / 2), options),
         profile,
         outputLabel: leftLabel
       });
@@ -598,7 +650,7 @@ function buildMaskedRenderCommand(
         overlaySourceStartMs: nextOverlaySourceStartMs,
         sourceStartMs: nextClip.sourceStartMs,
         durationMs: outgoingTransitionMs,
-        filterExpressions: getClipFilterExpressionsAtTime(project, variant, nextClip, nextClip.timelineStartMs + Math.round(outgoingTransitionMs / 2)),
+        filterExpressions: getClipFilterExpressionsAtTime(project, variant, nextClip, nextClip.timelineStartMs + Math.round(outgoingTransitionMs / 2), options),
         profile,
         outputLabel: rightLabel
       });
@@ -695,10 +747,11 @@ export function buildRenderCommand(
   sequenceId: string,
   request: RenderRequest | ExportRequest | PreviewRequest,
   profile: RenderProfile,
-  tools?: ResolvedFfmpegTools
+  tools?: ResolvedFfmpegTools,
+  options?: RenderCommandOptions
 ): RenderPlan | PreviewPlan {
   if (usesMaskTransitions(variant)) {
-    return buildMaskedRenderCommand(project, variant, sequenceId, request, profile, tools);
+    return buildMaskedRenderCommand(project, variant, sequenceId, request, profile, tools, options);
   }
 
   const resolvedTools = makePlanningTools(tools);
@@ -723,7 +776,7 @@ export function buildRenderCommand(
       throw new Error(`Missing input index for asset "${clip.assetId}".`);
     }
 
-    for (const segment of collectClipRenderSegments(project, variant, clip)) {
+    for (const segment of collectClipRenderSegments(project, variant, clip, options)) {
       appendVideoSegmentWithOptionalOverlay(filterSegments, {
         clipInputIndex: inputIndex,
         overlayInputIndex,
