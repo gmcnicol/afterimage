@@ -1,44 +1,98 @@
 # Afterimage
 
-Monorepo scaffold for a three-product video system:
+Afterimage is an open-source behavioural audiovisual composition and
+performance instrument.
 
-- **Studio Desktop**: offline authoring, scene detection, sequencing, HQ export
-- **Live Desktop**: low-latency reactive desktop performance app
-- **Live Appliance**: headless Raspberry Pi 5 runtime for boot-to-broadcast live output
+It is not a traditional video editor. Afterimage is for defining audiovisual
+worlds, shaping their behaviour, performing their evolution, and capturing the
+resulting traversal.
 
-## Stack
+## Product Surfaces
 
-- Desktop apps: Electron + React + TypeScript
-- Appliance: Go
-- Shared contracts: JSON Schema
-- Workspace: pnpm + Turborepo
+Afterimage is a shared-core, multi-runtime system:
 
-## First-run bootstrap
+- **Studio**: offline authoring, scene analysis, sequencing, music sync, filter
+  design, and deterministic high-quality export.
+- **Live Desktop**: low-latency desktop performance runtime for preview,
+  clip banks, reactive inputs, MIDI control, projector output, recording, and
+  streaming.
+- **Live Appliance**: headless appliance runtime for boot-to-broadcast output,
+  remote control, health signalling, and supervised playback.
+- **Afterimage Core**: shared project, preset, modulation, render planning,
+  FFmpeg compilation, media metadata, and runtime-neutral contracts used by all
+  product surfaces.
+
+## Getting Started
+
+Prerequisites:
+
+- Node.js
+- pnpm `10.20.0`
+- Go, for the Live Appliance runtime
+- FFmpeg, for media analysis, preview, and export workflows
+
+Install dependencies:
 
 ```bash
-bash scripts/bootstrap.sh
+pnpm install
 ```
 
-The bootstrap script:
+Run the Studio desktop app:
 
-- checks for `node`, `pnpm`, and `go`
-- installs current workspace tooling with pnpm
-- installs the current desktop shell dependencies into each Electron app
-- installs AJV for schema validation
-- runs `go mod tidy` for the appliance module
+```bash
+pnpm dev:studio
+```
 
-## Repo shape
+Run the Live Desktop app:
 
-- `apps/studio-desktop` — offline editor / render shell
-- `apps/live-desktop` — live performance desktop shell
-- `apps/live-appliance` — Go service for the headless Pi target
-- `packages/*` — shared domain packages
-- `schemas/*` — canonical project, preset, sequence, analysis, and MIDI mapping contracts
-- `docs/adr/*` — architectural decisions
-- `docs/constraints/appliance.md` — hard appliance constraints
+```bash
+pnpm dev:live
+```
 
-## Notes
+Run the Live Appliance service:
 
-This is intentionally a **scaffold**, not a finished product.
-The desktop shells are minimal but structured to keep Studio and Live cleanly separated.
-The appliance service is a compileable starting point with health and config loading stubs.
+```bash
+pnpm dev:appliance
+```
+
+Run the development checks:
+
+```bash
+pnpm check:dev
+```
+
+For a first machine setup, `bash scripts/bootstrap.sh` checks local tooling,
+installs workspace dependencies, and tidies the Go module.
+
+## Documentation
+
+- `FOUNDATIONS.md`: product doctrine and design principles.
+- `docs/architecture/README.md`: current architecture source-of-truth index.
+- `docs/product/README.md`: product-facing concepts and runtime notes.
+- `docs/implementation/README.md`: active implementation policy and learning
+  capture guidance.
+- `docs/licensing.md`: repository, dependency, asset, and FFmpeg licensing
+  policy.
+- `docs/archive/README.md`: historical phase/spec documents kept for context,
+  not current implementation guidance.
+
+## Repository Shape
+
+- `apps/studio-desktop`: Studio runtime.
+- `apps/live-desktop`: Live Desktop runtime.
+- `apps/live-appliance`: Go service for the headless appliance target.
+- `packages/*`: shared domain, compiler, preset, and contract packages.
+- `schemas/*`: canonical JSON Schema contracts.
+- `tools/*`: local build, FFmpeg, and repository tooling.
+- `docs/*`: architecture, product, ADR, implementation, licensing, and archive
+  documentation.
+
+## Contributing
+
+Afterimage is not currently accepting unsolicited pull requests as the normal
+contribution path. Please open or discuss issues first so product direction,
+runtime boundaries, and licensing implications can be settled before
+implementation work starts.
+
+GitHub pull requests are used for planned implementation review once work is
+agreed.

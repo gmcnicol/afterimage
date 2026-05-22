@@ -23,8 +23,6 @@ This document is constrained by:
 - `FOUNDATIONS.md`
 - `docs/architecture/ARCHITECTURE.md`
 - `docs/implementation/core-engine.md`
-- `docs/implementation/phase-001-core-engine.md`
-- `docs/implementation/phase-002-studio-desktop-offline.md`
 - `docs/adr/0005-ffmpeg-toolchain-policy.md`
 - `docs/peps/PEP-0007-shared-style-and-automation-contracts.md`
 - `docs/peps/PEP-0008-render-duration-after-transitions.md`
