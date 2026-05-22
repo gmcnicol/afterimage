@@ -1,12 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Screen } from '@afterimage/ui';
-import { getStudioClient } from '../lib/studio-client';
+import { getStudioClient, type DesktopJob } from '../lib/studio-client';
 import { useDiagnosticsStore } from '../stores/diagnostics-store';
 import { useJobsStore } from '../stores/jobs-store';
 import { useProjectSessionStore } from '../stores/project-session-store';
-import { type StudioTab, useUiStore } from '../stores/ui-store';
+import {
+  getDefaultTabForSpace,
+  type StudioSpace,
+  type StudioTab,
+  useUiStore
+} from '../stores/ui-store';
 import { ToolbarButton } from './components/ToolbarButton';
-import { JobRow } from './components/JobRow';
 import { useDesktopBootstrap } from './hooks/useDesktopBootstrap';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useProjectAutosave } from './hooks/useProjectAutosave';
@@ -23,10 +27,8 @@ const shellCss = `
     font-size: 12px;
     line-height: 1.2;
     background:
-      radial-gradient(circle at top left, rgba(112, 131, 160, 0.2), transparent 24%),
-      radial-gradient(circle at top right, rgba(133, 117, 176, 0.12), transparent 18%),
-      radial-gradient(circle at bottom right, rgba(105, 156, 138, 0.12), transparent 24%),
-      linear-gradient(180deg, #090b10 0%, #0c0f14 48%, #0a0d12 100%);
+      linear-gradient(180deg, rgba(20, 24, 31, 0.98) 0%, rgba(10, 12, 16, 0.98) 42%, rgba(8, 10, 13, 1) 100%),
+      linear-gradient(90deg, rgba(82, 98, 122, 0.12), rgba(92, 122, 104, 0.1), rgba(120, 99, 139, 0.08));
   }
 
   .studio-shell *,
@@ -53,8 +55,8 @@ const shellCss = `
 
   .studio-shell__frame {
     display: grid;
-    grid-template-columns: 332px minmax(0, 1fr);
-    gap: 16px;
+    grid-template-rows: 40px minmax(0, 1fr) 36px;
+    gap: 0;
     align-items: stretch;
     height: 100%;
     overflow: hidden;
@@ -69,8 +71,8 @@ const shellCss = `
 
   .studio-shell__main {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 12px;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
@@ -426,6 +428,114 @@ const shellCss = `
     display: none;
   }
 
+  .studio-macrobar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: stretch;
+    min-width: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(8, 10, 14, 0.96);
+  }
+
+  .studio-macrobar__modes,
+  .studio-macrobar__right {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  .studio-macrobar__right {
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .studio-macrobar__button {
+    height: 39px;
+    min-width: 104px;
+    padding: 0 14px;
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    color: rgba(246, 247, 249, 0.72);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .studio-macrobar__button:hover,
+  .studio-macrobar__button.is-current {
+    color: #f6f7f9;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .studio-macrobar__button.is-current {
+    border-bottom: 2px solid ${accent};
+  }
+
+  .studio-macrobar__action {
+    min-width: 112px;
+    color: #111827;
+    background: #9db1ca;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .studio-macrobar__action:hover {
+    color: #0d1118;
+    background: #b7c5d7;
+  }
+
+  .studio-shell__main {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .studio-contextbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(12, 15, 21, 0.9);
+  }
+
+  .studio-contextbar__tabs,
+  .studio-contextbar__meta {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .studio-contextbar__tab {
+    height: 26px;
+    padding: 0 9px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(246, 247, 249, 0.72);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .studio-contextbar__tab:hover,
+  .studio-contextbar__tab.is-current {
+    color: #f6f7f9;
+    border-color: rgba(136, 160, 191, 0.38);
+    background: rgba(136, 160, 191, 0.14);
+  }
+
+  .studio-contextbar__meta {
+    justify-content: flex-end;
+    color: ${muted};
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
   .studio-main-surface {
     min-width: 0;
     min-height: 0;
@@ -434,6 +544,154 @@ const shellCss = `
     flex-direction: column;
     flex: 1 1 auto;
     overflow: hidden;
+  }
+
+  .studio-statusbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(7, 9, 13, 0.96);
+  }
+
+  .studio-statusbar__counts,
+  .studio-statusbar__tasks {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .studio-statusbar__label {
+    color: rgba(246, 247, 249, 0.54);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .studio-statusbar__count,
+  .studio-statusbar__task {
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(246, 247, 249, 0.78);
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .studio-statusbar__task {
+    max-width: 270px;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .studio-statusbar__task:hover,
+  .studio-statusbar__task.is-current {
+    color: #f6f7f9;
+    border-color: rgba(136, 160, 191, 0.38);
+  }
+
+  .studio-statusbar__task-target {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .studio-statusbar__empty {
+    color: ${muted};
+    font-size: 11px;
+  }
+
+  .studio-task-flyout {
+    position: fixed;
+    top: 40px;
+    right: 0;
+    bottom: 36px;
+    z-index: 20;
+    width: min(420px, calc(100vw - 24px));
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(11, 14, 19, 0.98);
+  }
+
+  .studio-task-flyout__header,
+  .studio-task-flyout__section,
+  .studio-task-flyout__actions {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .studio-task-flyout__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: start;
+  }
+
+  .studio-task-flyout__title {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+  }
+
+  .studio-task-flyout__title strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  .studio-task-flyout__subtitle {
+    color: ${muted};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .studio-task-flyout__progress {
+    height: 5px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .studio-task-flyout__progress-bar {
+    height: 100%;
+    background: #9fe1c1;
+  }
+
+  .studio-task-flyout__logs {
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+    color: rgba(246, 247, 249, 0.82);
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+
+  .studio-task-flyout__error {
+    color: #f5b5d4;
+    margin-bottom: 8px;
+  }
+
+  .studio-task-flyout__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .music-sync {
@@ -787,7 +1045,7 @@ const shellCss = `
     }
 
     .studio-shell__frame {
-      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(900px, 1fr) auto;
       height: auto;
       overflow: visible;
     }
@@ -797,7 +1055,7 @@ const shellCss = `
     }
 
     .studio-shell__main {
-      grid-template-rows: auto auto auto;
+      grid-template-rows: auto minmax(0, 1fr);
       overflow: visible;
     }
 
@@ -826,6 +1084,32 @@ const shellCss = `
   }
 
   @media (max-width: 760px) {
+    .studio-macrobar {
+      grid-template-columns: 1fr;
+    }
+
+    .studio-macrobar__modes,
+    .studio-macrobar__right,
+    .studio-contextbar__tabs,
+    .studio-statusbar__tasks {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .studio-macrobar__modes::-webkit-scrollbar,
+    .studio-macrobar__right::-webkit-scrollbar,
+    .studio-contextbar__tabs::-webkit-scrollbar,
+    .studio-statusbar__tasks::-webkit-scrollbar {
+      display: none;
+    }
+
+    .studio-contextbar,
+    .studio-statusbar {
+      grid-template-columns: 1fr;
+      align-items: start;
+      padding: 6px 8px;
+    }
+
     .studio-hero__headline h2 {
       font-size: 22px;
     }
@@ -844,7 +1128,6 @@ const shellCss = `
   }
 `;
 
-type TabGroup = 'Project' | 'Process' | 'Deliver';
 type TabStatusTone = 'ready' | 'attention' | 'blocked';
 
 interface WorkflowMetrics {
@@ -866,91 +1149,108 @@ interface WorkflowMetrics {
   missingMediaCount: number;
 }
 
-interface NextStep {
-  tab: StudioTab;
-  label: string;
-  reason: string;
-  actionLabel?: string;
-}
-
 interface TabMeta {
   id: StudioTab;
   label: string;
-  group: TabGroup;
   description: string;
-  guidance: string;
 }
 
-const tabMeta: TabMeta[] = [
-  {
+interface SpaceMeta {
+  id: StudioSpace;
+  label: string;
+  actionLabel: string;
+  actionTab: StudioTab;
+  surfaces: StudioTab[];
+}
+
+const tabMeta: Record<StudioTab, TabMeta> = {
+  project: {
     id: 'project',
-    label: 'View Project Info',
-    group: 'Project',
-    description: 'Create, save, duplicate, and re-open desktop projects.',
-    guidance: 'Keep the project saved early so imports and generated results have a stable home.'
+    label: 'Project',
+    description: 'Project file, recent sessions, save state, and desktop roots.'
   },
-  {
+  media: {
     id: 'media',
-    label: 'Select Media',
-    group: 'Project',
-    description: 'Import project media directly or pull reusable assets from the catalogue.',
-    guidance: 'Bring in source material first, run analysis here, then move on once statuses are ready.'
+    label: 'Media',
+    description: 'Project imports, source analysis, and project media readiness.'
   },
-  {
+  catalog: {
     id: 'catalog',
-    label: 'Manage Catalogue',
-    group: 'Project',
-    description: 'Import reusable footage, transitions, and overlays into the current project.',
-    guidance: 'Manage global folders here, then mark the cuts or assets that should come into Media.'
+    label: 'Catalogue',
+    description: 'Reusable footage, transitions, overlays, and global library scans.'
   },
-  {
-    id: 'music',
-    label: 'Set Cue Timing',
-    group: 'Process',
-    description: 'Review analysed timing cues or load custom cue markers for the project tune.',
-    guidance: 'Use this when the sequence should cut to specific musical or authored cue points.'
-  },
-  {
+  cuts: {
     id: 'cuts',
-    label: 'Review Cuts',
-    group: 'Process',
-    description: 'Review cut candidates, keep what works, and send the rest away.',
-    guidance: 'This is the main review queue. Keep or reject decisively and add strong material to the sequence.'
+    label: 'Cuts',
+    description: 'Cut review queue and keep/reject decisions.'
   },
-  {
+  sequence: {
     id: 'sequence',
-    label: 'Build Sequence',
-    group: 'Process',
-    description: 'Assemble the sequence, transitions, overlays, markers, and preview renders.',
-    guidance: 'Once you have approved material, shape the edit and use preview renders to confirm pacing.'
+    label: 'Sequence',
+    description: 'Edit assembly, transitions, markers, and preview renders.'
   },
-  {
+  music: {
+    id: 'music',
+    label: 'Music Sync',
+    description: 'Cue timing, authored markers, and soundtrack alignment.'
+  },
+  style: {
     id: 'style',
-    label: 'Tune Style',
-    group: 'Process',
-    description: 'Tune the filter stack, presets, and authored looks.',
-    guidance: 'Treat style as a finishing pass after the sequence is structurally sound.'
+    label: 'Style',
+    description: 'Filter stacks, presets, and authored looks.'
   },
-  {
+  automation: {
     id: 'automation',
-    label: 'Set Automation',
-    group: 'Process',
-    description: 'Author motion lanes and keyframes for filter parameters.',
-    guidance: 'Automation only pays off once the sequence and style stack are stable.'
+    label: 'Automation',
+    description: 'Motion lanes and keyframes for filter parameters.'
   },
-  {
+  export: {
     id: 'export',
-    label: 'Export Deliverables',
-    group: 'Deliver',
-    description: 'Pick delivery profiles and export the chosen sequence.',
-    guidance: 'Enable the exact formats you need, then watch the export queue for failures.'
+    label: 'Export',
+    description: 'Delivery profiles, render queue, and capture readiness.'
+  },
+  diagnostics: {
+    id: 'diagnostics',
+    label: 'Diagnostics',
+    description: 'Toolchain health, missing media, job history, and logs.'
+  }
+};
+
+const spaceMeta: SpaceMeta[] = [
+  {
+    id: 'archive',
+    label: 'Archive',
+    actionLabel: 'Import',
+    actionTab: 'media',
+    surfaces: ['project', 'media', 'catalog']
   },
   {
-    id: 'diagnostics',
-    label: 'View Diagnostics',
-    group: 'Deliver',
-    description: 'Inspect toolchain health, missing media, job history, and logs.',
-    guidance: 'Use this to resolve missing inputs or toolchain problems before wasting render time.'
+    id: 'world',
+    label: 'World',
+    actionLabel: 'Sequence',
+    actionTab: 'sequence',
+    surfaces: ['cuts', 'sequence', 'music', 'style', 'automation']
+  },
+  {
+    id: 'performance',
+    label: 'Performance',
+    actionLabel: 'Rehearse',
+    actionTab: 'sequence',
+    surfaces: ['sequence']
+  },
+  {
+    id: 'capture',
+    label: 'Capture',
+    actionLabel: 'Export',
+    actionTab: 'export',
+    surfaces: ['export']
+  },
+  {
+    id: 'observatory',
+    label: 'Observatory',
+    actionLabel: 'Inspect',
+    actionTab: 'diagnostics',
+    surfaces: ['diagnostics']
   }
 ];
 
@@ -1071,68 +1371,6 @@ function getTabBadge(tabId: StudioTab, metrics: WorkflowMetrics): string | undef
   }
 }
 
-function getNextStep(metrics: WorkflowMetrics, projectSaved: boolean): NextStep {
-  if (!projectSaved) {
-    return {
-      tab: 'project',
-      label: 'Save the project shell',
-      reason: 'A saved project root keeps imports, generated previews, and exports in one place.'
-    };
-  }
-
-  if (metrics.sourceAssetCount === 0) {
-    return {
-      tab: 'media',
-      label: 'Open Media',
-      reason: 'The rest of the workflow is blocked until the library has actual material to work from.',
-      actionLabel: 'Open Media'
-    };
-  }
-
-  if (metrics.pendingAnalysisCount > 0) {
-    return {
-      tab: 'media',
-      label: 'Open Media',
-      reason: 'Run analysis from the Media workspace before moving on to review and sequencing.',
-      actionLabel: 'Open Media'
-    };
-  }
-
-  if (metrics.cutCount === 0 || metrics.keptCutCount === 0) {
-    return {
-      tab: 'cuts',
-      label: 'Review and approve cuts',
-      reason: 'You need a pool of approved material before the sequence builder becomes useful.',
-      actionLabel: 'Open Cuts'
-    };
-  }
-
-  if (metrics.sequenceClipCount === 0) {
-    return {
-      tab: 'sequence',
-      label: 'Build the first sequence',
-      reason: 'Sequence work is the point where reviewed cuts turn into an edit you can audition.',
-      actionLabel: 'Open Sequence'
-    };
-  }
-
-  if (metrics.enabledExportProfileCount === 0) {
-    return {
-      tab: 'export',
-      label: 'Choose delivery formats',
-      reason: 'Export targets are still undefined, so the workstation cannot produce a final output yet.',
-      actionLabel: 'Open Export'
-    };
-  }
-
-  return {
-    tab: 'export',
-    label: 'Ready to export',
-    reason: 'The project is in a deliverable state. Open Export to export the current sequence.',
-    actionLabel: 'Open Export'
-  };
-}
-
 function NotificationCenter() {
   const notifications = useUiStore((state) => state.notifications);
   const removeNotification = useUiStore((state) => state.removeNotification);
@@ -1157,139 +1395,257 @@ function NotificationCenter() {
   );
 }
 
-function Sidebar() {
-  const api = getStudioClient();
+function getSpaceMeta(space: StudioSpace): SpaceMeta {
+  return spaceMeta.find((candidate) => candidate.id === space) ?? spaceMeta[0];
+}
+
+function getJobOwningSpace(job: DesktopJob): StudioSpace {
+  switch (job.type) {
+    case 'analysis':
+    case 'thumbnails':
+    case 'waveform':
+    case 'library-scan':
+    case 'library-analysis':
+      return 'archive';
+    case 'export':
+      return 'capture';
+    case 'preview':
+      return 'performance';
+  }
+}
+
+function getJobOwningTab(job: DesktopJob): StudioTab {
+  switch (job.type) {
+    case 'analysis':
+      return 'media';
+    case 'library-scan':
+    case 'library-analysis':
+      return 'catalog';
+    case 'export':
+      return 'export';
+    case 'preview':
+      return 'sequence';
+    default:
+      return getDefaultTabForSpace(getJobOwningSpace(job));
+  }
+}
+
+function sortJobsByRelevance(jobs: DesktopJob[]): DesktopJob[] {
+  const rank = (job: DesktopJob) => {
+    if (job.status === 'running') return 0;
+    if (job.status === 'queued') return 1;
+    if (job.status === 'failed') return 2;
+    if (job.status === 'cancelled') return 3;
+    return 4;
+  };
+  const time = (job: DesktopJob) => Date.parse(job.endedAt ?? job.startedAt ?? '') || 0;
+  return [...jobs].sort((left, right) => rank(left) - rank(right) || time(right) - time(left) || left.id.localeCompare(right.id));
+}
+
+function getJobProgress(job: DesktopJob): number | undefined {
+  return typeof job.progress === 'number'
+    ? Math.max(0, Math.min(100, Math.round(job.progress * 100)))
+    : undefined;
+}
+
+function MacroNavigation() {
+  const currentSpace = useUiStore((state) => state.currentSpace);
+  const setCurrentSpace = useUiStore((state) => state.setCurrentSpace);
+  const setWorkspaceSurface = useUiStore((state) => state.setWorkspaceSurface);
+  const currentSpaceMeta = getSpaceMeta(currentSpace);
+  const primarySpaces = spaceMeta.filter((space) => space.id !== 'observatory');
+
+  return (
+    <nav className="studio-macrobar" aria-label="Studio spaces">
+      <div className="studio-macrobar__modes">
+        {primarySpaces.map((space) => (
+          <button
+            key={space.id}
+            type="button"
+            className={`studio-macrobar__button${currentSpace === space.id ? ' is-current' : ''}`}
+            aria-current={currentSpace === space.id ? 'page' : undefined}
+            onClick={() => setCurrentSpace(space.id)}
+          >
+            {space.label}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="studio-macrobar__button studio-macrobar__action"
+        onClick={() => setWorkspaceSurface(currentSpace, currentSpaceMeta.actionTab)}
+      >
+        {currentSpaceMeta.actionLabel}
+      </button>
+      <div className="studio-macrobar__right">
+        <button
+          type="button"
+          className={`studio-macrobar__button${currentSpace === 'observatory' ? ' is-current' : ''}`}
+          aria-current={currentSpace === 'observatory' ? 'page' : undefined}
+          onClick={() => setCurrentSpace('observatory')}
+        >
+          Observatory
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function WorkspaceContextBar() {
+  const currentSpace = useUiStore((state) => state.currentSpace);
   const currentTab = useUiStore((state) => state.currentTab);
-  const setCurrentTab = useUiStore((state) => state.setCurrentTab);
+  const setWorkspaceSurface = useUiStore((state) => state.setWorkspaceSurface);
   const project = useProjectSessionStore((state) => state.project);
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);
   const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
   const dirty = useProjectSessionStore((state) => state.dirty);
   const metrics = useWorkflowMetrics();
+  const activeSpace = getSpaceMeta(currentSpace);
   const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
-  const groupedTabs = useMemo(
-    () => ({
-      Project: tabMeta.filter((tab) => tab.group === 'Project' && tab.id !== 'catalog'),
-      Process: tabMeta.filter((tab) => tab.group === 'Process'),
-      Deliver: tabMeta.filter((tab) => tab.group === 'Deliver')
-    }),
-    []
-  );
+  const surfaces = activeSpace.surfaces;
 
   return (
-    <div className="studio-shell__sidebar studio-scrollable">
-      <section className="studio-surface studio-shell__brand">
-        <div className="studio-shell__eyebrow">Afterimage Studio Desktop</div>
-        <div className="studio-shell__brand-copy">
-          Compact desktop pipeline for offline review, sequencing, and export.
-        </div>
-        <div className="studio-shell__project-meta">
-          <div className="studio-shell__project-title">{project.name}</div>
-          <div className="studio-shell__path">{resolvedProjectFilePath ?? 'Project file has not been saved yet.'}</div>
-          <div className="studio-shell__meta-row">
-            <span style={pillStyle(dirty ? 'warn' : 'success')}>{dirty ? 'Unsaved edits' : 'Project saved'}</span>
-            {metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? (
-              <span style={pillStyle('warn')}>{metrics.warningCount + metrics.missingMediaCount} issues</span>
-            ) : null}
-          </div>
-          {resolvedProjectFilePath ? (
-            <ToolbarButton onClick={() => void api.project.revealProjectFolder(resolvedProjectFilePath)}>
-              Reveal Project Folder
-            </ToolbarButton>
-          ) : null}
-        </div>
-      </section>
-
-      <nav className="studio-surface studio-nav" aria-label="Workflow navigation">
-        {(Object.entries(groupedTabs) as Array<[TabGroup, TabMeta[]]>).map(([group, tabs]) => (
-          <div key={group} className="studio-nav__group">
-            <div className="studio-nav__group-label">{group}</div>
-            {tabs.map((tab) => {
-              const status = getTabStatus(tab.id, metrics);
-              const badge = getTabBadge(tab.id, metrics);
-              const isCurrent = tab.id === currentTab || (tab.id === 'media' && currentTab === 'catalog');
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setCurrentTab(tab.id)}
-                  aria-current={isCurrent ? 'page' : undefined}
-                  className={`studio-nav__item${isCurrent ? ' is-current' : ''}`}
-                >
-                  <div className="studio-nav__topline">
-                    <div className="studio-nav__title">
-                      <span className={`studio-nav__dot tone-${status.tone}`} />
-                      <span>{tab.label}</span>
-                    </div>
-                    {badge ? <span className="studio-nav__badge">{badge}</span> : null}
-                  </div>
-                  <span className={`studio-nav__status tone-${status.tone}`}>{status.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
+    <div className="studio-contextbar" aria-label={`${activeSpace.label} workspace`}>
+      <div className="studio-contextbar__tabs">
+        {surfaces.length > 1 ? surfaces.map((tab) => {
+          const status = getTabStatus(tab, metrics);
+          const badge = getTabBadge(tab, metrics);
+          const meta = tabMeta[tab];
+          const isCurrent = currentTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              title={meta.description}
+              className={`studio-contextbar__tab${isCurrent ? ' is-current' : ''}`}
+              aria-current={isCurrent ? 'page' : undefined}
+              onClick={() => setWorkspaceSurface(currentSpace, tab)}
+            >
+              {meta.label}
+              {badge ? ` ${badge}` : ''}
+              {' '}
+              {status.label}
+            </button>
+          );
+        }) : (
+          <span className="studio-statusbar__label">{tabMeta[surfaces[0]].description}</span>
+        )}
+      </div>
+      <div className="studio-contextbar__meta">
+        <span>{project.name}</span>
+        <span style={pillStyle(dirty ? 'warn' : 'success')}>{dirty ? 'Unsaved' : 'Saved'}</span>
+        {metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? (
+          <span style={pillStyle('warn')}>{metrics.warningCount + metrics.missingMediaCount} issues</span>
+        ) : null}
+        <span title={resolvedProjectFilePath}>{resolvedProjectFilePath ?? 'Unsaved project file'}</span>
+      </div>
     </div>
   );
 }
 
-function Header() {
-  const api = getStudioClient();
-  const currentTab = useUiStore((state) => state.currentTab);
-  const setCurrentTab = useUiStore((state) => state.setCurrentTab);
-  const project = useProjectSessionStore((state) => state.project);
-  const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
-  const projectRoot = useProjectSessionStore((state) => state.projectRoot);
-  const setSession = useProjectSessionStore((state) => state.setSession);
-  const metrics = useWorkflowMetrics();
-  const projectSaved = Boolean(resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName));
-  const nextStep = getNextStep(metrics, projectSaved);
+function BottomTaskStatusBar() {
+  const jobs = useJobsStore((state) => state.jobs);
+  const selectedTaskId = useUiStore((state) => state.selectedTaskId);
+  const selectTask = useUiStore((state) => state.selectTask);
+  const counts = useMemo(() => ({
+    queued: jobs.filter((job) => job.status === 'queued').length,
+    running: jobs.filter((job) => job.status === 'running').length,
+    failed: jobs.filter((job) => job.status === 'failed').length,
+    completed: jobs.filter((job) => job.status === 'completed').length
+  }), [jobs]);
+  const taskSnippets = useMemo(() => sortJobsByRelevance(jobs).slice(0, 5), [jobs]);
 
   return (
-    <section className="studio-surface studio-hero">
-      <div className="studio-hero__layout">
-        <div className="studio-hero__headline">
-          <div className="studio-shell__eyebrow">Next</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0 }}>{nextStep.label}</h2>
-            {currentTab !== nextStep.tab ? <span style={pillStyle('default')}>Recommended</span> : <span style={pillStyle('success')}>Current</span>}
-          </div>
-          {nextStep.reason ? <p style={{ margin: 0 }}>{nextStep.reason}</p> : null}
-        </div>
+    <section className="studio-statusbar" aria-label="Async task status">
+      <div className="studio-statusbar__counts">
+        <span className="studio-statusbar__label">Tasks</span>
+        <span className="studio-statusbar__count">Queued {counts.queued}</span>
+        <span className="studio-statusbar__count">Running {counts.running}</span>
+        <span className="studio-statusbar__count">Failed {counts.failed}</span>
+        <span className="studio-statusbar__count">Done {counts.completed}</span>
+      </div>
+      <div className="studio-statusbar__tasks">
+        {taskSnippets.length > 0 ? taskSnippets.map((job) => {
+          const progress = getJobProgress(job);
+          const label = progress !== undefined && job.status === 'running' ? `${job.status} ${progress}%` : job.status;
+          return (
+            <button
+              key={job.id}
+              type="button"
+              className={`studio-statusbar__task${selectedTaskId === job.id ? ' is-current' : ''}`}
+              onClick={() => selectTask(job.id)}
+              title={`${job.type}: ${job.target}`}
+            >
+              <span>{job.type}</span>
+              <span className={`job-row__status status-${job.status}`}>{label}</span>
+              <span className="studio-statusbar__task-target">{job.target}</span>
+            </button>
+          );
+        }) : (
+          <span className="studio-statusbar__empty">No background work</span>
+        )}
       </div>
     </section>
   );
 }
 
-function ActiveJobsPanel() {
+function TaskFlyout() {
+  const api = getStudioClient();
   const jobs = useJobsStore((state) => state.jobs);
-  const activeJobs = jobs
-    .filter((job) => job.status === 'queued' || job.status === 'running')
-    .sort((left, right) => {
-      const rank = (job: typeof left) => job.status === 'running' ? 0 : 1;
-      const started = (job: typeof left) => Date.parse(job.startedAt ?? '') || 0;
-      return rank(left) - rank(right)
-        || started(left) - started(right)
-        || left.id.localeCompare(right.id);
-    });
+  const selectedTaskId = useUiStore((state) => state.selectedTaskId);
+  const selectTask = useUiStore((state) => state.selectTask);
+  const setWorkspaceSurface = useUiStore((state) => state.setWorkspaceSurface);
+  const addNotification = useUiStore((state) => state.addNotification);
+  const job = jobs.find((candidate) => candidate.id === selectedTaskId);
+
+  if (!job) {
+    return null;
+  }
+
+  const progress = getJobProgress(job);
+  const owningSpace = getJobOwningSpace(job);
+  const owningTab = getJobOwningTab(job);
+  const cancellable = job.status === 'queued' || job.status === 'running';
+  const retryable = job.status === 'failed' || job.status === 'cancelled';
+  const logLines = job.log.length > 0 ? job.log : ['No logs yet.'];
 
   return (
-    <section className="studio-jobs" aria-label="Background jobs">
-      <div className="studio-jobs__header">
-        <span className="studio-jobs__title">Jobs</span>
-        <span className="studio-jobs__count">{activeJobs.length > 0 ? `${activeJobs.length} active` : 'idle'}</span>
+    <aside className="studio-task-flyout" aria-label="Task detail">
+      <div className="studio-task-flyout__header">
+        <div className="studio-task-flyout__title">
+          <strong>{job.type} / {job.status}</strong>
+          <span className="studio-task-flyout__subtitle">{job.target}</span>
+        </div>
+        <ToolbarButton onClick={() => selectTask(undefined)} compact>Close</ToolbarButton>
       </div>
-      <div className="studio-jobs__list">
-        {activeJobs.length > 0 ? (
-          activeJobs.map((job) => (
-            <JobRow key={job.id} job={job} />
-          ))
-        ) : (
-          <span style={{ color: muted, fontSize: 11 }}>No background work</span>
-        )}
+      <div className="studio-task-flyout__section">
+        <div className="studio-task-flyout__progress" aria-label={progress !== undefined ? `Progress ${progress}%` : 'Progress unavailable'}>
+          <div className="studio-task-flyout__progress-bar" style={{ width: `${progress ?? (job.status === 'completed' ? 100 : 0)}%` }} />
+        </div>
       </div>
-    </section>
+      <div className="studio-task-flyout__logs studio-scrollable">
+        {job.error ? <div className="studio-task-flyout__error">{job.error}</div> : null}
+        {logLines.map((line, index) => (
+          <div key={`${job.id}-log-${index}`}>{line}</div>
+        ))}
+      </div>
+      <div className="studio-task-flyout__actions">
+        <ToolbarButton primary onClick={() => setWorkspaceSurface(owningSpace, owningTab)}>
+          Open {getSpaceMeta(owningSpace).label}
+        </ToolbarButton>
+        {cancellable ? (
+          <ToolbarButton onClick={() => void api.jobs.cancel(job.id).then((cancelled) => {
+            addNotification(cancelled ? `Cancelled job ${job.id}.` : `Job ${job.id} is no longer running.`, cancelled ? 'success' : 'warn');
+          })}>Cancel</ToolbarButton>
+        ) : null}
+        {retryable ? (
+          <ToolbarButton onClick={() => void api.jobs.retry(job.id).then((launch) => {
+            const retried = launch.jobIds.length > 0;
+            addNotification(retried ? `Retried job ${job.id}.` : `Job ${job.id} cannot be retried.`, retried ? 'success' : 'warn');
+          })}>Retry</ToolbarButton>
+        ) : null}
+      </div>
+    </aside>
   );
 }
 
@@ -1316,15 +1672,16 @@ function StudioShell() {
       <div className="studio-shell">
         <NotificationCenter />
         <div className="studio-shell__frame">
-          <Sidebar />
+          <MacroNavigation />
           <main className="studio-shell__main">
-            <Header />
+            <WorkspaceContextBar />
             <div className="studio-main-surface">
               <ActiveView />
             </div>
-            <ActiveJobsPanel />
           </main>
+          <BottomTaskStatusBar />
         </div>
+        <TaskFlyout />
       </div>
     </Screen>
   );
