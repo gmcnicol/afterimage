@@ -1,3 +1,7 @@
+> Historical note: this document is archived for context and is not active
+> implementation guidance. Start with `../architecture/README.md`,
+> `../product/README.md`, and `../implementation/README.md` for current docs.
+
 # Studio Desktop App Specification
 ## Afterimage — Phase 2
 

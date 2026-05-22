@@ -1,26 +1,22 @@
-# Implementation Plan
+# Implementation Notes
 
-This directory contains the delivery plan for Afterimage.
+This directory contains active implementation policy and current shared
+implementation notes.
 
-The product family is to be implemented in this order:
+The old phase delivery plan has been archived under `docs/archive/`. Those
+files are historical context, not the current source of implementation
+guidance.
 
-1. Core Engine
-2. Studio Desktop (offline authoring and high-quality export)
-3. Live Desktop (streaming / projector / performance)
-4. Live Appliance (headless Raspberry Pi 5 target)
+## Active Documents
 
-This order is mandatory unless an ADR explicitly changes it.
+- `core-engine.md`: current shared core implementation notes.
+- `task-completion-and-learning-capture.md`: completion and learning capture
+  policy.
+- `templates/pep-note-template.md`: PEP note template.
 
-## Why this order
+## Required Habits
 
-- The shared engine is the foundation for every runtime.
-- Studio mode is the safest place to prove the project model, FFmpeg compiler, preset model, and render workflow.
-- Live Desktop can then reuse proven assets, presets, sequencing, and modulation primitives.
-- The headless appliance should only be built after the live runtime, control model, and failure modes are known.
-
-## Required habits during implementation
-
-Every phase must capture lessons as work proceeds.
+Implementation work should capture lessons as work proceeds.
 
 Use the shared policy in `task-completion-and-learning-capture.md` as the source of truth for:
 
@@ -51,17 +47,8 @@ Use:
 python3 scripts/new_pep_note.py "ffmpeg binary provenance"
 ```
 
-## Phase files
-
-- `phase-000-overview.md`
-- `phase-001-core-engine.md`
-- `phase-002-studio-desktop-offline.md`
-- `phase-003-live-desktop-streaming.md`
-- `phase-004-live-appliance-headless.md`
-
 ## Shared implementation policy
 
 Read `task-completion-and-learning-capture.md` before treating implementation work as done.
 
-Phase documents are build instructions.
 PEPs are operational memory about how not to repeat mistakes.
