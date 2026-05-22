@@ -96,8 +96,27 @@ reproduced.
 
 Navigation should preserve context.
 
+The macro navigation order is left to right across the top of Studio:
+
+```text
+Archive  World  Performance  Capture
+```
+
+Observatory is a diagnostic lens and should remain top-level, but it is not a
+required step in the creative path. It should be visually available from the
+far right of the top shell and directly reachable from warnings, failed work,
+trust indicators, and render blockers.
+
+Do not use chevrons or stepper styling for the primary space navigation.
+Spaces are ordered modes, not mandatory wizard steps.
+
 Switching spaces should keep selected project, selected world, selected scene,
 capture state, active output target, and relevant selection where meaningful.
 
 The user should never feel they are leaving the world to operate a different
 application.
+
+Background work belongs outside the main workspace in a persistent bottom
+status bar. The active workspace should stay full-bleed and usable while
+queued, running, failed, and completed async tasks remain visible in that
+status bar.

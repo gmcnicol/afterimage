@@ -616,6 +616,8 @@ actions.
 
 Wireframes describe structure and workflow, not final visual design.
 
+See `assets/studio-v1-shell-mockup.svg` for a visual shell mockup.
+
 The common shell should preserve:
 
 - project identity
@@ -624,6 +626,171 @@ The common shell should preserve:
 - global trust state
 - active output target
 - navigation between spaces
+- active and pending async work visibility
+
+### Directional Shell Flow
+
+Studio should use a dense top macro panel, a full-bleed active workspace, and
+an old-school bottom status bar for async work.
+
+The directional model is:
+
+- left to right for macro workflow
+- top to bottom inside the active workspace
+- async work outside the main workspace
+
+The top macro order should read:
+
+```text
+Archive  World  Performance  Capture
+```
+
+Observatory is a top-level diagnostic lens, not a mandatory step in the main
+creative path. It should sit at the far right of the macro panel and be
+contextually reachable from warnings, failed tasks, degraded preview state,
+missing references, and trust indicators.
+
+Do not use chevrons, breadcrumbs, or stepper styling for primary space
+navigation. The spaces are ordered modes, not a required wizard.
+
+The shell shape is:
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│ Archive World Performance Capture | trust | action | Observatory   │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│                 FULL-BLEED ACTIVE WORKSPACE                        │
+│                                                                    │
+├────────────────────────────────────────────────────────────────────┤
+│ status: queued / running / failed / complete              details ▸│
+└────────────────────────────────────────────────────────────────────┘
+```
+
+The left-hand permanent navigation panel should not be the v1 shell direction.
+It makes Studio read like a vertical admin tool and competes with the active
+world surface. Macro navigation belongs across the top. The selected workspace
+gets the full width underneath.
+
+The shell should avoid padded container-within-container layouts. Studio is a
+creator tool: it should use the available real estate, keep chrome thin, and
+avoid large framed panels that make the user feel managed instead of powerful.
+The active workspace may contain local surfaces, but the shell must not wrap the
+workspace in a decorative card or leave large gutters around it.
+
+Inside a workspace, layout should answer in order:
+
+1. where am I?
+2. what state is this in?
+3. what is the one obvious next action?
+4. what am I working on?
+5. what details are relevant?
+6. what background work is happening?
+
+The active workspace may still use local columns, drawers, inspectors, timeline
+strips, and contextual side panels. Those are workspace-specific support
+surfaces, not global navigation. They should be dense and purposeful, not cards
+inside a bigger card.
+
+### Top Macro Panel
+
+The top macro panel owns:
+
+- Archive, World, Performance, and Capture navigation
+- Observatory or Health access at the far right
+- one dominant primary action for the current space
+- compact trust/readiness indicators
+- output target or capture state when globally relevant
+
+It should not include redundant branding such as "Afterimage Studio" or a large
+label for the current space. The active space should be obvious from the
+selected macro item. Project/world identity may appear only as compact status
+when it is operationally useful.
+
+It should not become a bloated menu bar. Secondary commands belong inside the
+workspace or in contextual menus.
+
+The current-space primary action, such as Rehearse, should sit before the
+far-right Observatory/Health control. Observatory should not appear in the
+middle of the creative path.
+
+Expected macro direction:
+
+- Archive: discover and accept memory.
+- World: compose scenes, layers, behaviours, modulation, and render readiness.
+- Performance: rehearse, steer, recover, and capture.
+- Capture: replay, review, repair, and export.
+- Observatory: inspect why state changed, why work failed, or why trust is
+  degraded.
+
+### Full-Bleed Workspace
+
+The workspace under the macro panel owns the current creative operation. It
+should use the full available width by default.
+
+Expected workspace direction:
+
+- top: state, selected object, readiness, and primary action
+- middle: main work surface
+- right or drawer: optional detail only when useful
+- bottom: timeline, cues, local support, or local status only when relevant
+
+Workspace content should not rely on a left navigation rail to be understood.
+If a local list is needed, such as scene climates, archive sources, captures,
+or diagnostics, it should support the active space rather than act as global
+app navigation.
+
+The workspace should not begin with a redundant "World Space", "Archive Space",
+or equivalent heading. The macro panel already communicates location. The top
+of the workspace should show state and action, not repeat navigation context.
+
+### Async Status Bar
+
+Async work belongs in a persistent status bar outside the active workspace.
+
+The status bar should be anchored to the bottom edge, run full width, and read
+left to right like a traditional professional tool status bar. It should be
+dense, not card-like.
+
+The status bar should show:
+
+- queued tasks
+- running tasks
+- failed tasks
+- completed recent tasks
+- blocked tasks
+- canceled tasks where relevant
+
+The status bar should be compact by default. Task details should open as a
+right-anchored flyout or popover when needed. The flyout should expose progress,
+owner space, started time, affected artifact or reference, cancellation, retry,
+and "inspect" navigation where safe.
+
+Task rows should link back to the owning space:
+
+- archive validation opens Archive Space
+- render graph warning opens Observatory Space
+- preview/export task opens Capture Space when artifact trust is affected
+- capture replay task opens Capture Space
+- missing source task opens Archive Space
+
+The async status bar is not a replacement for semantic capture trust, render
+readiness, or workspace warnings. It reports work. The workspace and top panel
+explain what the work means.
+
+### THE-54 Acceptance Implication
+
+`THE-54: M4.01 Uplift Studio navigation into v1 spaces` should implement this
+shell direction before deeper space-specific rewrites:
+
+- replace the left-hand global navigation with a top macro panel
+- map existing views into Archive, World, Performance, Capture, and Observatory
+- host the active workspace full-bleed below the macro panel
+- add a compact bottom async status bar with a right-anchored flyout detail
+  pattern
+- preserve project, selection, job, diagnostics, and capture context across
+  space switches
+- keep existing panels usable as local workspace surfaces where they still fit
 
 ### World Space
 
