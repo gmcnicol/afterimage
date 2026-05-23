@@ -8,16 +8,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.join(__dirname, '..', '..', '..');
 const fixtureProjectPath = path.join(repoRoot, 'packages', 'test-fixtures', 'src', 'fixtures', 'projects', 'core-engine.project.json');
+const fixtureArchivePath = path.join(repoRoot, 'packages', 'test-fixtures', 'src', 'fixtures', 'archive', 'source-alpha.archive.json');
 
 async function createFixtureProjectCopy(): Promise<string> {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'afterimage-e2e-'));
   const projectRoot = path.join(tempRoot, 'project');
   const projectFilePath = path.join(projectRoot, 'studio-fixture.afterimage.json');
   const rawProject = await readFile(fixtureProjectPath, 'utf8');
+  const rawArchive = await readFile(fixtureArchivePath, 'utf8');
   const project = JSON.parse(rawProject) as Record<string, unknown>;
 
-  await mkdir(projectRoot, { recursive: true });
+  await mkdir(path.join(projectRoot, '.afterimage', 'archive'), { recursive: true });
   await writeFile(projectFilePath, `${JSON.stringify(project, null, 2)}\n`, 'utf8');
+  await writeFile(path.join(projectRoot, '.afterimage', 'archive', 'archive-source-alpha.archive.json'), rawArchive, 'utf8');
 
   return projectFilePath;
 }
@@ -40,11 +43,11 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
     const window = await electronApp.firstWindow();
     await expect(window.getByRole('navigation', { name: 'Studio spaces' })).toBeVisible();
     await expect(window.locator('nav[aria-label="Workflow navigation"]')).toHaveCount(0);
-    await expect(window.getByRole('button', { name: 'Archive' })).toBeVisible();
-    await expect(window.getByRole('button', { name: 'World' })).toBeVisible();
-    await expect(window.getByRole('button', { name: 'Performance' })).toBeVisible();
-    await expect(window.getByRole('button', { name: 'Capture' })).toBeVisible();
-    await expect(window.getByRole('button', { name: 'Observatory' })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Archive', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'World', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Performance', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Capture', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Observatory', exact: true })).toBeVisible();
     await expect(window.getByLabel('Async task status')).toBeVisible();
 
     const runtimeInfo = await window.evaluate(async () => {
@@ -67,7 +70,7 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
   }
 });
 
-test('loads a project and can open Media and Export without renderer crashes', async () => {
+test('loads a project and can open Archive, World, Performance, Capture, and Observatory without renderer crashes', async () => {
   test.skip(process.env.AFTERIMAGE_RUN_ELECTRON_SMOKE !== '1', 'Set AFTERIMAGE_RUN_ELECTRON_SMOKE=1 after approving Electron build scripts.');
 
   const projectPath = await createFixtureProjectCopy();
@@ -83,11 +86,9 @@ test('loads a project and can open Media and Export without renderer crashes', a
     const spaces = window.getByRole('navigation', { name: 'Studio spaces' });
     await expect(window.getByLabel('Archive workspace')).toBeVisible();
     await expect(window.getByLabel('Archive workspace').getByText('Studio Fixture')).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Project Home' })).toBeVisible();
-
-    await window.getByRole('button', { name: /^Media/ }).click();
-    await expect(window.getByRole('heading', { name: 'Media Library' })).toBeVisible();
-    await expect(window.getByText('Score Alpha')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Archive sidecars' })).toBeVisible();
+    await expect(window.getByText('archive-source-alpha').first()).toBeVisible();
+    await expect(window.getByText('hallway concrete affinity')).toBeVisible();
 
     await spaces.getByRole('button', { name: 'World' }).click();
     await expect(window.getByLabel('World workspace')).toBeVisible();

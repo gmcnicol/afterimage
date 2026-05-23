@@ -10,6 +10,8 @@ describe('createStudioClient', () => {
     const client = createStudioClient(bridge);
 
     await client.project.saveProject({ project: {} as never });
+    await client.project.listArchiveSidecars({ projectRoot: '/tmp/project', project: {} as never });
+    await client.project.importArchiveSidecars({ projectRoot: '/tmp/project' });
     await client.library.searchAssets({ query: 'clip' });
     await client.jobs.runPreview({ project: {} as never, projectRoot: '/tmp/project', outputPath: '/tmp/out.mp4' });
     await client.diagnostics.getLogs();
@@ -18,6 +20,8 @@ describe('createStudioClient', () => {
     client.project.subscribeRecentProjects(() => {});
 
     expect(invoke).toHaveBeenCalledWith('command', 'project.save', { project: {} });
+    expect(invoke).toHaveBeenCalledWith('query', 'project.listArchiveSidecars', { projectRoot: '/tmp/project', project: {} });
+    expect(invoke).toHaveBeenCalledWith('command', 'project.importArchiveSidecars', { projectRoot: '/tmp/project' });
     expect(invoke).toHaveBeenCalledWith('query', 'library.searchAssets', { query: 'clip' });
     expect(invoke).toHaveBeenCalledWith('command', 'jobs.runPreview', {
       project: {},

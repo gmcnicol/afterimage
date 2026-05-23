@@ -1,11 +1,28 @@
 import { create } from 'zustand';
-import type { AutomationTargetProperty, MediaAsset, NormalizedProjectFile, SupportedFilterType, TransitionStyle } from '@afterimage/project-model';
+import type {
+  ArchiveAcceptanceScope,
+  ArchiveMetadataFile,
+  ArchiveReferenceKind,
+  AutomationTargetProperty,
+  MediaAsset,
+  NormalizedProjectFile,
+  SupportedFilterType,
+  TransitionStyle
+} from '@afterimage/project-model';
 import type { ProjectOperation } from '../lib/studio-client';
 import type { Marker, SyncMode } from '@afterimage/project-model';
 import { getStudioClient } from '../lib/studio-client';
 import { useUiStore } from './ui-store';
 
 type SequenceBuildMode = Extract<ProjectOperation, { type: 'buildVariantFromReviewedCuts' }>['mode'];
+type ArchiveCandidateActionInput = {
+  archive: ArchiveMetadataFile;
+  referenceKind: ArchiveReferenceKind;
+  candidateId: string;
+  scope?: ArchiveAcceptanceScope;
+  targetIds?: string[];
+  note?: string;
+};
 
 let projectOperationQueue: Promise<void> = Promise.resolve();
 
@@ -98,6 +115,8 @@ interface ProjectSessionState {
   setProjectMusicAsset: (assetId: string) => void;
   setVariantMusicSyncMode: (variantId: string, syncMode: SyncMode) => void;
   applySyncMarkers: (variantId: string, markers: Marker[]) => void;
+  acceptArchiveCandidate: (input: ArchiveCandidateActionInput) => void;
+  rejectArchiveCandidate: (input: ArchiveCandidateActionInput) => void;
   markSaved: (input: { projectFilePath?: string; projectRoot?: string; recentProjects?: string[] }) => void;
 }
 
@@ -175,6 +194,8 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
   setProjectMusicAsset: (assetId) => dispatchProjectOperation(set, get, { type: 'setProjectMusicAsset', assetId }),
   setVariantMusicSyncMode: (variantId, syncMode) => dispatchProjectOperation(set, get, { type: 'setVariantMusicSyncMode', variantId, syncMode }),
   applySyncMarkers: (variantId, markers) => dispatchProjectOperation(set, get, { type: 'applySyncMarkers', variantId, markers }),
+  acceptArchiveCandidate: (input) => dispatchProjectOperation(set, get, { type: 'acceptArchiveCandidate', ...input }),
+  rejectArchiveCandidate: (input) => dispatchProjectOperation(set, get, { type: 'rejectArchiveCandidate', ...input }),
   markSaved: (input) => {
     set((state) => ({
       projectFilePath: input.projectFilePath ?? state.projectFilePath,

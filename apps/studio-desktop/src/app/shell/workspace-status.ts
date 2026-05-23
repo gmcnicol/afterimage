@@ -3,6 +3,8 @@ import type { TabStatusTone, WorkflowMetrics } from './types';
 
 export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { tone: TabStatusTone; label: string } {
   switch (tabId) {
+    case 'archive':
+      return metrics.assetCount > 0 ? { tone: 'ready', label: 'memory index' } : { tone: 'attention', label: 'save or import' };
     case 'project':
       return metrics.assetCount > 0 ? { tone: 'ready', label: 'active project' } : { tone: 'attention', label: 'save early' };
     case 'media':
@@ -54,6 +56,8 @@ export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { 
 
 export function getSurfaceBadge(tabId: StudioTab, metrics: WorkflowMetrics): string | undefined {
   switch (tabId) {
+    case 'archive':
+      return metrics.assetCount > 0 ? String(metrics.assetCount) : undefined;
     case 'media':
       return metrics.pendingAnalysisCount > 0 ? `${metrics.pendingAnalysisCount}` : metrics.assetCount > 0 ? String(metrics.assetCount) : undefined;
     case 'cuts':
