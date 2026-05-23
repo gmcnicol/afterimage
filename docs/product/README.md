@@ -17,6 +17,8 @@ around a shared core.
 
 ## Product Documents
 
+- `archive-space.md`: Studio Archive Space sidecar review and acceptance
+  workflow.
 - `scene-detection.md`: offline-first scene analysis model.
 - `midi.md`: shared MIDI abstraction for authoring and performance.
 - `presets.md`: preset families and data ownership.
