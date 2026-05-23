@@ -12,8 +12,8 @@ function job(input: Partial<DesktopJob> & Pick<DesktopJob, 'id' | 'type' | 'stat
 
 describe('studio task routing', () => {
   it('routes job types through registered workspaces', () => {
-    expect(getJobRoute(job({ id: 'analysis', type: 'analysis', status: 'queued' }))).toEqual({ space: 'archive', tab: 'media' });
-    expect(getJobRoute(job({ id: 'library', type: 'library-scan', status: 'running' }))).toEqual({ space: 'archive', tab: 'catalog' });
+    expect(getJobRoute(job({ id: 'analysis', type: 'analysis', status: 'queued' }))).toEqual({ space: 'archive', tab: 'archive' });
+    expect(getJobRoute(job({ id: 'library', type: 'library-scan', status: 'running' }))).toEqual({ space: 'archive', tab: 'archive' });
     expect(getJobRoute(job({ id: 'preview', type: 'preview', status: 'completed' }))).toEqual({ space: 'performance', tab: 'sequence' });
     expect(getJobRoute(job({ id: 'export', type: 'export', status: 'failed' }))).toEqual({ space: 'capture', tab: 'export' });
   });

@@ -45,6 +45,16 @@ export type {
   LibrarySearchResult
 } from './library.js';
 export type {
+  ArchiveDiagnostic,
+  ArchiveDiagnosticCode,
+  ArchiveDiagnosticSeverity,
+  ArchiveCandidateOperationPayload,
+  ArchiveSidecarImportRequest,
+  ArchiveSidecarImportResult,
+  ArchiveSidecarListRequest,
+  ArchiveSidecarListResult,
+  ArchiveSidecarLoadError,
+  ArchiveSidecarLoadResult,
   ImportCueFileResult,
   ProjectMaterializeAnalysisCutsRequest,
   ProjectCommandMap,

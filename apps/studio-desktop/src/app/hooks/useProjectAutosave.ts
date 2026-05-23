@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef } from 'react';
 import { getStudioClient } from '../../lib/studio-client';
 import { useProjectSessionStore } from '../../stores/project-session-store';
+import { useUiStore } from '../../stores/ui-store';
 import { resolveProjectFilePath } from '../utils';
 
 export function useProjectAutosave(): void {
@@ -10,6 +11,7 @@ export function useProjectAutosave(): void {
   const projectRoot = useProjectSessionStore((state) => state.projectRoot);
   const dirty = useProjectSessionStore((state) => state.dirty);
   const setSession = useProjectSessionStore((state) => state.setSession);
+  const addNotification = useUiStore((state) => state.addNotification);
   const autosaveTimerRef = useRef<number | undefined>(undefined);
   const autosavingRef = useRef(false);
 
@@ -36,6 +38,9 @@ export function useProjectAutosave(): void {
         projectFilePath: latestProjectFilePath
       });
       setSession(session);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addNotification(`Autosave failed: ${message}`, 'warn', 5200);
     } finally {
       autosavingRef.current = false;
     }

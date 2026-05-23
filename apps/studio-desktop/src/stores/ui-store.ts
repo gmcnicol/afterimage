@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 export type StudioTab =
+  | 'archive'
   | 'project'
   | 'catalog'
   | 'media'
@@ -50,6 +51,7 @@ interface UiStoreState {
 
 export function getStudioSpaceForTab(tab: StudioTab): StudioSpace {
   switch (tab) {
+    case 'archive':
     case 'project':
     case 'catalog':
     case 'media':
@@ -66,7 +68,7 @@ export function getStudioSpaceForTab(tab: StudioTab): StudioSpace {
 export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
   switch (space) {
     case 'archive':
-      return 'project';
+      return 'archive';
     case 'world':
       return 'cuts';
     case 'performance':
@@ -80,7 +82,7 @@ export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
 
 export const useUiStore = create<UiStoreState>((set) => ({
   currentSpace: 'archive',
-  currentTab: 'project',
+  currentTab: 'archive',
   notifications: [],
   setCurrentSpace: (currentSpace) => set({
     currentSpace,

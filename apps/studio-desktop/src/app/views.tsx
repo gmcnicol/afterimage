@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { type StudioTab, useUiStore } from '../stores/ui-store';
 import { ProjectView } from '../features/project-overview/views';
 import { CatalogView, MediaView } from '../features/media-library/views';
+import { ArchiveSpaceView } from '../features/archive-space/views';
 import { CutsView } from '../features/scene-analysis/views';
 import { SequenceView } from '../features/sequence-builder/views';
 import { MusicView } from '../features/music-sync/views';
@@ -11,6 +12,7 @@ import { ExportView } from '../features/export/views';
 import { DiagnosticsView } from '../features/diagnostics/views';
 
 const viewMap: Record<StudioTab, ComponentType> = {
+  archive: ArchiveSpaceView,
   project: ProjectView,
   catalog: CatalogView,
   media: MediaView,

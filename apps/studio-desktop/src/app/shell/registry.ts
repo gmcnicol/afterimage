@@ -3,6 +3,11 @@ import type { StudioSpace, StudioTab } from '../../stores/ui-store';
 import type { StudioWorkspaceDefinition, StudioWorkspaceSurface } from './types';
 
 export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
+  archive: {
+    id: 'archive',
+    label: 'Archive Space',
+    description: 'Memory reservoir, sidecar archaeology, provenance, and archive acceptance.'
+  },
   project: {
     id: 'project',
     label: 'Project',
@@ -59,15 +64,15 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
   {
     id: 'archive',
     label: 'Archive',
-    defaultTab: 'project',
-    primaryAction: { label: 'Import', targetTab: 'media' },
-    surfaces: ['project', 'media', 'catalog'],
+    defaultTab: 'archive',
+    primaryAction: { label: 'Reservoir', targetTab: 'archive' },
+    surfaces: ['archive'],
     taskRoutes: {
-      analysis: { tab: 'media' },
-      thumbnails: { tab: 'project' },
-      waveform: { tab: 'project' },
-      'library-scan': { tab: 'catalog' },
-      'library-analysis': { tab: 'catalog' }
+      analysis: { tab: 'archive' },
+      thumbnails: { tab: 'archive' },
+      waveform: { tab: 'archive' },
+      'library-scan': { tab: 'archive' },
+      'library-analysis': { tab: 'archive' }
     }
   },
   {
