@@ -109,6 +109,7 @@ function createStudioRouteRegistry() {
     'project.importMusic': (projectRoot) => projectService.importMusic(projectRoot),
     'project.importTransitionMasks': (projectRoot) => projectService.importTransitionMasks(projectRoot),
     'project.importTransitionOverlays': (projectRoot) => projectService.importTransitionOverlays(projectRoot),
+    'project.importArchiveSidecars': (input) => projectService.importArchiveSidecars(input),
     'project.relinkAsset': (input) => projectService.relinkAsset(input),
     'project.importCueFile': () => projectService.importCueFile(),
     'project.applyOperation': (input) => projectService.applyProjectOperation(input),
@@ -142,6 +143,7 @@ function createStudioRouteRegistry() {
       return startupSessionPromise;
     },
     'project.loadAnalysis': (analysisPath) => projectService.loadAnalysis(analysisPath),
+    'project.listArchiveSidecars': (input) => projectService.listArchiveSidecars(input),
     'library.listRoots': () => libraryService.listRoots(),
     'library.listDirectories': (rootId) => libraryService.listDirectories(rootId),
     'library.searchAssets': (input) => libraryService.searchAssets(input),

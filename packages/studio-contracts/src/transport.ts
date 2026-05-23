@@ -71,10 +71,12 @@ export interface StudioClient {
     duplicateProject: (input: ProjectCommandMap['project.duplicate']['payload']) => Promise<ProjectCommandMap['project.duplicate']['result']>;
     revealProjectFolder: (projectFilePath: string) => Promise<ProjectCommandMap['project.revealFolder']['result']>;
     loadAnalysis: (analysisPath: string) => Promise<ProjectQueryMap['project.loadAnalysis']['result']>;
+    listArchiveSidecars: (input: ProjectQueryMap['project.listArchiveSidecars']['payload']) => Promise<ProjectQueryMap['project.listArchiveSidecars']['result']>;
     importMedia: (projectRoot?: string) => Promise<ProjectCommandMap['project.importMedia']['result']>;
     importMusic: (projectRoot?: string) => Promise<ProjectCommandMap['project.importMusic']['result']>;
     importTransitionMasks: (projectRoot?: string) => Promise<ProjectCommandMap['project.importTransitionMasks']['result']>;
     importTransitionOverlays: (projectRoot?: string) => Promise<ProjectCommandMap['project.importTransitionOverlays']['result']>;
+    importArchiveSidecars: (input: ProjectCommandMap['project.importArchiveSidecars']['payload']) => Promise<ProjectCommandMap['project.importArchiveSidecars']['result']>;
     relinkAsset: (input: ProjectCommandMap['project.relinkAsset']['payload']) => Promise<ProjectCommandMap['project.relinkAsset']['result']>;
     importCueFile: () => Promise<ProjectCommandMap['project.importCueFile']['result']>;
     applyOperation: (input: ProjectCommandMap['project.applyOperation']['payload']) => Promise<ProjectCommandMap['project.applyOperation']['result']>;

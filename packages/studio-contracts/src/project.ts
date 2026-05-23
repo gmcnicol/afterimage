@@ -1,14 +1,39 @@
 import type {
   AnalysisFile,
+  ArchiveAcceptanceScope,
+  ArchiveMetadataFile,
+  ArchiveReferenceKind,
   AutomationTargetProperty,
   Marker,
   MediaAsset,
+  NormalizedArchiveMetadataFile,
   NormalizedProjectFile,
   ProjectPathRef,
   SupportedFilterType,
   SyncMode,
   TransitionStyle
 } from '@afterimage/project-model';
+
+export type ArchiveDiagnosticSeverity = 'warning' | 'export-blocker';
+
+export type ArchiveDiagnosticCode =
+  | 'archive-integrity'
+  | 'changed-generator-identity'
+  | 'incompatible-schema-version'
+  | 'missing-accepted-target'
+  | 'missing-archive-item'
+  | 'missing-rights-license'
+  | 'missing-sidecar'
+  | 'missing-source-asset'
+  | 'stale-sidecar'
+  | 'unresolved-external-source-id';
+
+export interface ArchiveDiagnostic {
+  code: ArchiveDiagnosticCode;
+  severity: ArchiveDiagnosticSeverity;
+  path: string;
+  message: string;
+}
 
 export type SequenceBuildMode = 'balanced' | 'tight' | 'longer';
 
@@ -32,6 +57,47 @@ export interface RelinkAssetResult {
 export interface ImportCueFileResult {
   path: string;
   markers: Marker[];
+}
+
+export interface ArchiveSidecarLoadError {
+  message: string;
+  code?: string;
+  details?: string[];
+}
+
+export interface ArchiveSidecarLoadResult {
+  path: string;
+  archive?: NormalizedArchiveMetadataFile;
+  error?: ArchiveSidecarLoadError;
+  diagnostics: ArchiveDiagnostic[];
+}
+
+export interface ArchiveSidecarListRequest {
+  projectRoot?: string;
+  project: NormalizedProjectFile;
+}
+
+export interface ArchiveSidecarListResult {
+  sidecars: ArchiveSidecarLoadResult[];
+  diagnostics: ArchiveDiagnostic[];
+}
+
+export interface ArchiveSidecarImportRequest {
+  projectRoot: string;
+}
+
+export interface ArchiveSidecarImportResult {
+  importedPaths: string[];
+  rejected: ArchiveSidecarLoadResult[];
+}
+
+export interface ArchiveCandidateOperationPayload {
+  archive: ArchiveMetadataFile;
+  referenceKind: ArchiveReferenceKind;
+  candidateId: string;
+  scope?: ArchiveAcceptanceScope;
+  targetIds?: string[];
+  note?: string;
 }
 
 export type ProjectOperation =
@@ -82,7 +148,9 @@ export type ProjectOperation =
   | { type: 'setVariantMusicAsset'; variantId: string; assetId: string }
   | { type: 'setProjectMusicAsset'; assetId: string }
   | { type: 'setVariantMusicSyncMode'; variantId: string; syncMode: SyncMode }
-  | { type: 'applySyncMarkers'; variantId: string; markers: Marker[] };
+  | { type: 'applySyncMarkers'; variantId: string; markers: Marker[] }
+  | ({ type: 'acceptArchiveCandidate' } & ArchiveCandidateOperationPayload)
+  | ({ type: 'rejectArchiveCandidate' } & ArchiveCandidateOperationPayload);
 
 export interface ProjectOperationRequest {
   project: NormalizedProjectFile;
@@ -160,6 +228,10 @@ export interface ProjectCommandMap {
     payload: undefined;
     result: ImportCueFileResult | null;
   };
+  'project.importArchiveSidecars': {
+    payload: ArchiveSidecarImportRequest;
+    result: ArchiveSidecarImportResult;
+  };
   'project.applyOperation': {
     payload: ProjectOperationRequest;
     result: NormalizedProjectFile;
@@ -178,6 +250,10 @@ export interface ProjectQueryMap {
   'project.loadAnalysis': {
     payload: string;
     result: AnalysisFile | null;
+  };
+  'project.listArchiveSidecars': {
+    payload: ArchiveSidecarListRequest;
+    result: ArchiveSidecarListResult;
   };
 }
 
