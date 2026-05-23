@@ -6,6 +6,7 @@ export type StudioTab =
   | 'catalog'
   | 'media'
   | 'cuts'
+  | 'world'
   | 'sequence'
   | 'music'
   | 'style'
@@ -70,7 +71,7 @@ export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
     case 'archive':
       return 'archive';
     case 'world':
-      return 'cuts';
+      return 'world';
     case 'performance':
       return 'sequence';
     case 'capture':

@@ -9,6 +9,8 @@ import type {
   NormalizedArchiveMetadataFile,
   NormalizedProjectFile,
   ProjectPathRef,
+  SceneClimate,
+  SceneLayerRenderIntent,
   SupportedFilterType,
   SyncMode,
   TransitionStyle
@@ -125,6 +127,9 @@ export type ProjectOperation =
   | { type: 'randomizeFoundryOverlays'; variantId: string }
   | { type: 'duplicateVariant'; variantId: string }
   | { type: 'deleteVariant'; variantId: string }
+  | { type: 'setActiveCompositionSequenceVariant'; sequenceId: string; variantId?: string }
+  | { type: 'updateCompositionScene'; sceneId: string; name?: string; climate?: Partial<SceneClimate> }
+  | { type: 'updateCompositionLayer'; layerId: string; name?: string; orderIndex?: number; mix?: number; renderIntent?: Partial<SceneLayerRenderIntent> }
   | { type: 'addMarker'; variantId: string; label: string; timeMs: number }
   | { type: 'addSection'; variantId: string; label: string; startMs: number; endMs: number }
   | { type: 'addFilterToSequenceStack'; filterType: SupportedFilterType; stackId?: string }

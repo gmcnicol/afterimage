@@ -400,6 +400,20 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return domainOps.duplicateVariant(project, operation.variantId);
       case 'deleteVariant':
         return domainOps.deleteVariant(project, operation.variantId);
+      case 'setActiveCompositionSequenceVariant':
+        return domainOps.setActiveCompositionSequenceVariant(project, operation.sequenceId, operation.variantId);
+      case 'updateCompositionScene':
+        return domainOps.updateCompositionScene(project, operation.sceneId, {
+          name: operation.name,
+          climate: operation.climate
+        });
+      case 'updateCompositionLayer':
+        return domainOps.updateCompositionLayer(project, operation.layerId, {
+          name: operation.name,
+          orderIndex: operation.orderIndex,
+          mix: operation.mix,
+          renderIntent: operation.renderIntent
+        });
       case 'addMarker':
         return domainOps.addMarker(project, operation.variantId, {
           id: createProjectEntityId(project, 'marker'),

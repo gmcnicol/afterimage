@@ -92,7 +92,11 @@ test('loads a project and can open Archive, World, Performance, Capture, and Obs
 
     await spaces.getByRole('button', { name: 'World' }).click();
     await expect(window.getByLabel('World workspace')).toBeVisible();
-    await expect(window.getByPlaceholder('Filter cuts by id or tag')).toBeVisible();
+    await expect(window.getByLabel('World creation surface')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Studio Fixture' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Atlas' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Main Scene field' })).toBeVisible();
+    await expect(window.getByText('Intro Source').first()).toBeVisible();
 
     await spaces.getByRole('button', { name: 'Performance' }).click();
     await expect(window.getByLabel('Performance workspace')).toBeVisible();

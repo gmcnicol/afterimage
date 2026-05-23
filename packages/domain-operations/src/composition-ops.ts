@@ -5,6 +5,7 @@ import {
   getDefaultVariant,
   getSequenceById,
   getVariantById,
+  normalizeProject,
   type CaptureLog,
   type CaptureSession,
   type CompositionAcceptedArchiveReference,
@@ -18,6 +19,8 @@ import {
   type NormalizedSceneDefinition,
   type NormalizedSceneLayerDefinition,
   type ProjectIntegrityIssue,
+  type SceneClimate,
+  type SceneLayerRenderIntent,
   type Sequence,
   type Variant
 } from '@afterimage/project-model';
@@ -62,13 +65,108 @@ export type ResolveCompositionIntentResult =
       intent?: undefined;
     };
 
+export interface UpdateCompositionSceneInput {
+  name?: string;
+  climate?: Partial<SceneClimate>;
+}
+
+export interface UpdateCompositionLayerInput {
+  name?: string;
+  orderIndex?: number;
+  mix?: number;
+  renderIntent?: Partial<SceneLayerRenderIntent>;
+}
+
 function compareStrings(left: string, right: string): number {
   return left.localeCompare(right);
+}
+
+function clampUnit(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 function uniqueSorted(values: Array<string | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => value !== undefined))]
     .sort(compareStrings);
+}
+
+export function setActiveCompositionSequenceVariant(
+  project: NormalizedProjectFile,
+  sequenceId: string,
+  variantId?: string
+): NormalizedProjectFile {
+  const sequence = getSequenceById(project, sequenceId);
+  if (!sequence) {
+    return project;
+  }
+
+  const variant = variantId
+    ? getVariantById(project, variantId)
+    : getDefaultVariant(project, sequenceId);
+  if (!variant || variant.sequenceId !== sequence.id || !sequence.variantIds.includes(variant.id)) {
+    return project;
+  }
+
+  return normalizeProject({
+    ...project,
+    composition: {
+      ...project.composition,
+      sequenceId: sequence.id,
+      variantId: variant.id
+    }
+  });
+}
+
+export function updateCompositionScene(
+  project: NormalizedProjectFile,
+  sceneId: string,
+  input: UpdateCompositionSceneInput
+): NormalizedProjectFile {
+  if (!project.composition.scenes.some((scene) => scene.id === sceneId)) {
+    return project;
+  }
+
+  return normalizeProject({
+    ...project,
+    composition: {
+      ...project.composition,
+      scenes: project.composition.scenes.map((scene) => scene.id === sceneId ? {
+        ...scene,
+        name: input.name ?? scene.name,
+        climate: {
+          ...scene.climate,
+          ...(input.climate ?? {})
+        }
+      } : scene)
+    }
+  });
+}
+
+export function updateCompositionLayer(
+  project: NormalizedProjectFile,
+  layerId: string,
+  input: UpdateCompositionLayerInput
+): NormalizedProjectFile {
+  if (!project.composition.layers.some((layer) => layer.id === layerId)) {
+    return project;
+  }
+
+  return normalizeProject({
+    ...project,
+    composition: {
+      ...project.composition,
+      layers: project.composition.layers.map((layer) => layer.id === layerId ? {
+        ...layer,
+        name: input.name ?? layer.name,
+        orderIndex: input.orderIndex ?? layer.orderIndex,
+        mix: input.mix === undefined ? layer.mix : clampUnit(input.mix),
+        renderIntent: {
+          ...layer.renderIntent,
+          ...(input.renderIntent ?? {})
+        }
+      } : layer)
+    }
+  });
 }
 
 function pushMissingReference(issues: ProjectIntegrityIssue[], path: string, message: string): void {
