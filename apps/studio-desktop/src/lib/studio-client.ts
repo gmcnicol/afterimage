@@ -20,6 +20,10 @@ import type {
 } from '@afterimage/studio-contracts';
 
 export type {
+  ArchiveDiagnostic,
+  ArchiveSidecarImportResult,
+  ArchiveSidecarListResult,
+  ArchiveSidecarLoadResult,
   DesktopJob,
   DiagnosticsSnapshot,
   JobLaunchResult,
@@ -69,10 +73,12 @@ export function createStudioClient(bridge: StudioPreloadBridge): StudioClient {
       duplicateProject: (input) => bridge.invoke('command', 'project.duplicate', input),
       revealProjectFolder: (projectFilePath) => bridge.invoke('command', 'project.revealFolder', projectFilePath),
       loadAnalysis: (analysisPath) => bridge.invoke('query', 'project.loadAnalysis', analysisPath),
+      listArchiveSidecars: (input) => bridge.invoke('query', 'project.listArchiveSidecars', input),
       importMedia: (projectRoot) => bridge.invoke('command', 'project.importMedia', projectRoot),
       importMusic: (projectRoot) => bridge.invoke('command', 'project.importMusic', projectRoot),
       importTransitionMasks: (projectRoot) => bridge.invoke('command', 'project.importTransitionMasks', projectRoot),
       importTransitionOverlays: (projectRoot) => bridge.invoke('command', 'project.importTransitionOverlays', projectRoot),
+      importArchiveSidecars: (input) => bridge.invoke('command', 'project.importArchiveSidecars', input),
       relinkAsset: (input) => bridge.invoke('command', 'project.relinkAsset', input),
       importCueFile: () => bridge.invoke('command', 'project.importCueFile', undefined),
       applyOperation: (input) => bridge.invoke('command', 'project.applyOperation', input),

@@ -1,7 +1,6 @@
 import { useProjectSessionStore } from '../../stores/project-session-store';
 import { useUiStore } from '../../stores/ui-store';
 import { pillStyle } from '../styles';
-import { resolveProjectFilePath } from '../utils';
 import { getWorkspaceDefinition, getWorkspaceSurface } from './registry';
 import { useWorkflowMetrics } from './useWorkflowMetrics';
 import { getSurfaceBadge, getSurfaceStatus } from './workspace-status';
@@ -11,12 +10,8 @@ export function WorkspaceContextBar() {
   const currentTab = useUiStore((state) => state.currentTab);
   const setWorkspaceSurface = useUiStore((state) => state.setWorkspaceSurface);
   const project = useProjectSessionStore((state) => state.project);
-  const projectRoot = useProjectSessionStore((state) => state.projectRoot);
-  const projectFilePath = useProjectSessionStore((state) => state.projectFilePath);
-  const dirty = useProjectSessionStore((state) => state.dirty);
   const metrics = useWorkflowMetrics();
   const activeWorkspace = getWorkspaceDefinition(currentSpace);
-  const resolvedProjectFilePath = resolveProjectFilePath(projectFilePath, projectRoot, project.metadata.projectFileName);
   const surfaces = activeWorkspace.surfaces;
 
   return (
@@ -48,11 +43,9 @@ export function WorkspaceContextBar() {
       </div>
       <div className="studio-contextbar__meta">
         <span>{project.name}</span>
-        <span style={pillStyle(dirty ? 'warn' : 'success')}>{dirty ? 'Unsaved' : 'Saved'}</span>
         {metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? (
           <span style={pillStyle('warn')}>{metrics.warningCount + metrics.missingMediaCount} issues</span>
         ) : null}
-        <span title={resolvedProjectFilePath}>{resolvedProjectFilePath ?? 'Unsaved project file'}</span>
       </div>
     </div>
   );

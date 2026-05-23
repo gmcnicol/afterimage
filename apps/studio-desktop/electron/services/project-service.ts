@@ -1,6 +1,6 @@
 import { watchFile } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, extname, join, relative } from 'node:path';
+import { copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import type { Dialog, Shell } from 'electron';
 import { executeCommandSpec, resolveFfmpegTools } from '@afterimage/ffmpeg-compiler';
 import { parseFfprobeOutput } from '@afterimage/media-analysis';
@@ -18,8 +18,13 @@ import {
   type MediaAsset,
   type ProjectPathRef
 } from '@afterimage/project-model';
-import { parseAnalysis, parseProject } from '@afterimage/schema-validators';
+import { parseAnalysis, parseArchiveMetadata, parseProject, ValidationError } from '@afterimage/schema-validators';
 import type {
+  ArchiveSidecarImportResult,
+  ArchiveSidecarListRequest,
+  ArchiveSidecarListResult,
+  ArchiveSidecarLoadError,
+  ArchiveSidecarLoadResult,
   ImportCueFileResult,
   ProjectMaterializeAnalysisCutsRequest,
   ProjectMutationResult,
@@ -166,6 +171,7 @@ function parseAfterimageCueFile(raw: string): Marker[] {
 async function ensureProjectStructure(projectRoot: string): Promise<void> {
   await Promise.all([
     mkdir(projectRoot, { recursive: true }),
+    mkdir(join(projectRoot, '.afterimage', 'archive'), { recursive: true }),
     mkdir(join(projectRoot, '.afterimage', 'analysis'), { recursive: true }),
     mkdir(join(projectRoot, '.afterimage', 'thumbnails'), { recursive: true }),
     mkdir(join(projectRoot, '.afterimage', 'waveforms'), { recursive: true }),
@@ -173,6 +179,66 @@ async function ensureProjectStructure(projectRoot: string): Promise<void> {
     mkdir(join(projectRoot, '.afterimage', 'logs'), { recursive: true }),
     mkdir(join(projectRoot, 'exports'), { recursive: true })
   ]);
+}
+
+const archiveSidecarRoots = [
+  join('.afterimage', 'archive'),
+  'archive',
+  'archives'
+] as const;
+
+function formatSidecarLoadError(error: unknown): ArchiveSidecarLoadError {
+  if (error instanceof ValidationError) {
+    return {
+      message: error.message,
+      code: error.code,
+      details: error.issues.map((issue) => `${issue.path}: ${issue.message}`)
+    };
+  }
+
+  return {
+    message: getErrorMessage(error)
+  };
+}
+
+async function collectArchiveSidecarPaths(directoryPath: string): Promise<string[]> {
+  let entries;
+  try {
+    entries = await readdir(directoryPath, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const paths: string[] = [];
+  for (const entry of entries) {
+    const entryPath = join(directoryPath, entry.name);
+    if (entry.isDirectory()) {
+      paths.push(...await collectArchiveSidecarPaths(entryPath));
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith('.archive.json')) {
+      paths.push(entryPath);
+    }
+  }
+  return paths.sort((left, right) => left.localeCompare(right));
+}
+
+async function loadArchiveSidecar(sidecarPath: string): Promise<ArchiveSidecarLoadResult> {
+  try {
+    const raw = await readFile(sidecarPath, 'utf8');
+    const archive = parseArchiveMetadata(JSON.parse(raw) as unknown);
+    return {
+      path: sidecarPath,
+      archive,
+      diagnostics: []
+    };
+  } catch (error) {
+    return {
+      path: sidecarPath,
+      error: formatSidecarLoadError(error),
+      diagnostics: []
+    };
+  }
 }
 
 async function readRecentProjects(recentProjectsPath: string): Promise<string[]> {
@@ -434,6 +500,46 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return domainOps.setVariantMusicSyncMode(project, operation.variantId, operation.syncMode);
       case 'applySyncMarkers':
         return domainOps.applySyncMarkers(project, operation.variantId, operation.markers);
+      case 'acceptArchiveCandidate':
+        switch (operation.referenceKind) {
+          case 'segment':
+            return domainOps.acceptArchiveSegmentCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'motif':
+            return domainOps.acceptArchiveMotifCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'atmosphere':
+            return domainOps.acceptArchiveAtmosphereCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'material':
+            return domainOps.acceptArchiveMaterialCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'motion':
+            return domainOps.acceptArchiveMotionCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'behaviour-seed':
+            return domainOps.acceptArchiveBehaviourSeedCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'recurrence':
+            return domainOps.acceptArchiveRecurrenceCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'affinity':
+            return domainOps.acceptArchiveAffinityCandidate(project, operation.archive, operation.candidateId, operation).project;
+        }
+        return project;
+      case 'rejectArchiveCandidate':
+        switch (operation.referenceKind) {
+          case 'segment':
+            return domainOps.rejectArchiveSegmentCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'motif':
+            return domainOps.rejectArchiveMotifCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'atmosphere':
+            return domainOps.rejectArchiveAtmosphereCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'material':
+            return domainOps.rejectArchiveMaterialCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'motion':
+            return domainOps.rejectArchiveMotionCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'behaviour-seed':
+            return domainOps.rejectArchiveBehaviourSeedCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'recurrence':
+            return domainOps.rejectArchiveRecurrenceCandidate(project, operation.archive, operation.candidateId, operation).project;
+          case 'affinity':
+            return domainOps.rejectArchiveAffinityCandidate(project, operation.archive, operation.candidateId, operation).project;
+        }
+        return project;
     }
   }
 
@@ -678,6 +784,50 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return null;
       }
     },
+    async listArchiveSidecars(input: ArchiveSidecarListRequest): Promise<ArchiveSidecarListResult> {
+      if (!input.projectRoot) {
+        const diagnostics = domainOps.collectArchiveDiagnostics({
+          project: input.project,
+          archives: [],
+          publishable: true
+        });
+        return {
+          sidecars: [],
+          diagnostics
+        };
+      }
+
+      const sidecarPaths = [...new Set((await Promise.all(
+        archiveSidecarRoots.map((archiveRoot) => collectArchiveSidecarPaths(join(input.projectRoot as string, archiveRoot)))
+      )).flat())].sort((left, right) => left.localeCompare(right));
+      const sidecars = await Promise.all(sidecarPaths.map((sidecarPath) => loadArchiveSidecar(sidecarPath)));
+      const archives = sidecars
+        .map((sidecar) => sidecar.archive)
+        .filter((archive): archive is NonNullable<ArchiveSidecarLoadResult['archive']> => Boolean(archive));
+      const diagnostics = domainOps.collectArchiveDiagnostics({
+        project: input.project,
+        archives,
+        publishable: true
+      });
+      const diagnosticsByArchive = new Map<string, typeof diagnostics>();
+
+      for (const archive of archives) {
+        diagnosticsByArchive.set(
+          archive.id,
+          diagnostics.filter((diagnostic) => diagnostic.path.startsWith(`archives.${archive.id}.`))
+        );
+      }
+
+      return {
+        sidecars: sidecars.map((sidecar) => sidecar.archive
+          ? {
+              ...sidecar,
+              diagnostics: diagnosticsByArchive.get(sidecar.archive.id) ?? []
+            }
+          : sidecar),
+        diagnostics
+      };
+    },
     async importMedia(projectRoot?: string): Promise<MediaAsset[]> {
       const result = await dialog.showOpenDialog({
         title: 'Import Media',
@@ -780,6 +930,49 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       return {
         path: cuePath,
         markers
+      };
+    },
+    async importArchiveSidecars(input: { projectRoot: string }): Promise<ArchiveSidecarImportResult> {
+      const result = await dialog.showOpenDialog({
+        title: 'Import Archive Sidecar',
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: 'Archive Sidecar JSON', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        await logger.log('info', 'Archive sidecar import cancelled.');
+        return {
+          importedPaths: [],
+          rejected: []
+        };
+      }
+
+      const archiveRoot = join(input.projectRoot, '.afterimage', 'archive');
+      await mkdir(archiveRoot, { recursive: true });
+      const importedPaths: string[] = [];
+      const rejected: ArchiveSidecarLoadResult[] = [];
+
+      for (const sidecarPath of result.filePaths) {
+        const loaded = await loadArchiveSidecar(sidecarPath);
+        if (!loaded.archive) {
+          rejected.push(loaded);
+          continue;
+        }
+
+        const destinationPath = join(archiveRoot, `${loaded.archive.id}.archive.json`);
+        if (resolve(sidecarPath) !== resolve(destinationPath)) {
+          await copyFile(sidecarPath, destinationPath);
+        }
+        importedPaths.push(destinationPath);
+      }
+
+      await logger.log('info', 'Imported archive sidecars.', `${importedPaths.length} imported, ${rejected.length} rejected.`);
+      return {
+        importedPaths,
+        rejected
       };
     },
     applyProjectOperation(input: { project: ProjectSessionSnapshot['project']; operation: ProjectOperation }): ProjectSessionSnapshot['project'] {
