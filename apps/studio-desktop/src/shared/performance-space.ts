@@ -155,11 +155,11 @@ function getJobArtifactPath(job?: DesktopJob): string | undefined {
     ?? (job?.status === 'completed' ? job.target : undefined);
 }
 
-function summarizeJob(job: DesktopJob | undefined, idleLabel: string): PerformanceJobSummary {
+function summarizeJob(job: DesktopJob | undefined, labels: { idle: string; running: string }): PerformanceJobSummary {
   if (!job) {
     return {
       busy: false,
-      label: idleLabel
+      label: labels.idle
     };
   }
 
@@ -173,8 +173,10 @@ function summarizeJob(job: DesktopJob | undefined, idleLabel: string): Performan
     label: job.status === 'queued'
       ? 'queued'
       : job.status === 'running'
-        ? 'rendering'
-        : job.status,
+        ? labels.running
+        : job.status === 'completed'
+          ? 'ready'
+          : job.status,
     progress,
     lastArtifactPath: getJobArtifactPath(job),
     error: job.status === 'failed' ? (job.error ?? job.log.at(-1)) : undefined
@@ -217,7 +219,7 @@ function buildReadiness(input: {
     previewReasons.push(`${input.desktopWarningCount} desktop diagnostic issue${input.desktopWarningCount === 1 ? '' : 's'}`);
   }
   if (input.previewBusy) {
-    previewReasons.push('preview render already active');
+    previewReasons.push('preview already active');
   }
 
   if (!input.selectedCaptureLog) {
@@ -226,14 +228,14 @@ function buildReadiness(input: {
     replayReasons.push('selected capture log has no events');
   }
   if (input.replayBusy) {
-    replayReasons.push('capture replay render already active');
+    replayReasons.push('replay preview already active');
   }
 
   return {
     previewReady: hasClips && input.integrityDiagnostics.length === 0 && !input.previewBusy,
     replayReady: hasClips && input.integrityDiagnostics.length === 0 && Boolean(input.selectedCaptureLog?.events.length) && !input.replayBusy,
     previewReasons,
-    replayReasons: [...previewReasons.filter((reason) => reason !== 'preview render already active'), ...replayReasons]
+    replayReasons: [...previewReasons.filter((reason) => reason !== 'preview already active'), ...replayReasons]
   };
 }
 
@@ -311,8 +313,14 @@ export function derivePerformanceSnapshot(input: DerivePerformanceSnapshotInput)
   const replayOutputPath = input.projectRoot && variant && selectedCaptureLog
     ? `${input.projectRoot}/.afterimage/preview/${variant.id}-${selectedCaptureLog.id}-replay.mp4`
     : undefined;
-  const previewJob = summarizeJob(latestJobForTarget(input.jobs ?? [], previewOutputPath), 'not rendered');
-  const replayJob = summarizeJob(latestJobForTarget(input.jobs ?? [], replayOutputPath), 'not replayed');
+  const previewJob = summarizeJob(latestJobForTarget(input.jobs ?? [], previewOutputPath), {
+    idle: 'not previewed',
+    running: 'building preview'
+  });
+  const replayJob = summarizeJob(latestJobForTarget(input.jobs ?? [], replayOutputPath), {
+    idle: 'not replayed',
+    running: 'building replay preview'
+  });
   const desktopWarningCount = (input.diagnostics?.warnings.length ?? 0) + (input.diagnostics?.missingMedia.length ?? 0);
 
   return {

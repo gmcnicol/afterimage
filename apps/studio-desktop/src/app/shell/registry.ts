@@ -36,7 +36,7 @@ export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
   performance: {
     id: 'performance',
     label: 'Performance Space',
-    description: 'Rehearsal, live steering, preview, and deterministic capture replay.'
+    description: 'Rehearsal, live steering, preview, and replay preview.'
   },
   sequence: {
     id: 'sequence',
@@ -106,7 +106,7 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
     id: 'performance',
     label: 'Performance',
     defaultTab: 'performance',
-    primaryAction: { label: 'Coalesce', targetTab: 'performance' },
+    primaryAction: { label: 'Preview', targetTab: 'performance' },
     surfaces: ['performance'],
     taskRoutes: {
       preview: { tab: 'performance' }

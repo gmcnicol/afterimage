@@ -22,6 +22,8 @@ describe('performance-space helpers', () => {
     expect(snapshot.sequence?.id).toBe('sequence-main');
     expect(snapshot.variant?.id).toBe('variant-main');
     expect(snapshot.previewOutputPath).toBe('/tmp/project/.afterimage/preview/variant-main.mp4');
+    expect(snapshot.previewJob.label).toBe('not previewed');
+    expect(snapshot.replayJob.label).toBe('not replayed');
   });
 
   it('falls back to the first scene with layers and first selected layer', () => {
@@ -129,10 +131,12 @@ describe('performance-space helpers', () => {
       ]
     });
 
-    expect(snapshot.previewJob.label).toBe('rendering');
+    expect(snapshot.previewJob.label).toBe('building preview');
     expect(snapshot.previewJob.progress).toBe(42);
+    expect(snapshot.readiness.previewReasons).toContain('preview already active');
     expect(snapshot.readiness.previewReady).toBe(false);
     expect(snapshot.replayJob.label).toBe('queued');
+    expect(snapshot.readiness.replayReasons).toContain('replay preview already active');
     expect(snapshot.readiness.replayReady).toBe(false);
   });
 

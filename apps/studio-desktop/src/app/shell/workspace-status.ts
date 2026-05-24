@@ -37,7 +37,7 @@ export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { 
       if (metrics.sequenceClipCount === 0) {
         return { tone: 'blocked', label: 'needs sequence' };
       }
-      return metrics.activeJobCount > 0 ? { tone: 'attention', label: 'rendering' } : { tone: 'ready', label: 'rehearsal ready' };
+      return metrics.activeJobCount > 0 ? { tone: 'attention', label: 'building preview' } : { tone: 'ready', label: 'rehearsal ready' };
     case 'music':
       return metrics.audioAssetCount > 0 ? { tone: 'ready', label: 'soundtrack ready' } : { tone: 'attention', label: 'optional input' };
     case 'style':
