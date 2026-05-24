@@ -8,6 +8,10 @@
 - When finishing ticket work, always open a GitHub pull request.
 - Open pull requests as normal open PRs, not draft PRs, unless explicitly asked otherwise.
 
+## Linear
+- In this repo, ticket and project management references mean Linear unless the user explicitly names another tracker.
+- When the user says "tickets", "milestone", "M4", "issue", or "backlog" in an Afterimage planning context, treat it as Linear work first.
+
 ## Screenshots
 - At the end of each ticket with visible UI changes, capture final screenshots for the user.
 - Store screenshots in a stable ignored path such as `screenshots/<ticket-or-branch-slug>/`, not Playwright `test-results`, because test runs may clear that directory.
