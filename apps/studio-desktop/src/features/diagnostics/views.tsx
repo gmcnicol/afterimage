@@ -1,115 +1,429 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import type { ColDef } from 'ag-grid-community';
-import { exportProfiles, type ExportProfileId } from '@afterimage/export-profiles';
-import { loadPresetLibrary } from '@afterimage/preset-library';
-import type {
-  AnalysisFile,
-  AssetRole,
-  AutomationTargetProperty,
-  CutCandidate,
-  FilterInstance,
-  Marker,
-  MediaAsset,
-  NormalizedProjectFile,
-  SequenceClip,
-  SupportedFilterType,
-  SyncMode,
-  TransitionStyle
-} from '@afterimage/project-model';
-import { Panel } from '@afterimage/ui';
-import type { DesktopJob, LibraryAsset, LibraryRoot, LibrarySearchRequest } from '../../lib/studio-client';
+import { useMemo, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { muted, pillStyle } from '../../app/styles';
 import { useDiagnosticsStore } from '../../stores/diagnostics-store';
 import { useJobsStore } from '../../stores/jobs-store';
 import { useProjectSessionStore } from '../../stores/project-session-store';
-import { useUiStore } from '../../stores/ui-store';
-import { accent, muted, pillStyle } from '../../app/styles';
-import { getEnabledExportProfileIds, resolveProjectFilePath, toMediaSrc } from '../../app/utils';
-import { JobRow } from '../../app/components/JobRow';
-import { StatCard } from '../../app/components/StatCard';
-import { StudioDataGrid, type StudioGridAction } from '../../app/components/StudioDataGrid';
-import { ToolbarButton } from '../../app/components/ToolbarButton';
-import {
-  getAssetById,
-  getCurrentVariant,
-  getDefaultVariant,
-  getFilterDefinition,
-  getSupportedAutomationProperties,
-  supportedFilterDefinitions,
-  getAnalysisSummaryByAsset,
-  formatSequenceName,
-  useAnalysisFile,
-  catalogRoles,
-  formatCatalogRole,
-  getErrorMessage,
-  getSceneSegments,
-  buildSyncMarkers,
-  renderTimeline,
-  AutomationLaneTimeline,
-  formatParameterLabel,
-  getStackForCurrentVariant,
-  filterTransitionAssets,
-  formatSequenceAssetLabel,
-  formatMillisecondsClock,
-  formatSequenceCutLabel,
-  formatMillisecondsDetail,
-  formatAssetListSubline,
-  formatPathTail,
-  getPathBasename,
-  isDisposableRecentProjectPath,
-  isVarRecentProjectPath,
-  formatCutDisplayId
-} from '../view-support';
+import { deriveObservatorySnapshot, type ObservatoryLane, type ObservatorySignal, type ObservatorySignalSeverity } from './helpers';
 
-export function DiagnosticsView() {
-  const report = useDiagnosticsStore((state) => state.report);
-  const logs = useDiagnosticsStore((state) => state.logs);
-  const jobs = useJobsStore((state) => state.jobs);
+const ink = '#f6f7f9';
+const line = 'rgba(255,255,255,0.1)';
+const faintLine = 'rgba(255,255,255,0.06)';
 
+function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function severityTone(severity: ObservatorySignalSeverity): 'default' | 'success' | 'warn' {
+  return severity === 'healthy' ? 'success' : severity === 'blocked' || severity === 'warning' ? 'warn' : 'default';
+}
+
+function severityColor(severity: ObservatorySignalSeverity): string {
+  switch (severity) {
+    case 'blocked':
+      return '#e59a9a';
+    case 'warning':
+      return '#dcc27c';
+    case 'healthy':
+      return '#8fd3aa';
+    case 'info':
+      return '#8fb8da';
+  }
+}
+
+function Section(props: { title: string; children: ReactNode; style?: CSSProperties; bodyStyle?: CSSProperties }) {
   return (
-    <div style={{ display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr) minmax(0, 1fr)', gap: 16, height: '100%', minHeight: 0 }}>
-      <Panel title="Diagnostics">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
-          <StatCard label="FFmpeg" value={report?.toolchain.available ? 'Available' : 'Unavailable'} tone={report?.toolchain.available ? 'success' : 'warn'} />
-          <StatCard label="Warnings" value={String(report?.warnings.length ?? 0)} tone={report && report.warnings.length > 0 ? 'warn' : 'default'} />
-          <StatCard label="Missing Media" value={String(report?.missingMedia.length ?? 0)} tone={report && report.missingMedia.length > 0 ? 'warn' : 'default'} />
-        </div>
-      </Panel>
-      <Panel title="Environment">
-        <div style={{ display: 'grid', gap: 8 }}>
-          {Object.entries(report?.environmentSummary ?? {}).map(([key, value]) => (
-            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ color: muted }}>{key}</span>
-              <strong>{value}</strong>
-            </div>
-          ))}
-        </div>
-      </Panel>
-      <Panel title="Job Log" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
-        <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
-          {jobs.map((job) => (
-            <JobRow key={job.id} job={job} />
-          ))}
-        </div>
-      </Panel>
-      <Panel title="Application Log" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
-        <div className="studio-scrollable" style={{ display: 'grid', gap: 8, minHeight: 0 }}>
-          {logs.length === 0 ? (
-            <div style={{ color: muted }}>No log entries yet.</div>
-          ) : (
-            logs.slice().reverse().map((entry) => (
-              <div key={entry.id} style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 12, background: 'rgba(255,255,255,0.03)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                  <strong>{entry.message}</strong>
-                  <span style={pillStyle(entry.level === 'error' ? 'warn' : entry.level === 'warn' ? 'warn' : 'default')}>{entry.level}</span>
-                </div>
-                <div style={{ color: muted, fontSize: 13, marginTop: 6 }}>{entry.timestamp}</div>
-                {entry.details ? <div style={{ color: muted, fontSize: 13, marginTop: 6 }}>{entry.details}</div> : null}
-              </div>
-            ))
-          )}
-        </div>
-      </Panel>
+    <section style={{
+      minWidth: 0,
+      minHeight: 0,
+      display: 'grid',
+      gridTemplateRows: '32px minmax(0, 1fr)',
+      border: `1px solid ${line}`,
+      background: 'rgba(8,10,14,0.76)',
+      overflow: 'hidden',
+      ...props.style
+    }}>
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        minWidth: 0,
+        padding: '0 10px',
+        borderBottom: `1px solid ${faintLine}`
+      }}>
+        <h2 style={{ margin: 0, fontSize: 12, fontWeight: 500 }}>{props.title}</h2>
+      </header>
+      <div style={{ minWidth: 0, minHeight: 0, ...props.bodyStyle }}>{props.children}</div>
+    </section>
+  );
+}
+
+function Metric(props: { label: string; value: ReactNode; tone?: ObservatorySignalSeverity }) {
+  return (
+    <div style={{
+      display: 'grid',
+      gap: 5,
+      minWidth: 0,
+      padding: '9px 10px',
+      border: `1px solid ${faintLine}`,
+      background: 'rgba(255,255,255,0.025)'
+    }}>
+      <span style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0 }}>{props.label}</span>
+      <strong style={{ color: props.tone ? severityColor(props.tone) : ink, fontSize: 18, lineHeight: 1 }}>{props.value}</strong>
     </div>
   );
 }
 
+function SignalButton(props: { signal: ObservatorySignal; selected: boolean; onSelect: () => void; compact?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={props.onSelect}
+      style={{
+        display: 'grid',
+        gap: props.compact ? 4 : 6,
+        width: '100%',
+        minWidth: 0,
+        border: `1px solid ${props.selected ? severityColor(props.signal.severity) : faintLine}`,
+        background: props.selected ? 'rgba(255,255,255,0.075)' : 'rgba(0,0,0,0.18)',
+        color: ink,
+        cursor: 'pointer',
+        font: 'inherit',
+        textAlign: 'left',
+        padding: props.compact ? '7px 8px' : '9px 10px'
+      }}
+    >
+      <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, minWidth: 0, alignItems: 'center' }}>
+        <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: props.compact ? 12 : 13 }}>{props.signal.label}</strong>
+        <span style={{ color: severityColor(props.signal.severity), fontSize: 10, textTransform: 'uppercase' }}>{props.signal.severity}</span>
+      </span>
+      <span style={{
+        color: muted,
+        fontSize: props.compact ? 11 : 12,
+        lineHeight: 1.35,
+        overflow: 'hidden',
+        display: '-webkit-box',
+        WebkitLineClamp: props.compact ? 1 : 2,
+        WebkitBoxOrient: 'vertical'
+      }}>
+        {props.signal.summary}
+      </span>
+    </button>
+  );
+}
+
+function LaneSummary(props: { lane: ObservatoryLane; selectedSignalId: string; onSelect: (signalId: string) => void }) {
+  return (
+    <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+      <div style={{ display: 'grid', gap: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+          <strong>{props.lane.title}</strong>
+          <span style={pillStyle(severityTone(props.lane.severity))}>{props.lane.signals.length}</span>
+        </div>
+        <span style={{ color: muted, lineHeight: 1.35 }}>{props.lane.summary}</span>
+      </div>
+      <div style={{ display: 'grid', gap: 7 }}>
+        {props.lane.signals.slice(0, 4).map((signal) => (
+          <SignalButton
+            key={signal.id}
+            signal={signal}
+            selected={signal.id === props.selectedSignalId}
+            onSelect={() => props.onSelect(signal.id)}
+            compact
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: string; onSelect: (signalId: string) => void }) {
+  const visible = props.signals.slice(0, 18);
+  const center = visible.find((signal) => signal.id === props.selectedSignalId) ?? visible[0];
+  const satellites = visible.filter((signal) => signal.id !== center?.id);
+
+  return (
+    <div
+      aria-label="Observatory world signal map"
+      style={{
+        position: 'relative',
+        height: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+        background:
+          'linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(140deg, rgba(20,24,28,0.96), rgba(12,15,18,0.97) 52%, rgba(20,19,15,0.96))',
+        backgroundSize: '42px 42px, 42px 42px, auto'
+      }}
+    >
+      <div style={{ position: 'absolute', inset: '11% 12%', border: `1px solid ${faintLine}`, transform: 'rotate(-3deg)' }} />
+      <div style={{ position: 'absolute', inset: '22% 23%', border: '1px solid rgba(143,211,170,0.2)', transform: 'rotate(6deg)' }} />
+      {center ? (
+        <button
+          type="button"
+          onClick={() => props.onSelect(center.id)}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '45%',
+            transform: 'translate(-50%, -50%)',
+            width: 'min(360px, 58%)',
+            minHeight: 118,
+            display: 'grid',
+            gap: 8,
+            alignContent: 'center',
+            border: `1px solid ${severityColor(center.severity)}`,
+            background: 'rgba(0,0,0,0.42)',
+            color: ink,
+            cursor: 'pointer',
+            font: 'inherit',
+            textAlign: 'center',
+            padding: 14
+          }}
+        >
+          <span style={{ color: severityColor(center.severity), fontSize: 10, textTransform: 'uppercase', letterSpacing: 0 }}>{center.laneId.replace('-', ' ')}</span>
+          <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.04, fontWeight: 500, overflowWrap: 'anywhere' }}>{center.label}</h2>
+          <span style={{ color: muted, lineHeight: 1.35 }}>{center.summary}</span>
+        </button>
+      ) : null}
+      {satellites.map((signal, index) => {
+        const angle = (Math.PI * 2 * index) / Math.max(satellites.length, 1) - Math.PI / 2;
+        const radiusX = satellites.length <= 8 ? 33 : 39;
+        const radiusY = satellites.length <= 8 ? 27 : 34;
+        const left = 50 + Math.cos(angle) * radiusX;
+        const top = 45 + Math.sin(angle) * radiusY;
+
+        return (
+          <button
+            key={signal.id}
+            type="button"
+            onClick={() => props.onSelect(signal.id)}
+            style={{
+              position: 'absolute',
+              left: `${left}%`,
+              top: `${top}%`,
+              transform: 'translate(-50%, -50%)',
+              width: 154,
+              minHeight: 48,
+              border: `1px solid ${signal.id === props.selectedSignalId ? severityColor(signal.severity) : 'rgba(255,255,255,0.12)'}`,
+              borderTop: `2px solid ${severityColor(signal.severity)}`,
+              background: 'rgba(0,0,0,0.32)',
+              color: ink,
+              cursor: 'pointer',
+              font: 'inherit',
+              textAlign: 'left',
+              padding: '7px 8px'
+            }}
+          >
+            <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{signal.label}</span>
+            <span style={{ display: 'block', color: muted, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {signal.kind.replace('-', ' ')}
+            </span>
+          </button>
+        );
+      })}
+      <div style={{ position: 'absolute', left: 12, right: 12, bottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap', color: muted }}>
+        {['world-state', 'trust', 'render-graph', 'backend', 'activity'].map((lane) => (
+          <span key={lane} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 7, height: 7, background: lane === 'trust' ? '#dcc27c' : lane === 'render-graph' ? '#8fb8da' : lane === 'backend' ? '#8fd3aa' : lane === 'activity' ? '#d099c2' : '#e6c36a' }} />
+            {lane.replace('-', ' ')}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DetailDrawer(props: { signal: ObservatorySignal }) {
+  return (
+    <div className="studio-scrollable" style={{ display: 'grid', alignContent: 'start', gap: 12, minHeight: 0, overflow: 'auto', padding: 12 }}>
+      <div style={{ display: 'grid', gap: 8 }}>
+        <span style={{ ...pillStyle(severityTone(props.signal.severity)), justifySelf: 'start' }}>{props.signal.kind.replace('-', ' ')}</span>
+        <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.05, fontWeight: 500, overflowWrap: 'anywhere' }}>{props.signal.detail.title}</h2>
+        <p style={{ margin: 0, color: ink, lineHeight: 1.45 }}>{props.signal.detail.semantic}</p>
+      </div>
+      <div style={{ display: 'grid', gap: 7 }}>
+        {props.signal.detail.properties.map(([label, value]) => (
+          <div key={label} style={{ display: 'grid', gridTemplateColumns: '96px minmax(0, 1fr)', gap: 8, minWidth: 0 }}>
+            <span style={{ color: muted }}>{label}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
+          </div>
+        ))}
+      </div>
+      <details>
+        <summary style={{ color: muted, cursor: 'pointer' }}>Backend details</summary>
+        <pre style={{
+          margin: '9px 0 0',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          color: muted,
+          background: 'rgba(0,0,0,0.22)',
+          border: `1px solid ${faintLine}`,
+          padding: 10,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: 11,
+          lineHeight: 1.4
+        }}>
+          {props.signal.detail.backend}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
+function EventStrip(props: { signals: ObservatorySignal[]; selectedSignalId: string; onSelect: (signalId: string) => void }) {
+  return (
+    <div
+      aria-label="Observatory activity strip"
+      className="studio-scrollable"
+      style={{ display: 'flex', gap: 8, minWidth: 0, overflow: 'auto', padding: 10, borderTop: `1px solid ${faintLine}` }}
+    >
+      {props.signals.length === 0 ? (
+        <span style={{ color: muted }}>No recent activity.</span>
+      ) : props.signals.slice(0, 14).map((signal) => (
+        <button
+          key={signal.id}
+          type="button"
+          onClick={() => props.onSelect(signal.id)}
+          style={{
+            flex: '0 0 230px',
+            display: 'grid',
+            gap: 5,
+            minWidth: 0,
+            border: `1px solid ${signal.id === props.selectedSignalId ? severityColor(signal.severity) : faintLine}`,
+            borderTop: `2px solid ${severityColor(signal.severity)}`,
+            background: 'rgba(0,0,0,0.2)',
+            color: ink,
+            cursor: 'pointer',
+            font: 'inherit',
+            textAlign: 'left',
+            padding: 8
+          }}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{signal.label}</span>
+          <span style={{ color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{signal.summary}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function ObservatorySpaceView() {
+  const project = useProjectSessionStore((state) => state.project);
+  const dirty = useProjectSessionStore((state) => state.dirty);
+  const report = useDiagnosticsStore((state) => state.report);
+  const logs = useDiagnosticsStore((state) => state.logs);
+  const jobs = useJobsStore((state) => state.jobs);
+  const [selectedSignalId, setSelectedSignalId] = useState<string>();
+  const snapshot = useMemo(
+    () => deriveObservatorySnapshot({
+      project,
+      dirty,
+      diagnostics: report,
+      logs,
+      jobs,
+      selectedSignalId
+    }),
+    [project, dirty, report, logs, jobs, selectedSignalId]
+  );
+  const selectedSignal = snapshot.selectedSignal;
+  const activitySignals = snapshot.signals.filter((signal) =>
+    signal.laneId === 'activity'
+    || signal.laneId === 'render-graph'
+    || signal.severity === 'blocked'
+    || signal.severity === 'warning'
+  );
+
+  return (
+    <div
+      aria-label="Observatory Space"
+      style={{
+        display: 'grid',
+        gridTemplateRows: 'auto minmax(0, 1fr) 118px',
+        gap: 0,
+        height: '100%',
+        minHeight: 0,
+        minWidth: 0,
+        background: 'rgba(6,8,10,0.92)'
+      }}
+    >
+      <header style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gap: 16,
+        alignItems: 'end',
+        padding: '14px 16px 12px',
+        borderBottom: `1px solid ${line}`,
+        background: 'linear-gradient(90deg, rgba(18,23,24,0.96), rgba(19,18,14,0.95))'
+      }}>
+        <div style={{ display: 'grid', gap: 7, minWidth: 0 }}>
+          <span style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0 }}>Observatory Space</span>
+          <h1 style={{ margin: 0, fontSize: 30, lineHeight: 1.02, fontWeight: 500, overflowWrap: 'anywhere' }}>{snapshot.compositionName}</h1>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: muted }}>
+            <span>{snapshot.sequence?.name ?? 'No sequence'} / {snapshot.variant?.name ?? 'No variant'}</span>
+            <span>{snapshot.dirty ? 'unsaved' : 'saved'}</span>
+            <span>{snapshot.resolverOk ? 'composition resolved' : 'resolver fallback'}</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <span style={pillStyle(snapshot.trust.state === 'trusted' ? 'success' : 'warn')}>{snapshot.trust.state}</span>
+          <span style={pillStyle(snapshot.trust.blockerCount > 0 ? 'warn' : 'default')}>{snapshot.trust.blockerCount} blockers</span>
+          <span style={pillStyle(snapshot.trust.warningCount > 0 ? 'warn' : 'default')}>{snapshot.trust.warningCount} warnings</span>
+        </div>
+      </header>
+
+      <main style={{
+        display: 'grid',
+        gridTemplateColumns: '300px minmax(440px, 1fr) 340px',
+        gap: 10,
+        minHeight: 0,
+        minWidth: 0,
+        padding: 10,
+        overflow: 'hidden'
+      }}>
+        <Section title="Telemetry and Trust" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 10, padding: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+            <Metric label="pressure" value={formatPercent(snapshot.telemetry.pressure)} />
+            <Metric label="entropy" value={formatPercent(snapshot.telemetry.entropy)} />
+            <Metric label="cohesion" value={formatPercent(snapshot.telemetry.cohesion)} />
+            <Metric label="memory" value={formatPercent(snapshot.telemetry.memory)} />
+            <Metric label="routes" value={snapshot.telemetry.routeCount} />
+            <Metric label="capture" value={snapshot.telemetry.captureEventCount} />
+          </div>
+          <div className="studio-scrollable" style={{ display: 'grid', alignContent: 'start', gap: 12, minHeight: 0, overflow: 'auto' }}>
+            {snapshot.lanes.filter((lane) => lane.id === 'world-state' || lane.id === 'trust').map((lane) => (
+              <LaneSummary key={lane.id} lane={lane} selectedSignalId={selectedSignal.id} onSelect={setSelectedSignalId} />
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Behaviour Map" bodyStyle={{ minHeight: 0 }}>
+          <SignalMap signals={snapshot.signals} selectedSignalId={selectedSignal.id} onSelect={setSelectedSignalId} />
+        </Section>
+
+        <Section title="Signal Detail" bodyStyle={{ minHeight: 0 }}>
+          <DetailDrawer signal={selectedSignal} />
+        </Section>
+      </main>
+
+      <footer style={{ minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', borderTop: `1px solid ${line}` }}>
+        <EventStrip signals={activitySignals} selectedSignalId={selectedSignal.id} onSelect={setSelectedSignalId} />
+        <div style={{ minWidth: 0, borderLeft: `1px solid ${faintLine}`, padding: 10, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <strong>Raw logs</strong>
+            <span style={{ color: muted }}>{logs.length}</span>
+          </div>
+          <details style={{ minHeight: 0 }}>
+            <summary style={{ color: muted, cursor: 'pointer' }}>Open application log</summary>
+            <div className="studio-scrollable" style={{ display: 'grid', gap: 6, maxHeight: 72, overflow: 'auto', marginTop: 8 }}>
+              {logs.length === 0 ? <span style={{ color: muted }}>No log entries yet.</span> : logs.slice(-5).reverse().map((entry) => (
+                <div key={entry.id} style={{ display: 'grid', gap: 3, color: muted }}>
+                  <span>{entry.level} / {entry.message}</span>
+                  {entry.details ? <span>{entry.details}</span> : null}
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+      </footer>
+    </div>
+  );
+}

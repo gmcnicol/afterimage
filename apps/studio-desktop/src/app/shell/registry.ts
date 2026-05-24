@@ -63,10 +63,15 @@ export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
     label: 'Export',
     description: 'Delivery profiles, render queue, and capture readiness.'
   },
+  observatory: {
+    id: 'observatory',
+    label: 'Observatory Space',
+    description: 'World explanation, trust, render graph, backend, and activity signals.'
+  },
   diagnostics: {
     id: 'diagnostics',
     label: 'Diagnostics',
-    description: 'Toolchain health, missing media, job history, and logs.'
+    description: 'Legacy diagnostics route mapped to Observatory Space.'
   }
 };
 
@@ -115,9 +120,9 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
   {
     id: 'observatory',
     label: 'Observatory',
-    defaultTab: 'diagnostics',
-    primaryAction: { label: 'Inspect', targetTab: 'diagnostics' },
-    surfaces: ['diagnostics']
+    defaultTab: 'observatory',
+    primaryAction: { label: 'Inspect', targetTab: 'observatory' },
+    surfaces: ['observatory', 'diagnostics']
   }
 ];
 

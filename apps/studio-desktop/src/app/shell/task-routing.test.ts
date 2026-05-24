@@ -19,6 +19,13 @@ describe('studio task routing', () => {
     });
   });
 
+  it('opens Observatory on the dedicated Observatory surface by default and keeps legacy diagnostics mapped', () => {
+    expect(getWorkspaceDefinition('observatory')).toMatchObject({
+      defaultTab: 'observatory',
+      surfaces: ['observatory', 'diagnostics']
+    });
+  });
+
   it('routes job types through registered workspaces', () => {
     expect(getJobRoute(job({ id: 'analysis', type: 'analysis', status: 'queued' }))).toEqual({ space: 'archive', tab: 'archive' });
     expect(getJobRoute(job({ id: 'library', type: 'library-scan', status: 'running' }))).toEqual({ space: 'archive', tab: 'archive' });

@@ -115,7 +115,14 @@ test('loads a project and can open Archive, World, Performance, Capture, and Obs
 
     await spaces.getByRole('button', { name: 'Observatory' }).click();
     await expect(window.getByLabel('Observatory workspace')).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
+    await expect(window.getByLabel('Observatory Space')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Studio Fixture' })).toBeVisible();
+    await expect(window.getByText('Observatory Space').first()).toBeVisible();
+    await expect(window.getByText(/blockers/).first()).toBeVisible();
+    await expect(window.getByText('Bloom MIDI').first()).toBeVisible();
+    await expect(window.getByText('entropy-scene-pressure').first()).toBeVisible();
+    await expect(window.getByText('FFmpeg toolchain').first()).toBeVisible();
+    await expect(window.getByLabel('Observatory activity strip')).toBeVisible();
     await expect(window.getByLabel('Async task status')).toBeVisible();
 
     expect(pageErrors).toEqual([]);

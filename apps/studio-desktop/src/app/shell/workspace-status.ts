@@ -57,10 +57,11 @@ export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { 
       return metrics.enabledExportProfileCount > 0
         ? { tone: 'ready', label: `${metrics.enabledExportProfileCount} profiles` }
         : { tone: 'attention', label: 'choose formats' };
+    case 'observatory':
     case 'diagnostics':
       return metrics.warningCount > 0 || metrics.missingMediaCount > 0
         ? { tone: 'attention', label: 'needs attention' }
-        : { tone: 'ready', label: 'healthy' };
+        : { tone: 'ready', label: 'world trusted' };
     default:
       return { tone: 'blocked', label: 'unknown' };
   }
@@ -88,6 +89,7 @@ export function getSurfaceBadge(tabId: StudioTab, metrics: WorkflowMetrics): str
       return metrics.automationLaneCount > 0 ? `${metrics.automationLaneCount}` : undefined;
     case 'export':
       return metrics.enabledExportProfileCount > 0 ? `${metrics.enabledExportProfileCount}` : undefined;
+    case 'observatory':
     case 'diagnostics':
       return metrics.warningCount > 0 || metrics.missingMediaCount > 0 ? `${metrics.warningCount + metrics.missingMediaCount}` : undefined;
     default:
