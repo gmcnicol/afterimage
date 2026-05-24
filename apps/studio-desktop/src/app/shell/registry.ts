@@ -33,6 +33,11 @@ export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
     label: 'World',
     description: 'Composition authoring across active scenes, layers, modulation, and render readiness.'
   },
+  performance: {
+    id: 'performance',
+    label: 'Performance Space',
+    description: 'Rehearsal, live steering, preview, and deterministic capture replay.'
+  },
   sequence: {
     id: 'sequence',
     label: 'Sequence',
@@ -90,11 +95,11 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
   {
     id: 'performance',
     label: 'Performance',
-    defaultTab: 'sequence',
-    primaryAction: { label: 'Rehearse', targetTab: 'sequence' },
-    surfaces: ['sequence'],
+    defaultTab: 'performance',
+    primaryAction: { label: 'Coalesce', targetTab: 'performance' },
+    surfaces: ['performance'],
     taskRoutes: {
-      preview: { tab: 'sequence' }
+      preview: { tab: 'performance' }
     }
   },
   {

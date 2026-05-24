@@ -100,7 +100,13 @@ test('loads a project and can open Archive, World, Performance, Capture, and Obs
 
     await spaces.getByRole('button', { name: 'Performance' }).click();
     await expect(window.getByLabel('Performance workspace')).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Sequence Builder' })).toBeVisible();
+    await expect(window.getByLabel('Performance Space')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Studio Fixture' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Rehearsal Set' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Main Scene universe' })).toBeVisible();
+    await expect(window.getByText('Intro Source').first()).toBeVisible();
+    await expect(window.getByLabel('Performance preview and replay output strip').getByRole('button', { name: 'Coalesce' })).toBeVisible();
+    await expect(window.getByText('rehearsal ready')).toBeVisible();
 
     await spaces.getByRole('button', { name: 'Capture' }).click();
     await expect(window.getByLabel('Capture workspace')).toBeVisible();

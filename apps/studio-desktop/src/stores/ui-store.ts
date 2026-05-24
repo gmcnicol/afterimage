@@ -7,6 +7,7 @@ export type StudioTab =
   | 'media'
   | 'cuts'
   | 'world'
+  | 'performance'
   | 'sequence'
   | 'music'
   | 'style'
@@ -61,6 +62,8 @@ export function getStudioSpaceForTab(tab: StudioTab): StudioSpace {
       return 'capture';
     case 'diagnostics':
       return 'observatory';
+    case 'performance':
+      return 'performance';
     default:
       return 'world';
   }
@@ -73,7 +76,7 @@ export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
     case 'world':
       return 'world';
     case 'performance':
-      return 'sequence';
+      return 'performance';
     case 'capture':
       return 'export';
     case 'observatory':
