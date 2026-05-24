@@ -28,6 +28,11 @@ export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
     label: 'Cuts',
     description: 'Cut review queue and keep/reject decisions.'
   },
+  world: {
+    id: 'world',
+    label: 'World',
+    description: 'Composition authoring across active scenes, layers, modulation, and render readiness.'
+  },
   sequence: {
     id: 'sequence',
     label: 'Sequence',
@@ -78,9 +83,9 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
   {
     id: 'world',
     label: 'World',
-    defaultTab: 'cuts',
-    primaryAction: { label: 'Sequence', targetTab: 'sequence' },
-    surfaces: ['cuts', 'sequence', 'music', 'style', 'automation']
+    defaultTab: 'world',
+    primaryAction: { label: 'Compose', targetTab: 'world' },
+    surfaces: ['world', 'cuts', 'sequence', 'music', 'style', 'automation']
   },
   {
     id: 'performance',

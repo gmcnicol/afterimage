@@ -21,6 +21,13 @@ export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { 
         return { tone: 'blocked', label: 'no candidates' };
       }
       return metrics.keptCutCount > 0 ? { tone: 'ready', label: `${metrics.keptCutCount} approved` } : { tone: 'attention', label: 'needs review' };
+    case 'world':
+      if (metrics.sequenceClipCount === 0) {
+        return { tone: 'attention', label: 'needs sequence' };
+      }
+      return metrics.warningCount > 0 || metrics.missingMediaCount > 0
+        ? { tone: 'attention', label: 'composition warnings' }
+        : { tone: 'ready', label: 'composition ready' };
     case 'sequence':
       if (metrics.sequenceClipCount === 0) {
         return metrics.keptCutCount > 0 ? { tone: 'attention', label: 'build sequence' } : { tone: 'blocked', label: 'needs cuts' };
@@ -62,6 +69,8 @@ export function getSurfaceBadge(tabId: StudioTab, metrics: WorkflowMetrics): str
       return metrics.pendingAnalysisCount > 0 ? `${metrics.pendingAnalysisCount}` : metrics.assetCount > 0 ? String(metrics.assetCount) : undefined;
     case 'cuts':
       return metrics.cutCount > 0 ? `${metrics.cutCount}` : undefined;
+    case 'world':
+      return metrics.sequenceClipCount > 0 ? `${metrics.sequenceClipCount}` : undefined;
     case 'sequence':
       return metrics.sequenceClipCount > 0 ? `${metrics.sequenceClipCount}` : undefined;
     case 'music':

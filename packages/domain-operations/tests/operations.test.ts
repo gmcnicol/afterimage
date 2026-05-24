@@ -23,7 +23,10 @@ import {
   normalizeCaptureReplayEvents,
   resolveCaptureReplayIntent,
   resolveCaptureReplayRenderState,
-  resolveCompositionIntent
+  resolveCompositionIntent,
+  setActiveCompositionSequenceVariant,
+  updateCompositionLayer,
+  updateCompositionScene
 } from '../src';
 import {
   addCutToSequence,
@@ -825,6 +828,74 @@ describe('@afterimage/domain-operations', () => {
         path: 'variantId'
       }
     ]));
+  });
+
+  it('authors active composition sequence, scene climate, and layer render fields', () => {
+    const project = normalizeProject({
+      ...fixtureProject,
+      sequences: [
+        ...fixtureProject.sequences,
+        {
+          id: 'sequence-alt',
+          name: 'Alt Sequence',
+          variantIds: ['variant-alt'],
+          defaultVariantId: 'variant-alt'
+        }
+      ],
+      variants: [
+        ...fixtureProject.variants,
+        {
+          id: 'variant-alt',
+          sequenceId: 'sequence-alt',
+          name: 'Alt Variant',
+          clips: []
+        }
+      ]
+    });
+
+    const activated = setActiveCompositionSequenceVariant(project, 'sequence-alt');
+    expect(activated.composition.sequenceId).toBe('sequence-alt');
+    expect(activated.composition.variantId).toBe('variant-alt');
+
+    const invalidActivation = setActiveCompositionSequenceVariant(activated, 'sequence-alt', 'variant-main');
+    expect(invalidActivation.composition.sequenceId).toBe('sequence-alt');
+    expect(invalidActivation.composition.variantId).toBe('variant-alt');
+
+    const sceneUpdated = updateCompositionScene(activated, 'scene-main', {
+      name: 'Pressure Hallway',
+      climate: {
+        pressure: 0.82,
+        atmosphere: 'thermal drift'
+      }
+    });
+    expect(sceneUpdated.composition.scenes[0]).toMatchObject({
+      id: 'scene-main',
+      name: 'Pressure Hallway',
+      climate: {
+        pressure: 0.82,
+        atmosphere: 'thermal drift'
+      }
+    });
+
+    const layerUpdated = updateCompositionLayer(sceneUpdated, 'layer-clip-intro', {
+      name: 'Intro source pass',
+      orderIndex: 4,
+      mix: 1.4,
+      renderIntent: {
+        passKind: 'overlay',
+        requiredCapabilities: ['ffmpeg-overlay']
+      }
+    });
+    expect(layerUpdated.composition.layers[0]).toMatchObject({
+      id: 'layer-clip-intro',
+      name: 'Intro source pass',
+      orderIndex: 4,
+      mix: 1,
+      renderIntent: {
+        passKind: 'overlay',
+        requiredCapabilities: ['ffmpeg-overlay']
+      }
+    });
   });
 
   it('merges imported assets and toggles export profiles', () => {

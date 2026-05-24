@@ -6,6 +6,8 @@ import type {
   AutomationTargetProperty,
   MediaAsset,
   NormalizedProjectFile,
+  SceneClimate,
+  SceneLayerRenderIntent,
   SupportedFilterType,
   TransitionStyle
 } from '@afterimage/project-model';
@@ -91,6 +93,9 @@ interface ProjectSessionState {
   randomizeFoundryOverlays: (variantId: string) => void;
   duplicateVariant: (variantId: string) => void;
   deleteVariant: (variantId: string) => void;
+  setActiveCompositionSequenceVariant: (sequenceId: string, variantId?: string) => void;
+  updateCompositionScene: (sceneId: string, input: { name?: string; climate?: Partial<SceneClimate> }) => void;
+  updateCompositionLayer: (layerId: string, input: { name?: string; orderIndex?: number; mix?: number; renderIntent?: Partial<SceneLayerRenderIntent> }) => void;
   addMarker: (variantId: string, label: string, timeMs: number) => void;
   addSection: (variantId: string, label: string, startMs: number, endMs: number) => void;
   addFilterToSequenceStack: (type: SupportedFilterType, stackId?: string) => void;
@@ -170,6 +175,9 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
   randomizeFoundryOverlays: (variantId) => dispatchProjectOperation(set, get, { type: 'randomizeFoundryOverlays', variantId }),
   duplicateVariant: (variantId) => dispatchProjectOperation(set, get, { type: 'duplicateVariant', variantId }),
   deleteVariant: (variantId) => dispatchProjectOperation(set, get, { type: 'deleteVariant', variantId }),
+  setActiveCompositionSequenceVariant: (sequenceId, variantId) => dispatchProjectOperation(set, get, { type: 'setActiveCompositionSequenceVariant', sequenceId, variantId }),
+  updateCompositionScene: (sceneId, input) => dispatchProjectOperation(set, get, { type: 'updateCompositionScene', sceneId, ...input }),
+  updateCompositionLayer: (layerId, input) => dispatchProjectOperation(set, get, { type: 'updateCompositionLayer', layerId, ...input }),
   addMarker: (variantId, label, timeMs) => dispatchProjectOperation(set, get, { type: 'addMarker', variantId, label, timeMs }),
   addSection: (variantId, label, startMs, endMs) => dispatchProjectOperation(set, get, { type: 'addSection', variantId, label, startMs, endMs }),
   addFilterToSequenceStack: (filterType, stackId) => dispatchProjectOperation(set, get, { type: 'addFilterToSequenceStack', filterType, stackId }),

@@ -5,6 +5,7 @@ export const tabs: Array<{ id: StudioTab; label: string }> = [
   { id: 'project', label: 'Project' },
   { id: 'media', label: 'Media' },
   { id: 'cuts', label: 'Cuts' },
+  { id: 'world', label: 'World' },
   { id: 'sequence', label: 'Sequence' },
   { id: 'music', label: 'Music' },
   { id: 'style', label: 'Style' },
