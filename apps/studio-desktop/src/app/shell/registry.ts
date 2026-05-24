@@ -96,7 +96,7 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
     id: 'performance',
     label: 'Performance',
     defaultTab: 'performance',
-    primaryAction: { label: 'Rehearse', targetTab: 'performance' },
+    primaryAction: { label: 'Coalesce', targetTab: 'performance' },
     surfaces: ['performance'],
     taskRoutes: {
       preview: { tab: 'performance' }

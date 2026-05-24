@@ -253,7 +253,7 @@ function OutputStrip(props: {
   replayArtifact?: string;
   previewError?: string;
   replayError?: string;
-  onRehearse: () => void;
+  onCoalesce: () => void;
   onReplay: () => void;
   canPreview: boolean;
   canReplay: boolean;
@@ -290,13 +290,13 @@ function OutputStrip(props: {
         ) : null}
         {!props.canPreview || !props.canReplay ? (
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', color: muted }}>
-            {!props.canPreview ? <span>Rehearse blocked: {props.previewReasons[0] ?? 'not ready'}</span> : null}
+            {!props.canPreview ? <span>Coalesce blocked: {props.previewReasons[0] ?? 'not ready'}</span> : null}
             {!props.canReplay ? <span>Replay blocked: {props.replayReasons[0] ?? 'not ready'}</span> : null}
           </div>
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-        <ToolbarButton primary disabled={!props.canPreview} onClick={props.onRehearse}>Rehearse</ToolbarButton>
+        <ToolbarButton primary disabled={!props.canPreview} onClick={props.onCoalesce}>Coalesce</ToolbarButton>
         <ToolbarButton disabled={!props.canReplay} onClick={props.onReplay}>Replay Capture</ToolbarButton>
       </div>
     </section>
@@ -349,7 +349,7 @@ export function PerformanceSpaceView() {
       : snapshot.latestCaptureLog?.id);
   }, [project.captureLogs, snapshot.latestCaptureLog?.id]);
 
-  const runRehearsalPreview = () => {
+  const coalescePreview = () => {
     if (!snapshot.readiness.previewReady || !snapshot.variant || !snapshot.previewOutputPath) {
       return;
     }
@@ -585,7 +585,7 @@ export function PerformanceSpaceView() {
         replayArtifact={snapshot.replayJob.lastArtifactPath}
         previewError={snapshot.previewJob.error}
         replayError={snapshot.replayJob.error}
-        onRehearse={runRehearsalPreview}
+        onCoalesce={coalescePreview}
         onReplay={runCaptureReplay}
         canPreview={snapshot.readiness.previewReady}
         canReplay={snapshot.readiness.replayReady}

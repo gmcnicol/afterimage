@@ -2,7 +2,7 @@
 
 Performance Space is the Studio rehearsal room. Use it when a composition already has a sequence and you want to steer the active world before committing to Capture or export.
 
-It brings the active scenes, forces, climate, entropy, preview state, and capture replay state into one console. It does not record a new capture. It lets you rehearse the current composition and replay an existing capture log when one is available.
+It brings the active scenes, forces, climate, entropy, preview state, and capture replay state into one console. It does not record a new capture. It lets you coalesce the current composition into a preview and replay an existing capture log when one is available.
 
 ![Full Performance workspace](assets/performance-space/full-performance-workspace.png)
 
@@ -34,11 +34,11 @@ These are normal project edits. They are saved through the same Studio project u
 
 ![Live controls](assets/performance-space/live-controls.png)
 
-## Rehearse A Preview
+## Coalesce A Preview
 
-Use **Rehearse** in the output strip to render a preview for the active sequence and variant. The output strip shows whether the preview is idle, queued, rendering, completed, failed, or cancelled. When a render completes, the last artifact path appears in the strip.
+Use **Coalesce** in the output strip to bring the active sequence and variant into a preview. The output strip shows whether the preview is idle, queued, rendering, completed, failed, or cancelled. When a render completes, the last artifact path appears in the strip.
 
-If Rehearse is blocked, the first blocking reason appears inline. Common reasons are an active variant with no clips, composition integrity issues, or another preview render already running.
+If Coalesce is blocked, the first blocking reason appears inline. Common reasons are an active variant with no clips, composition integrity issues, or another preview render already running.
 
 ![Preview and replay output strip](assets/performance-space/preview-replay-output-strip.png)
 
