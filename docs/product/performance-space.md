@@ -1,6 +1,6 @@
 # Performance Space
 
-Performance Space is the Studio rehearsal room. Use it when a composition already has a sequence and you want to steer the active world before committing to Capture or export.
+Performance Space is the Studio rehearsal room. Use it when a composition already has a sequence and you want to steer the active world before committing to Forge output.
 
 It brings the active scenes, forces, climate, entropy, preview state, and capture replay state into one console. It does not record a new capture. It lets you coalesce the current composition into a preview and replay an existing capture log when one is available.
 
@@ -64,4 +64,4 @@ Readiness is shown in the header, scene list, central signal view, and output st
 
 ## Where To Go Next
 
-Use **World** for deeper composition authoring, **Sequence** for clip assembly, and **Capture** for export delivery. Performance Space is for rehearsal and steering; Capture remains the place for export profiles and delivery outputs.
+Use **World** for deeper composition authoring, **Sequence** for clip assembly, and **Forge** for traversal artifacts, replay forge output, export profiles, and delivery recovery. Performance Space is for rehearsal and steering.

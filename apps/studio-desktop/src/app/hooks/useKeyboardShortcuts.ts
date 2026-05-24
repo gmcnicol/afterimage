@@ -87,7 +87,7 @@ export function useKeyboardShortcuts(): void {
           profileIds: getEnabledExportProfileIds(project.exportSelections),
           selections: project.exportSelections
         });
-        setCurrentTab('export');
+        setCurrentTab('forge');
       }
 
       if (event.defaultPrevented) {
