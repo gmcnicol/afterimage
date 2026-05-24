@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DesktopJob } from '../../lib/studio-client';
+import { getWorkspaceDefinition } from './registry';
 import { getJobProgress, getJobRoute, sortJobsByRelevance } from './task-routing';
 
 function job(input: Partial<DesktopJob> & Pick<DesktopJob, 'id' | 'type' | 'status'>): DesktopJob {
@@ -11,10 +12,17 @@ function job(input: Partial<DesktopJob> & Pick<DesktopJob, 'id' | 'type' | 'stat
 }
 
 describe('studio task routing', () => {
+  it('opens Performance on the dedicated Performance surface by default', () => {
+    expect(getWorkspaceDefinition('performance')).toMatchObject({
+      defaultTab: 'performance',
+      surfaces: ['performance']
+    });
+  });
+
   it('routes job types through registered workspaces', () => {
     expect(getJobRoute(job({ id: 'analysis', type: 'analysis', status: 'queued' }))).toEqual({ space: 'archive', tab: 'archive' });
     expect(getJobRoute(job({ id: 'library', type: 'library-scan', status: 'running' }))).toEqual({ space: 'archive', tab: 'archive' });
-    expect(getJobRoute(job({ id: 'preview', type: 'preview', status: 'completed' }))).toEqual({ space: 'performance', tab: 'sequence' });
+    expect(getJobRoute(job({ id: 'preview', type: 'preview', status: 'completed' }))).toEqual({ space: 'performance', tab: 'performance' });
     expect(getJobRoute(job({ id: 'export', type: 'export', status: 'failed' }))).toEqual({ space: 'capture', tab: 'export' });
   });
 

@@ -4,6 +4,7 @@ import { ProjectView } from '../features/project-overview/views';
 import { CatalogView, MediaView } from '../features/media-library/views';
 import { ArchiveSpaceView } from '../features/archive-space/views';
 import { WorldSpaceView } from '../features/world-space/views';
+import { PerformanceSpaceView } from '../features/performance-space/views';
 import { CutsView } from '../features/scene-analysis/views';
 import { SequenceView } from '../features/sequence-builder/views';
 import { MusicView } from '../features/music-sync/views';
@@ -20,6 +21,7 @@ const viewMap: Record<StudioTab, ComponentType> = {
   world: WorldSpaceView,
   cuts: CutsView,
   sequence: SequenceView,
+  performance: PerformanceSpaceView,
   music: MusicView,
   style: StyleView,
   automation: AutomationView,
