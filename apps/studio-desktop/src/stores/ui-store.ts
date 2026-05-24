@@ -13,6 +13,7 @@ export type StudioTab =
   | 'style'
   | 'automation'
   | 'export'
+  | 'observatory'
   | 'diagnostics';
 
 export type StudioSpace =
@@ -60,6 +61,7 @@ export function getStudioSpaceForTab(tab: StudioTab): StudioSpace {
       return 'archive';
     case 'export':
       return 'capture';
+    case 'observatory':
     case 'diagnostics':
       return 'observatory';
     case 'performance':
@@ -80,7 +82,7 @@ export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
     case 'capture':
       return 'export';
     case 'observatory':
-      return 'diagnostics';
+      return 'observatory';
   }
 }
 

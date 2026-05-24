@@ -11,7 +11,7 @@ import { MusicView } from '../features/music-sync/views';
 import { StyleView } from '../features/filter-stack/views';
 import { AutomationView } from '../features/automation/views';
 import { ExportView } from '../features/export/views';
-import { DiagnosticsView } from '../features/diagnostics/views';
+import { ObservatorySpaceView } from '../features/diagnostics/views';
 
 const viewMap: Record<StudioTab, ComponentType> = {
   archive: ArchiveSpaceView,
@@ -26,7 +26,8 @@ const viewMap: Record<StudioTab, ComponentType> = {
   style: StyleView,
   automation: AutomationView,
   export: ExportView,
-  diagnostics: DiagnosticsView
+  observatory: ObservatorySpaceView,
+  diagnostics: ObservatorySpaceView
 };
 
 export function ActiveView() {

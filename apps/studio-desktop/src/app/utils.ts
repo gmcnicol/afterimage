@@ -11,6 +11,7 @@ export const tabs: Array<{ id: StudioTab; label: string }> = [
   { id: 'style', label: 'Style' },
   { id: 'automation', label: 'Automation' },
   { id: 'export', label: 'Export' },
+  { id: 'observatory', label: 'Observatory' },
   { id: 'diagnostics', label: 'Diagnostics' }
 ];
 

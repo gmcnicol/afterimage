@@ -19,6 +19,8 @@ around a shared core.
 
 - `archive-space.md`: Studio Archive Space sidecar review and acceptance
   workflow.
+- `observatory-space.md`: Studio Observatory Space world explanation, trust,
+  render graph, backend, and activity workflow.
 - `performance-space.md`: Studio Performance Space rehearsal, steering,
   preview, and capture replay workflow.
 - `scene-detection.md`: offline-first scene analysis model.
