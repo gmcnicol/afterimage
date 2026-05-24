@@ -12,6 +12,7 @@ export type StudioTab =
   | 'music'
   | 'style'
   | 'automation'
+  | 'forge'
   | 'export'
   | 'observatory'
   | 'diagnostics';
@@ -20,6 +21,7 @@ export type StudioSpace =
   | 'archive'
   | 'world'
   | 'performance'
+  | 'forge'
   | 'capture'
   | 'observatory';
 
@@ -59,8 +61,9 @@ export function getStudioSpaceForTab(tab: StudioTab): StudioSpace {
     case 'catalog':
     case 'media':
       return 'archive';
+    case 'forge':
     case 'export':
-      return 'capture';
+      return 'forge';
     case 'observatory':
     case 'diagnostics':
       return 'observatory';
@@ -79,8 +82,9 @@ export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
       return 'world';
     case 'performance':
       return 'performance';
+    case 'forge':
     case 'capture':
-      return 'export';
+      return 'forge';
     case 'observatory':
       return 'observatory';
   }

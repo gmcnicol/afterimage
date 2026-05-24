@@ -10,7 +10,7 @@ export const tabs: Array<{ id: StudioTab; label: string }> = [
   { id: 'music', label: 'Music' },
   { id: 'style', label: 'Style' },
   { id: 'automation', label: 'Automation' },
-  { id: 'export', label: 'Export' },
+  { id: 'forge', label: 'Forge' },
   { id: 'observatory', label: 'Observatory' },
   { id: 'diagnostics', label: 'Diagnostics' }
 ];

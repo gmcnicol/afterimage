@@ -16,6 +16,7 @@ import type {
   RunPreviewRequest,
   SaveProjectRequest,
   StudioClient,
+  StudioRenderArtifact,
   StudioPreloadBridge
 } from '@afterimage/studio-contracts';
 
@@ -40,7 +41,8 @@ export type {
   RunExportRequest,
   RunPreviewRequest,
   SaveProjectRequest,
-  StudioClient
+  StudioClient,
+  StudioRenderArtifact
 } from '@afterimage/studio-contracts';
 
 declare global {

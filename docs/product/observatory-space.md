@@ -48,4 +48,4 @@ These signals explain output planning without changing the public job result sha
 
 The bottom strip shows recent failed, running, queued, completed, warning, and log signals. Raw application logs remain available, but they are secondary to the world explanation and trust state.
 
-Use **World** for authoring, **Performance** for rehearsal and capture replay, and **Capture** for export delivery. Use **Observatory** when the question is why the world is behaving this way, what can be trusted, and what is blocking output.
+Use **World** for authoring, **Performance** for rehearsal and capture replay, and **Forge** for traversal artifacts and export delivery. Use **Observatory** when the question is why the world is behaving this way, what can be trusted, and what is blocking output.

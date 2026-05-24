@@ -23,6 +23,8 @@ around a shared core.
   render graph, backend, and activity workflow.
 - `performance-space.md`: Studio Performance Space rehearsal, steering,
   preview, and capture replay workflow.
+- `forge-space.md`: Studio Forge Space traversal, replay artifact review,
+  diagnostics, and render recovery workflow.
 - `scene-detection.md`: offline-first scene analysis model.
 - `midi.md`: shared MIDI abstraction for authoring and performance.
 - `presets.md`: preset families and data ownership.

@@ -58,10 +58,15 @@ export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
     label: 'Automation',
     description: 'Motion lanes and keyframes for filter parameters.'
   },
+  forge: {
+    id: 'forge',
+    label: 'Forge Space',
+    description: 'Forge traversal output, replay artifacts, diagnostics, and recovery.'
+  },
   export: {
     id: 'export',
-    label: 'Export',
-    description: 'Delivery profiles, render queue, and capture readiness.'
+    label: 'Forge Space',
+    description: 'Legacy export route mapped to Forge Space.'
   },
   observatory: {
     id: 'observatory',
@@ -108,13 +113,13 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
     }
   },
   {
-    id: 'capture',
-    label: 'Capture',
-    defaultTab: 'export',
-    primaryAction: { label: 'Export', targetTab: 'export' },
-    surfaces: ['export'],
+    id: 'forge',
+    label: 'Forge',
+    defaultTab: 'forge',
+    primaryAction: { label: 'Forge Traversal', targetTab: 'forge' },
+    surfaces: ['forge'],
     taskRoutes: {
-      export: { tab: 'export' }
+      export: { tab: 'forge' }
     }
   },
   {
@@ -127,7 +132,8 @@ export const studioWorkspaces: StudioWorkspaceDefinition[] = [
 ];
 
 export function getWorkspaceDefinition(space: StudioSpace): StudioWorkspaceDefinition {
-  return studioWorkspaces.find((candidate) => candidate.id === space) ?? studioWorkspaces[0];
+  const normalizedSpace = space === 'capture' ? 'forge' : space;
+  return studioWorkspaces.find((candidate) => candidate.id === normalizedSpace) ?? studioWorkspaces[0];
 }
 
 export function getWorkspaceSurface(tab: StudioTab): StudioWorkspaceSurface {

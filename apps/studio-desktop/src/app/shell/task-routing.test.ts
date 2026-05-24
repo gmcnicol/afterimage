@@ -19,6 +19,18 @@ describe('studio task routing', () => {
     });
   });
 
+  it('opens Forge on the dedicated Forge surface by default and keeps legacy capture/export mapped', () => {
+    expect(getWorkspaceDefinition('forge')).toMatchObject({
+      defaultTab: 'forge',
+      surfaces: ['forge']
+    });
+    expect(getWorkspaceDefinition('capture')).toMatchObject({
+      id: 'forge',
+      defaultTab: 'forge',
+      surfaces: ['forge']
+    });
+  });
+
   it('opens Observatory on the dedicated Observatory surface by default and keeps legacy diagnostics mapped', () => {
     expect(getWorkspaceDefinition('observatory')).toMatchObject({
       defaultTab: 'observatory',
@@ -30,7 +42,7 @@ describe('studio task routing', () => {
     expect(getJobRoute(job({ id: 'analysis', type: 'analysis', status: 'queued' }))).toEqual({ space: 'archive', tab: 'archive' });
     expect(getJobRoute(job({ id: 'library', type: 'library-scan', status: 'running' }))).toEqual({ space: 'archive', tab: 'archive' });
     expect(getJobRoute(job({ id: 'preview', type: 'preview', status: 'completed' }))).toEqual({ space: 'performance', tab: 'performance' });
-    expect(getJobRoute(job({ id: 'export', type: 'export', status: 'failed' }))).toEqual({ space: 'capture', tab: 'export' });
+    expect(getJobRoute(job({ id: 'export', type: 'export', status: 'failed' }))).toEqual({ space: 'forge', tab: 'forge' });
   });
 
   it('sorts active and recent jobs ahead of older completed work', () => {

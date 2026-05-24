@@ -50,6 +50,7 @@ export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { 
         return { tone: 'blocked', label: 'needs filters' };
       }
       return metrics.automationLaneCount > 0 ? { tone: 'ready', label: `${metrics.automationLaneCount} lanes` } : { tone: 'attention', label: 'static look' };
+    case 'forge':
     case 'export':
       if (metrics.sequenceClipCount === 0) {
         return { tone: 'blocked', label: 'needs sequence' };
@@ -87,6 +88,7 @@ export function getSurfaceBadge(tabId: StudioTab, metrics: WorkflowMetrics): str
       return metrics.filterCount > 0 ? `${metrics.filterCount}` : undefined;
     case 'automation':
       return metrics.automationLaneCount > 0 ? `${metrics.automationLaneCount}` : undefined;
+    case 'forge':
     case 'export':
       return metrics.enabledExportProfileCount > 0 ? `${metrics.enabledExportProfileCount}` : undefined;
     case 'observatory':

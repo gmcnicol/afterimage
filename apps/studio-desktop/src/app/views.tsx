@@ -10,7 +10,7 @@ import { SequenceView } from '../features/sequence-builder/views';
 import { MusicView } from '../features/music-sync/views';
 import { StyleView } from '../features/filter-stack/views';
 import { AutomationView } from '../features/automation/views';
-import { ExportView } from '../features/export/views';
+import { ForgeSpaceView } from '../features/forge-space/views';
 import { ObservatorySpaceView } from '../features/diagnostics/views';
 
 const viewMap: Record<StudioTab, ComponentType> = {
@@ -25,7 +25,8 @@ const viewMap: Record<StudioTab, ComponentType> = {
   music: MusicView,
   style: StyleView,
   automation: AutomationView,
-  export: ExportView,
+  forge: ForgeSpaceView,
+  export: ForgeSpaceView,
   observatory: ObservatorySpaceView,
   diagnostics: ObservatorySpaceView
 };

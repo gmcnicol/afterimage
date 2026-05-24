@@ -46,7 +46,7 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
     await expect(window.getByRole('button', { name: 'Archive', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'World', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'Performance', exact: true })).toBeVisible();
-    await expect(window.getByRole('button', { name: 'Capture', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Forge', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'Observatory', exact: true })).toBeVisible();
     await expect(window.getByLabel('Async task status')).toBeVisible();
 
@@ -70,7 +70,7 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
   }
 });
 
-test('loads a project and can open Archive, World, Performance, Capture, and Observatory without renderer crashes', async () => {
+test('loads a project and can open Archive, World, Performance, Forge, and Observatory without renderer crashes', async () => {
   test.skip(process.env.AFTERIMAGE_RUN_ELECTRON_SMOKE !== '1', 'Set AFTERIMAGE_RUN_ELECTRON_SMOKE=1 after approving Electron build scripts.');
 
   const projectPath = await createFixtureProjectCopy();
@@ -108,10 +108,16 @@ test('loads a project and can open Archive, World, Performance, Capture, and Obs
     await expect(window.getByLabel('Performance preview and replay output strip').getByRole('button', { name: 'Coalesce' })).toBeVisible();
     await expect(window.getByText('rehearsal ready')).toBeVisible();
 
-    await spaces.getByRole('button', { name: 'Capture' }).click();
-    await expect(window.getByLabel('Capture workspace')).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Export', exact: true })).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Export Queue' })).toBeVisible();
+    await spaces.getByRole('button', { name: 'Forge' }).click();
+    await expect(window.getByLabel('Forge workspace')).toBeVisible();
+    await expect(window.getByLabel('Forge Space')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Forge Sources' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Artifact Console' })).toBeVisible();
+    await expect(window.getByText('capture-log-main').first()).toBeVisible();
+    await expect(window.getByText('forge ready').first()).toBeVisible();
+    await expect(window.getByText('Landscape Master').first()).toBeVisible();
+    await expect(window.getByLabel('Forge recovery and diagnostics strip')).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Forge Traversal' }).first()).toBeVisible();
 
     await spaces.getByRole('button', { name: 'Observatory' }).click();
     await expect(window.getByLabel('Observatory workspace')).toBeVisible();
