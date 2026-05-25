@@ -126,7 +126,7 @@ export function ProjectView() {
       await new Promise((resolve) => window.setTimeout(resolve, 180));
       const nextRecentProjects = await api.project.removeRecentProject(targetProjectPath);
       setRecentProjects(nextRecentProjects);
-      addNotification(`Removed ${getPathBasename(targetProjectPath)} from recent projects.`, 'success', 1600);
+      addNotification(`Removed ${getPathBasename(targetProjectPath)} from recent universes.`, 'success', 1600);
     } catch (error) {
       addNotification(`Could not remove ${getPathBasename(targetProjectPath)}.`, 'warn', 2200);
     } finally {
@@ -136,32 +136,32 @@ export function ProjectView() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(420px, 0.95fr)', gap: 16, alignItems: 'stretch', height: '100%', minHeight: 0 }}>
-      <Panel title="Project Home" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto 1fr', minHeight: 0 }}>
+      <Panel title="Universe" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto auto 1fr', minHeight: 0 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-          <ToolbarButton primary onClick={() => void api.project.createProject().then((session) => session && setSession(session))}>New Project</ToolbarButton>
-          <ToolbarButton onClick={() => void api.project.openProject().then((session) => session && setSession(session))}>Open Project</ToolbarButton>
-          <ToolbarButton onClick={() => void api.project.saveProject({ project, projectFilePath: resolvedProjectFilePath }).then(setSession)}>Save</ToolbarButton>
-          <ToolbarButton onClick={() => void api.project.saveProjectAs({ project, projectFilePath: resolvedProjectFilePath }).then((session) => session && setSession(session))}>Save As</ToolbarButton>
-          <ToolbarButton onClick={() => void api.project.duplicateProject({ project, projectFilePath: resolvedProjectFilePath }).then((session) => session && setSession(session))}>Duplicate</ToolbarButton>
-          <ToolbarButton onClick={() => resolvedProjectFilePath && void api.project.revealProjectFolder(resolvedProjectFilePath)}>Reveal Folder</ToolbarButton>
+          <ToolbarButton primary onClick={() => void api.project.createProject().then((session) => session && setSession(session))}>New Universe</ToolbarButton>
+          <ToolbarButton onClick={() => void api.project.openProject().then((session) => session && setSession(session))}>Open Universe</ToolbarButton>
+          <ToolbarButton onClick={() => void api.project.saveProject({ project, projectFilePath: resolvedProjectFilePath }).then(setSession)}>Save Universe</ToolbarButton>
+          <ToolbarButton onClick={() => void api.project.saveProjectAs({ project, projectFilePath: resolvedProjectFilePath }).then((session) => session && setSession(session))}>Save Universe As</ToolbarButton>
+          <ToolbarButton onClick={() => void api.project.duplicateProject({ project, projectFilePath: resolvedProjectFilePath }).then((session) => session && setSession(session))}>Duplicate Universe</ToolbarButton>
+          <ToolbarButton onClick={() => resolvedProjectFilePath && void api.project.revealProjectFolder(resolvedProjectFilePath)}>Reveal Universe Folder</ToolbarButton>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-          <StatCard label="Project" value={project.name} />
-          <StatCard label="Dirty State" value={dirty ? 'Unsaved changes' : 'Saved'} tone={dirty ? 'warn' : 'success'} />
+          <StatCard label="Universe" value={project.name} />
+          <StatCard label="Save State" value={dirty ? 'Unsaved changes' : 'Saved'} tone={dirty ? 'warn' : 'success'} />
           <StatCard label="Assets" value={String(project.assets.length)} />
           <StatCard label="Variants" value={String(project.variants.length)} />
         </div>
         <div style={{ marginTop: 12, color: muted, fontSize: 13, lineHeight: 1.45 }}>
-          <div>File: {resolvedProjectFilePath ?? 'Not saved yet'}</div>
-          <div>Root: {projectRoot ?? 'Unknown'}</div>
+          <div>Universe file: {resolvedProjectFilePath ?? 'Not saved yet'}</div>
+          <div>Universe folder: {projectRoot ?? 'Unknown'}</div>
           <div>Last saved: {project.metadata.updatedAt ?? 'Not saved yet'}</div>
         </div>
       </Panel>
 
-      <Panel title="Recent Projects" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
+      <Panel title="Recent Universes" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(0, 1fr)', minHeight: 0 }}>
         <div className="studio-scrollable" style={{ display: 'grid', gap: 10, minHeight: 0 }}>
           <div style={{ color: muted, fontSize: 13 }}>
-            {visibleRecentProjects.length} recent project{visibleRecentProjects.length === 1 ? '' : 's'}
+            {visibleRecentProjects.length} recent universe{visibleRecentProjects.length === 1 ? '' : 's'}
           </div>
           {visibleRecentProjects.length > 0 ? visibleRecentProjects.map((recentProject) => (
             (() => {
@@ -171,11 +171,11 @@ export function ProjectView() {
               const isCurrentProject = recentProject === resolvedProjectFilePath;
               const isLoadedCue = loadedRecentProjectPath === recentProject;
               const statusLabel = isOpening
-                ? 'Loading project…'
+                ? 'Loading universe...'
                 : isLoadedCue
                   ? 'Loaded'
                   : isCurrentProject
-                    ? 'Current project'
+                    ? 'Current universe'
                     : null;
 
               return (
@@ -269,7 +269,7 @@ export function ProjectView() {
                 <button
                   type="button"
                   onClick={() => void removeRecentProject(recentProject)}
-                  aria-label={`Remove ${getPathBasename(recentProject)} from recent projects`}
+                  aria-label={`Remove ${getPathBasename(recentProject)} from recent universes`}
                   disabled={Boolean(actionState)}
                   style={{
                     border: '1px solid rgba(255,255,255,0.12)',
@@ -291,7 +291,7 @@ export function ProjectView() {
             })()
           )) : (
             <div style={{ border: '1px dashed rgba(255,255,255,0.14)', borderRadius: 16, padding: 18, color: muted, lineHeight: 1.6 }}>
-              No recent projects yet. Save this project once and it will become the quick way back into the workstation.
+              No recent universes yet. Save this universe once and it will become the quick way back into the workstation.
             </div>
           )}
         </div>

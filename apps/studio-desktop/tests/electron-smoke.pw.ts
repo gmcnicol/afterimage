@@ -43,11 +43,14 @@ test('boots the Studio Desktop shell and exposes preload APIs', async () => {
     const window = await electronApp.firstWindow();
     await expect(window.getByRole('navigation', { name: 'Studio spaces' })).toBeVisible();
     await expect(window.locator('nav[aria-label="Workflow navigation"]')).toHaveCount(0);
-    await expect(window.getByRole('button', { name: 'Archive', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Universe', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'World', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'Performance', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'Forge', exact: true })).toBeVisible();
     await expect(window.getByRole('button', { name: 'Observatory', exact: true })).toBeVisible();
+    await expect(window.getByLabel('Universe workspace')).toBeVisible();
+    await expect(window.getByRole('button', { name: 'New Universe', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Open Universe', exact: true })).toBeVisible();
     await expect(window.getByLabel('Async task status')).toBeVisible();
 
     const runtimeInfo = await window.evaluate(async () => {
@@ -84,8 +87,12 @@ test('loads a project and can open Archive, World, Performance, Forge, and Obser
     });
 
     const spaces = window.getByRole('navigation', { name: 'Studio spaces' });
-    await expect(window.getByLabel('Archive workspace')).toBeVisible();
-    await expect(window.getByLabel('Archive workspace').getByText('Studio Fixture')).toBeVisible();
+    await expect(window.getByLabel('Universe workspace')).toBeVisible();
+    await expect(window.getByLabel('Universe workspace').getByText('Studio Fixture')).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Universe', exact: true })).toBeVisible();
+    await expect(window.getByRole('button', { name: 'Save Universe', exact: true })).toBeVisible();
+
+    await window.getByLabel('Universe workspace').getByRole('button', { name: /Archive/ }).click();
     await expect(window.getByRole('heading', { name: 'Archive sidecars' })).toBeVisible();
     await expect(window.getByText('archive-source-alpha').first()).toBeVisible();
     await expect(window.getByText('hallway concrete affinity')).toBeVisible();

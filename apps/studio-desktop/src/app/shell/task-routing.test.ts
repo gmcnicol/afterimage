@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { DesktopJob } from '../../lib/studio-client';
-import { getWorkspaceDefinition } from './registry';
+import { useUiStore } from '../../stores/ui-store';
+import { getPrimaryWorkspaces, getWorkspaceDefinition } from './registry';
 import { getJobProgress, getJobRoute, sortJobsByRelevance } from './task-routing';
 
 function job(input: Partial<DesktopJob> & Pick<DesktopJob, 'id' | 'type' | 'status'>): DesktopJob {
@@ -12,6 +13,20 @@ function job(input: Partial<DesktopJob> & Pick<DesktopJob, 'id' | 'type' | 'stat
 }
 
 describe('studio task routing', () => {
+  it('opens the Universe setup workspace first by default', () => {
+    expect(getPrimaryWorkspaces()[0]).toMatchObject({
+      id: 'archive',
+      label: 'Universe',
+      defaultTab: 'project',
+      primaryAction: { label: 'Setup', targetTab: 'project' },
+      surfaces: ['project', 'archive', 'media', 'catalog']
+    });
+    expect(useUiStore.getState()).toMatchObject({
+      currentSpace: 'archive',
+      currentTab: 'project'
+    });
+  });
+
   it('opens Performance on the dedicated Performance surface by default', () => {
     expect(getWorkspaceDefinition('performance')).toMatchObject({
       defaultTab: 'performance',
@@ -43,6 +58,13 @@ describe('studio task routing', () => {
     expect(getJobRoute(job({ id: 'library', type: 'library-scan', status: 'running' }))).toEqual({ space: 'archive', tab: 'archive' });
     expect(getJobRoute(job({ id: 'preview', type: 'preview', status: 'completed' }))).toEqual({ space: 'performance', tab: 'performance' });
     expect(getJobRoute(job({ id: 'export', type: 'export', status: 'failed' }))).toEqual({ space: 'forge', tab: 'forge' });
+  });
+
+  it('keeps unrouted background jobs on the Archive surface', () => {
+    expect(getJobRoute(job({ id: 'unknown', type: 'unknown' as DesktopJob['type'], status: 'queued' }))).toEqual({
+      space: 'archive',
+      tab: 'archive'
+    });
   });
 
   it('sorts active and recent jobs ahead of older completed work', () => {

@@ -20,7 +20,7 @@ export function getJobRoute(job: DesktopJob): StudioTaskRoute {
   const workspace = getWorkspaceDefinition('archive');
   return {
     space: workspace.id,
-    tab: workspace.defaultTab
+    tab: 'archive'
   };
 }
 

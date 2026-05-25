@@ -2,7 +2,7 @@ import type { ExportProfileId } from '@afterimage/export-profiles';
 import type { StudioTab } from '../stores/ui-store';
 
 export const tabs: Array<{ id: StudioTab; label: string }> = [
-  { id: 'project', label: 'Project' },
+  { id: 'project', label: 'Universe' },
   { id: 'media', label: 'Media' },
   { id: 'cuts', label: 'Cuts' },
   { id: 'world', label: 'World' },

@@ -5,18 +5,18 @@ import type { StudioWorkspaceDefinition, StudioWorkspaceSurface } from './types'
 export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
   archive: {
     id: 'archive',
-    label: 'Archive Space',
+    label: 'Archive',
     description: 'Memory reservoir, sidecar archaeology, provenance, and archive acceptance.'
   },
   project: {
     id: 'project',
-    label: 'Project',
-    description: 'Project file, recent sessions, save state, and desktop roots.'
+    label: 'Universe',
+    description: 'Universe file, recent sessions, save state, and desktop roots.'
   },
   media: {
     id: 'media',
     label: 'Media',
-    description: 'Project imports, source analysis, and project media readiness.'
+    description: 'Universe imports, source analysis, and media readiness.'
   },
   catalog: {
     id: 'catalog',
@@ -83,10 +83,10 @@ export const studioSurfaces: Record<StudioTab, StudioWorkspaceSurface> = {
 export const studioWorkspaces: StudioWorkspaceDefinition[] = [
   {
     id: 'archive',
-    label: 'Archive',
-    defaultTab: 'archive',
-    primaryAction: { label: 'Reservoir', targetTab: 'archive' },
-    surfaces: ['archive'],
+    label: 'Universe',
+    defaultTab: 'project',
+    primaryAction: { label: 'Setup', targetTab: 'project' },
+    surfaces: ['project', 'archive', 'media', 'catalog'],
     taskRoutes: {
       analysis: { tab: 'archive' },
       thumbnails: { tab: 'archive' },

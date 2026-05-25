@@ -1,3 +1,3 @@
 # project-overview
 
-Project session overview and recent-project actions.
+Universe session overview and recent-universe actions.

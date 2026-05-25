@@ -9,7 +9,8 @@ rejected.
 
 ## Opening Archive Space
 
-Use the **Archive** workspace from the top navigation.
+Use the **Universe** workspace from the top navigation, then open the
+**Archive** surface.
 
 Archive Space has three working areas:
 
@@ -23,7 +24,7 @@ Archive Space has three working areas:
 
 ## Loading Sidecars
 
-Archive Space auto-loads archive sidecars from the current project folder:
+Archive Space auto-loads archive sidecars from the current Universe folder:
 
 ```text
 <project>/.afterimage/archive/*.archive.json
@@ -39,8 +40,8 @@ Use **Import Archive Sidecar** to copy selected archive JSON into:
 
 The imported sidecar is then available on the next project open.
 
-If the project has not been saved or opened from disk, sidecar import is
-disabled. Save or open a project first so Studio has a stable project folder.
+If the Universe has not been saved or opened from disk, sidecar import is
+disabled. Save or open a Universe first so Studio has a stable folder.
 
 ## Reading The Memory Index
 

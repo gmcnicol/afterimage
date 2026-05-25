@@ -55,7 +55,7 @@ function dispatchProjectOperation(
     invalidatePreview();
   }).catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
-    useUiStore.getState().addNotification(`Project update failed: ${message}`, 'warn', 5200);
+    useUiStore.getState().addNotification(`Universe update failed: ${message}`, 'warn', 5200);
   });
 }
 

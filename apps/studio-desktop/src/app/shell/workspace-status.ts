@@ -6,7 +6,7 @@ export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { 
     case 'archive':
       return metrics.assetCount > 0 ? { tone: 'ready', label: 'memory index' } : { tone: 'attention', label: 'save or import' };
     case 'project':
-      return metrics.assetCount > 0 ? { tone: 'ready', label: 'active project' } : { tone: 'attention', label: 'save early' };
+      return metrics.assetCount > 0 ? { tone: 'ready', label: 'active universe' } : { tone: 'attention', label: 'save early' };
     case 'media':
       if (metrics.sourceAssetCount === 0) {
         return { tone: 'attention', label: 'needs imports' };

@@ -6,7 +6,7 @@ export function LoadingShell() {
     <Screen>
       <div className="studio-shell" style={{ display: 'grid', placeItems: 'center' }}>
         <div className="studio-surface" style={{ padding: 18, color: muted }}>
-          Loading project...
+          Loading universe...
         </div>
       </div>
     </Screen>
