@@ -14,6 +14,7 @@ import {
   buildExportPlan,
   buildExportRenderGraphPlan,
   buildFinalizeRenderPlan,
+  buildPreviewCapabilityReport,
   buildPreviewPlan,
   buildPreviewRenderGraphPlan,
   buildRenderGraphPlan,
@@ -29,6 +30,7 @@ import {
   resolveFfmpegTools,
   type CommandExecutionResult,
   type CaptureReplayRenderContext,
+  type PreviewCapabilityReport,
   type RenderGraphArtifact,
   type RenderGraphBackendRequirement,
   type RenderGraphCacheIdentity,
@@ -392,6 +394,266 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(cacheIdentity.invalidatesOn).toEqual(expect.arrayContaining(['project-state', 'ffmpeg-toolchain']));
     expect(pass.provenance.parentCacheKeys).toContain(cacheIdentity.key);
     expect(artifact.provenance.parentCacheKeys).toContain(pass.cacheIdentity.key);
+  });
+
+  it('builds a supported FFmpeg preview capability report from a preview render graph plan', () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    });
+    const report = buildPreviewCapabilityReport(plan);
+
+    expect(report.schemaVersion).toBe(1);
+    expect(report.id).toMatch(/^preview-capability-report:/);
+    expect(report.status).toBe('supported');
+    expect(report.backend).toEqual({
+      backend: 'ffmpeg',
+      label: 'FFmpeg command preview',
+      runtime: 'command'
+    });
+    expect(report.renderGraph).toEqual({
+      planId: plan.identity.planId,
+      projectId: plan.identity.projectId,
+      sequenceId: plan.identity.sequenceId,
+      variantId: plan.identity.variantId,
+      mode: 'preview',
+      passIds: ['pass:ffmpeg-render'],
+      artifactIds: plan.artifacts.map((artifact) => artifact.id),
+      requirementIds: ['requirement:ffmpeg-render'],
+      diagnosticIds: plan.diagnostics.map((diagnostic) => diagnostic.id)
+    });
+    expect(report.target).toEqual(plan.target);
+    expect(buildPreviewCapabilityReport(plan)).toEqual(report);
+  });
+
+  it('includes backend requirements and required capabilities from the render graph plan', () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    });
+    const report = buildPreviewCapabilityReport(plan);
+
+    expect(report.backendRequirements).toEqual([{
+      id: 'requirement:ffmpeg-render',
+      backend: 'ffmpeg',
+      required: true,
+      capabilities: [
+        'filter_complex',
+        'video-codec:libx264',
+        'audio-codec:aac',
+        'container:mp4',
+        'pixel-format:yuv420p'
+      ],
+      binary: 'ffmpeg',
+      sourceRequirementId: 'requirement:ffmpeg-render',
+      provenance: {
+        source: 'path',
+        license: 'LGPL',
+        lgplOnly: true,
+        notes: 'Unresolved placeholder binary name for deterministic command planning.'
+      },
+      metadata: {
+        source: 'path'
+      }
+    }]);
+    expect(report.requiredCapabilities).toEqual([
+      {
+        id: 'capability:ffmpeg:filter_complex',
+        label: 'filter_complex',
+        capability: 'filter_complex',
+        backend: 'ffmpeg',
+        requirementIds: ['requirement:ffmpeg-render']
+      },
+      {
+        id: 'capability:ffmpeg:video-codec:libx264',
+        label: 'video-codec:libx264',
+        capability: 'video-codec:libx264',
+        backend: 'ffmpeg',
+        requirementIds: ['requirement:ffmpeg-render']
+      },
+      {
+        id: 'capability:ffmpeg:audio-codec:aac',
+        label: 'audio-codec:aac',
+        capability: 'audio-codec:aac',
+        backend: 'ffmpeg',
+        requirementIds: ['requirement:ffmpeg-render']
+      },
+      {
+        id: 'capability:ffmpeg:container:mp4',
+        label: 'container:mp4',
+        capability: 'container:mp4',
+        backend: 'ffmpeg',
+        requirementIds: ['requirement:ffmpeg-render']
+      },
+      {
+        id: 'capability:ffmpeg:pixel-format:yuv420p',
+        label: 'pixel-format:yuv420p',
+        capability: 'pixel-format:yuv420p',
+        backend: 'ffmpeg',
+        requirementIds: ['requirement:ffmpeg-render']
+      }
+    ]);
+    expect(report.optionalCapabilities).toEqual([]);
+  });
+
+  it('retains and references existing render graph diagnostics in preview capability reports', () => {
+    const result = buildCaptureReplayPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }, makeCaptureReplayContext({
+      diagnostics: [{
+        eventId: 'capture-event-missing',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing.target.id',
+        code: 'missing-reference',
+        message: 'Capture event "capture-event-missing" target references missing filter "filter-missing".'
+      }]
+    }));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const report = buildPreviewCapabilityReport(result.plan);
+
+    expect(report.diagnostics).toEqual(result.plan.diagnostics);
+    expect(report.renderGraph.diagnosticIds).toEqual(result.plan.diagnostics.map((diagnostic) => diagnostic.id));
+    expect(report.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: CAPTURE_REPLAY_MISSING_REFERENCE,
+        severity: 'error',
+        path: 'captureLogs.capture-log-main.events.capture-event-missing.target.id'
+      })
+    ]));
+  });
+
+  it('keeps rejected and unsupported preview capability report fixtures serializable and stable', () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    });
+    const unsupportedReport: PreviewCapabilityReport = buildPreviewCapabilityReport(plan, {
+      backend: {
+        backend: 'webgpu',
+        label: 'WebGPU preview',
+        runtime: 'webgpu'
+      },
+      status: 'unsupported',
+      optionalCapabilities: [{
+        id: 'capability:webgpu:timestamp-query',
+        label: 'timestamp-query',
+        capability: 'timestamp-query',
+        backend: 'webgpu'
+      }],
+      degradations: [{
+        id: 'degradation:webgpu:preview-only-color',
+        label: 'Preview color precision',
+        reason: 'Preview may use browser surface color handling before export parity work lands.',
+        capabilityIds: ['capability:ffmpeg:pixel-format:yuv420p']
+      }],
+      runtimeDiagnostics: {
+        environment: 'browser',
+        renderer: 'webgpu',
+        available: false,
+        diagnostics: ['navigator.gpu is not available']
+      },
+      deviceDiagnostics: {
+        lost: false,
+        diagnostics: ['No adapter selected']
+      }
+    });
+    const rejectedReport: PreviewCapabilityReport = buildPreviewCapabilityReport(plan, {
+      backend: {
+        backend: 'webgpu',
+        label: 'WebGPU preview',
+        runtime: 'webgpu'
+      },
+      rejectionReasons: [{
+        id: 'rejection:webgpu:required-blend',
+        label: 'Unsupported required blend',
+        reason: 'A required blend mode has no preview lowering.',
+        severity: 'error',
+        diagnosticCode: 'PREVIEW_REQUIRED_BLEND_UNSUPPORTED',
+        capabilityIds: ['capability:webgpu:blend:required'],
+        diagnosticIds: ['diagnostic:preview:required-blend'],
+        requirementIds: ['requirement:ffmpeg-render']
+      }]
+    });
+
+    expect(JSON.parse(JSON.stringify({
+      unsupported: {
+        status: unsupportedReport.status,
+        backend: unsupportedReport.backend,
+        optionalCapabilities: unsupportedReport.optionalCapabilities,
+        degradations: unsupportedReport.degradations,
+        runtimeDiagnostics: unsupportedReport.runtimeDiagnostics,
+        deviceDiagnostics: unsupportedReport.deviceDiagnostics
+      },
+      rejected: {
+        status: rejectedReport.status,
+        rejectionReasons: rejectedReport.rejectionReasons
+      }
+    }))).toMatchInlineSnapshot(`
+      {
+        "rejected": {
+          "rejectionReasons": [
+            {
+              "capabilityIds": [
+                "capability:webgpu:blend:required",
+              ],
+              "diagnosticCode": "PREVIEW_REQUIRED_BLEND_UNSUPPORTED",
+              "diagnosticIds": [
+                "diagnostic:preview:required-blend",
+              ],
+              "id": "rejection:webgpu:required-blend",
+              "label": "Unsupported required blend",
+              "reason": "A required blend mode has no preview lowering.",
+              "requirementIds": [
+                "requirement:ffmpeg-render",
+              ],
+              "severity": "error",
+            },
+          ],
+          "status": "rejected",
+        },
+        "unsupported": {
+          "backend": {
+            "backend": "webgpu",
+            "label": "WebGPU preview",
+            "runtime": "webgpu",
+          },
+          "degradations": [
+            {
+              "capabilityIds": [
+                "capability:ffmpeg:pixel-format:yuv420p",
+              ],
+              "id": "degradation:webgpu:preview-only-color",
+              "label": "Preview color precision",
+              "reason": "Preview may use browser surface color handling before export parity work lands.",
+            },
+          ],
+          "deviceDiagnostics": {
+            "diagnostics": [
+              "No adapter selected",
+            ],
+            "lost": false,
+          },
+          "optionalCapabilities": [
+            {
+              "backend": "webgpu",
+              "capability": "timestamp-query",
+              "id": "capability:webgpu:timestamp-query",
+              "label": "timestamp-query",
+            },
+          ],
+          "runtimeDiagnostics": {
+            "available": false,
+            "diagnostics": [
+              "navigator.gpu is not available",
+            ],
+            "environment": "browser",
+            "renderer": "webgpu",
+          },
+          "status": "unsupported",
+        },
+      }
+    `);
   });
 
   it('keeps render pass cache identities reusable across output paths while deriving artifact identities from the path', () => {

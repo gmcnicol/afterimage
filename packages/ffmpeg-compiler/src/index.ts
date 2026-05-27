@@ -25,6 +25,7 @@ export {
   buildPreviewRenderGraphPlan,
   buildRenderGraphPlan
 } from './render-graph.js';
+export { buildPreviewCapabilityReport } from './preview-capability.js';
 export {
   CAPTURE_REPLAY_MISSING_REFERENCE,
   CAPTURE_REPLAY_PLANNING_FAILED,

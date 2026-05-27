@@ -142,6 +142,26 @@ Preview planning should produce a capability report before execution. Missing
 required capabilities should reject the preview plan. Missing optional
 capabilities may select a documented approximation.
 
+The shared preview capability report contract lives in
+`@afterimage/ffmpeg-compiler` because the current preview anchor is the
+command-backed FFmpeg render graph plan. The report describes preview readiness
+for a specific render graph plan:
+
+- backend identity (`ffmpeg` today, `webgpu` later)
+- supported, approximated, unsupported, or rejected status
+- backend requirements copied from render graph planning
+- required capabilities derived from backend requirements
+- optional capabilities offered by a future preview adapter
+- explicit degradation labels and reasons
+- rejection reasons with severity and diagnostic codes
+- render graph diagnostic IDs plus preserved diagnostic payloads
+- runtime and device diagnostics for future WebGPU adapter/device negotiation
+
+The capability report is a contract and observability shape. It does not define
+composition meaning, lower a render graph into WebGPU resources, execute an
+FFmpeg command, or implement a renderer. Those remain owned by Core semantics,
+backend compilers, and execution layers respectively.
+
 ## V1 Previewable Concepts
 
 V1 preview may support only a subset of the render graph.
