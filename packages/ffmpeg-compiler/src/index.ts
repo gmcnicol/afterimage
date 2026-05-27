@@ -25,6 +25,13 @@ export {
   buildPreviewRenderGraphPlan,
   buildRenderGraphPlan
 } from './render-graph.js';
+export {
+  PREVIEW_ADAPTER_MISSING_DETERMINISTIC_SEED,
+  PREVIEW_ADAPTER_MISSING_REQUIRED_CAPABILITY,
+  PREVIEW_ADAPTER_NON_PREVIEW_PLAN,
+  PREVIEW_ADAPTER_UNSUPPORTED_NODE_KIND,
+  evaluatePreviewAdapterReadiness
+} from './preview-adapter.js';
 export { buildPreviewCapabilityReport } from './preview-capability.js';
 export {
   CAPTURE_REPLAY_MISSING_REFERENCE,

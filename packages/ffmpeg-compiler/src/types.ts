@@ -386,9 +386,33 @@ export interface BuildPreviewCapabilityReportOptions {
   optionalCapabilities?: PreviewCapability[];
   degradations?: PreviewCapabilityDegradation[];
   rejectionReasons?: PreviewCapabilityRejectionReason[];
+  additionalDiagnostics?: RenderGraphCapabilityDiagnostic[];
   runtimeDiagnostics?: PreviewRuntimeDiagnostics;
   deviceDiagnostics?: PreviewDeviceDiagnostics;
   metadata?: Record<string, unknown>;
+}
+
+export interface PreviewAdapterCapabilityContext {
+  backend: PreviewBackendIdentity;
+  supportedNodeKinds: RenderGraphNodeKind[];
+  supportedCapabilities: string[];
+  optionalCapabilities?: PreviewCapability[];
+  requiredSeedIds?: string[];
+  availableSeedIds?: string[];
+  runtimeDiagnostics?: PreviewRuntimeDiagnostics;
+  deviceDiagnostics?: PreviewDeviceDiagnostics;
+  rejectionReasons?: PreviewCapabilityRejectionReason[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewAdapterReadinessResult {
+  status: PreviewCapabilityStatus;
+  report: PreviewCapabilityReport;
+  diagnostics: RenderGraphCapabilityDiagnostic[];
+  unsupportedNodeKinds: RenderGraphNodeKind[];
+  missingRequiredCapabilities: PreviewCapability[];
+  missingRequiredSeedIds: string[];
+  rejectionReasons: PreviewCapabilityRejectionReason[];
 }
 
 export interface CaptureReplayIdentity {

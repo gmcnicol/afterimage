@@ -86,6 +86,10 @@ export function buildPreviewCapabilityReport(
   options: BuildPreviewCapabilityReportOptions = {}
 ): PreviewCapabilityReport {
   const backend = options.backend ?? DEFAULT_FFMPEG_PREVIEW_BACKEND;
+  const diagnostics = [
+    ...plan.diagnostics.map((diagnostic) => ({ ...diagnostic })),
+    ...(options.additionalDiagnostics ?? []).map((diagnostic) => ({ ...diagnostic }))
+  ];
   const backendRequirements = toBackendRequirementReport(plan);
   const requiredCapabilities = toRequiredCapabilities(plan);
   const optionalCapabilities = options.optionalCapabilities ?? [];
@@ -101,7 +105,7 @@ export function buildPreviewCapabilityReport(
     optionalCapabilities,
     degradations,
     rejectionReasons,
-    diagnostics: plan.diagnostics.map((diagnostic) => diagnostic.id)
+    diagnostics: diagnostics.map((diagnostic) => diagnostic.id)
   })}`;
 
   return withoutUndefinedEntries({
@@ -130,7 +134,7 @@ export function buildPreviewCapabilityReport(
     optionalCapabilities,
     degradations,
     rejectionReasons,
-    diagnostics: plan.diagnostics.map((diagnostic) => ({ ...diagnostic })),
+    diagnostics,
     runtimeDiagnostics: options.runtimeDiagnostics,
     deviceDiagnostics: options.deviceDiagnostics,
     metadata: options.metadata

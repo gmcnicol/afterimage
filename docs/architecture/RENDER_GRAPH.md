@@ -510,6 +510,19 @@ and rejected states are representable for future adapters, but the render graph
 does not deeply infer them yet. A capability report does not implement preview
 execution, define compositing semantics, or replace render graph passes.
 
+## Preview Adapter Boundary
+
+Preview adapters consume a `RenderGraphPlan` plus explicit runtime capability
+context and report readiness. They may check supported node kinds, required
+backend capabilities, deterministic seed availability, runtime diagnostics, and
+device diagnostics before preview execution is attempted.
+
+The adapter boundary is reporting-only. It must not execute FFmpeg or WebGPU
+work, mutate project/capture/Core state, define new composition semantics, or
+silently reinterpret unsupported render graph nodes. If an adapter cannot
+represent the planned graph truthfully, it reports `unsupported` or `rejected`
+with stable diagnostics and rejection reasons.
+
 ## Future Realtime Compatibility
 
 The render graph must remain compatible with a future realtime runtime.
