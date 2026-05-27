@@ -17,6 +17,8 @@ around a shared core.
 
 ## Product Documents
 
+- `universe-workspace.md`: Studio first-launch Universe setup, recent
+  universes, and access to Archive, Media, and Catalogue surfaces.
 - `archive-space.md`: Studio Archive Space sidecar review and acceptance
   workflow.
 - `observatory-space.md`: Studio Observatory Space world explanation, trust,

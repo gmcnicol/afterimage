@@ -77,7 +77,7 @@ export function getStudioSpaceForTab(tab: StudioTab): StudioSpace {
 export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
   switch (space) {
     case 'archive':
-      return 'archive';
+      return 'project';
     case 'world':
       return 'world';
     case 'performance':
@@ -92,7 +92,7 @@ export function getDefaultTabForSpace(space: StudioSpace): StudioTab {
 
 export const useUiStore = create<UiStoreState>((set) => ({
   currentSpace: 'archive',
-  currentTab: 'archive',
+  currentTab: 'project',
   notifications: [],
   setCurrentSpace: (currentSpace) => set({
     currentSpace,

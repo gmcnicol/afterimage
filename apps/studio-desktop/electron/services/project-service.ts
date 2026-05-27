@@ -685,7 +685,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     },
     async createProject(options: { name?: string } = {}): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
-        title: 'Choose Project Folder',
+        title: 'Choose Universe Folder',
         properties: ['openDirectory', 'createDirectory']
       });
 
@@ -709,9 +709,9 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     },
     async openProject(): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
-        title: 'Open Afterimage Project',
+        title: 'Open Afterimage Universe',
         properties: ['openFile'],
-        filters: [{ name: 'Afterimage Project', extensions: ['json'] }]
+        filters: [{ name: 'Afterimage Universe', extensions: ['json'] }]
       });
 
       if (result.canceled || result.filePaths.length === 0) {
@@ -735,7 +735,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
       if (!projectRoot) {
         const session = await this.saveProjectAs(input);
         if (!session) {
-          throw new Error('Save As was cancelled.');
+          throw new Error('Save Universe As was cancelled.');
         }
         return session;
       }
@@ -749,7 +749,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     },
     async saveProjectAs(input: SaveProjectRequest): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
-        title: 'Choose Project Folder',
+        title: 'Choose Universe Folder',
         properties: ['openDirectory', 'createDirectory']
       });
 
@@ -766,7 +766,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
     },
     async duplicateProject(input: SaveProjectRequest): Promise<ProjectSessionSnapshot | null> {
       const result = await dialog.showOpenDialog({
-        title: 'Choose Destination Folder',
+        title: 'Choose Universe Folder',
         properties: ['openDirectory', 'createDirectory']
       });
 

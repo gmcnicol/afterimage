@@ -246,6 +246,7 @@ export function ArchiveSpaceView() {
   const acceptArchiveCandidate = useProjectSessionStore((state) => state.acceptArchiveCandidate);
   const rejectArchiveCandidate = useProjectSessionStore((state) => state.rejectArchiveCandidate);
   const addNotification = useUiStore((state) => state.addNotification);
+  const setCurrentTab = useUiStore((state) => state.setCurrentTab);
   const [archiveResult, setArchiveResult] = useState<ArchiveSidecarListResult>({ sidecars: [], diagnostics: [] });
   const [loading, setLoading] = useState(false);
   const [selectedSidecarPath, setSelectedSidecarPath] = useState<string>();
@@ -323,7 +324,8 @@ export function ArchiveSpaceView() {
 
   const importSidecar = async () => {
     if (!projectRoot) {
-      addNotification('Save or open a project before importing archive sidecars.', 'warn');
+      addNotification('Save or open a universe before importing archive sidecars.', 'warn');
+      setCurrentTab('project');
       return;
     }
     try {
@@ -361,10 +363,12 @@ export function ArchiveSpaceView() {
   };
 
   const saveProject = () => {
+    setCurrentTab('project');
     void api.project.saveProject({ project, projectFilePath }).then(setSession);
   };
 
   const openProject = () => {
+    setCurrentTab('project');
     void api.project.openProject().then((session) => session && setSession(session));
   };
 
@@ -375,18 +379,18 @@ export function ArchiveSpaceView() {
           <div style={eyebrowStyle}>Memory Index</div>
           <h2 style={titleStyle}>Archive sidecars</h2>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <ToolbarButton primary onClick={() => void importSidecar()} disabled={!projectRoot} title={projectRoot ? 'Import Archive Sidecar' : 'Save or open a project first'}>Import Archive Sidecar</ToolbarButton>
+            <ToolbarButton primary onClick={() => void importSidecar()} disabled={!projectRoot} title={projectRoot ? 'Import Archive Sidecar' : 'Save or open a universe first'}>Import Archive Sidecar</ToolbarButton>
             <ToolbarButton onClick={() => void reloadSidecars()} disabled={loading}>Refresh</ToolbarButton>
           </div>
         </div>
         <div className="studio-scrollable" style={{ padding: 12, display: 'grid', alignContent: 'start', gap: 10 }}>
           {!projectRoot ? (
             <div style={{ ...cardStyle, gap: 10 }}>
-              <div style={{ color: '#f6f7f9', fontWeight: 500 }}>Project root required</div>
-              <div style={{ color: muted, lineHeight: 1.45 }}>Archive sidecars attach to a saved project folder.</div>
+              <div style={{ color: '#f6f7f9', fontWeight: 500 }}>Universe folder required</div>
+              <div style={{ color: muted, lineHeight: 1.45 }}>Archive sidecars attach to a saved universe folder.</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <ToolbarButton primary onClick={saveProject}>Save Project</ToolbarButton>
-                <ToolbarButton onClick={openProject}>Open Project</ToolbarButton>
+                <ToolbarButton primary onClick={saveProject}>Save Universe</ToolbarButton>
+                <ToolbarButton onClick={openProject}>Open Universe</ToolbarButton>
               </div>
             </div>
           ) : null}

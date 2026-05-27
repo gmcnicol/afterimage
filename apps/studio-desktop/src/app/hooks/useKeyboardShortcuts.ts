@@ -28,7 +28,7 @@ export function useKeyboardShortcuts(): void {
         projectFilePath: resolvedProjectFilePath
       });
       useProjectSessionStore.getState().setSession(session);
-      addNotification('Saved project.', 'success', 1800);
+      addNotification('Saved universe.', 'success', 1800);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (message.toLowerCase().includes('cancelled')) {
