@@ -112,7 +112,8 @@ test('loads a project and can open Archive, World, Performance, Forge, and Obser
     await expect(window.getByRole('heading', { name: 'Rehearsal Set' })).toBeVisible();
     await expect(window.getByRole('heading', { name: 'Main Scene universe' })).toBeVisible();
     await expect(window.getByText('Intro Source').first()).toBeVisible();
-    await expect(window.getByLabel('Performance preview and replay output strip').getByRole('button', { name: 'Coalesce' })).toBeVisible();
+    await expect(window.getByLabel('Performance preview and replay preview output strip').getByRole('button', { name: 'Preview', exact: true })).toBeVisible();
+    await expect(window.getByLabel('Performance preview and replay preview output strip').getByRole('button', { name: 'Replay Preview' })).toBeVisible();
     await expect(window.getByText('rehearsal ready')).toBeVisible();
 
     await spaces.getByRole('button', { name: 'Forge' }).click();

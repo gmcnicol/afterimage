@@ -11,6 +11,7 @@
 ## Linear
 - In this repo, ticket and project management references mean Linear unless the user explicitly names another tracker.
 - When the user says "tickets", "milestone", "M4", "issue", or "backlog" in an Afterimage planning context, treat it as Linear work first.
+- When the user asks "what's next?", treat it as a request for the next item in the Linear backlog, not as a generic workflow/status question.
 
 ## Screenshots
 - At the end of each ticket with visible UI changes, capture final screenshots for the user.

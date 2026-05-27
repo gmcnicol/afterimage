@@ -140,7 +140,7 @@ function SceneSetListItem(props: {
       <span style={{ display: 'flex', gap: 12, color: muted, flexWrap: 'wrap' }}>
         <Metric label="climate" value={scene.climate.atmosphere ?? 'neutral'} />
         <Metric label="layers" value={layers.length} />
-        <Metric label="capture" value={props.sceneSnapshot.captureLogCount} />
+        <Metric label="replay logs" value={props.sceneSnapshot.captureLogCount} />
       </span>
       <span style={{ display: 'flex', gap: 12, color: muted, flexWrap: 'wrap' }}>
         <Metric label="pressure" value={formatPercent(scene.climate.pressure)} />
@@ -237,7 +237,7 @@ function SignalStage(props: {
         <Metric label="routes" value={props.scene?.routes.length ?? 0} />
         <Metric label="entropy states" value={props.scene?.entropyStates.length ?? 0} />
         <Metric label="preview" value={props.previewState} />
-        <Metric label="replay" value={props.replayState} />
+        <Metric label="replay preview" value={props.replayState} />
         <Metric label="faults" value={props.scene?.diagnostics.length ?? 0} />
       </div>
     </div>
@@ -253,7 +253,7 @@ function OutputStrip(props: {
   replayArtifact?: string;
   previewError?: string;
   replayError?: string;
-  onCoalesce: () => void;
+  onPreview: () => void;
   onReplay: () => void;
   canPreview: boolean;
   canReplay: boolean;
@@ -262,7 +262,7 @@ function OutputStrip(props: {
 }) {
   return (
     <section
-      aria-label="Performance preview and replay output strip"
+      aria-label="Performance preview and replay preview output strip"
       style={{
         minWidth: 0,
         minHeight: 0,
@@ -278,10 +278,10 @@ function OutputStrip(props: {
     >
       <div style={{ display: 'grid', gap: 7, minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', minWidth: 0 }}>
-          <Metric label="preview job" value={`${props.previewLabel}${props.previewProgress !== undefined ? ` ${props.previewProgress}%` : ''}`} />
-          <Metric label="replay job" value={`${props.replayLabel}${props.replayProgress !== undefined ? ` ${props.replayProgress}%` : ''}`} />
-          <Metric label="preview artifact" value={formatPathTail(props.previewArtifact)} />
-          <Metric label="replay artifact" value={formatPathTail(props.replayArtifact)} />
+          <Metric label="preview" value={`${props.previewLabel}${props.previewProgress !== undefined ? ` ${props.previewProgress}%` : ''}`} />
+          <Metric label="replay preview" value={`${props.replayLabel}${props.replayProgress !== undefined ? ` ${props.replayProgress}%` : ''}`} />
+          <Metric label="preview result" value={formatPathTail(props.previewArtifact)} />
+          <Metric label="replay result" value={formatPathTail(props.replayArtifact)} />
         </div>
         {props.previewError || props.replayError ? (
           <div style={{ color: '#e6c7b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -290,14 +290,14 @@ function OutputStrip(props: {
         ) : null}
         {!props.canPreview || !props.canReplay ? (
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', color: muted }}>
-            {!props.canPreview ? <span>Coalesce blocked: {props.previewReasons[0] ?? 'not ready'}</span> : null}
-            {!props.canReplay ? <span>Replay blocked: {props.replayReasons[0] ?? 'not ready'}</span> : null}
+            {!props.canPreview ? <span>Preview blocked: {props.previewReasons[0] ?? 'not ready'}</span> : null}
+            {!props.canReplay ? <span>Replay Preview blocked: {props.replayReasons[0] ?? 'not ready'}</span> : null}
           </div>
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-        <ToolbarButton primary disabled={!props.canPreview} onClick={props.onCoalesce}>Coalesce</ToolbarButton>
-        <ToolbarButton disabled={!props.canReplay} onClick={props.onReplay}>Replay Capture</ToolbarButton>
+        <ToolbarButton primary disabled={!props.canPreview} onClick={props.onPreview}>Preview</ToolbarButton>
+        <ToolbarButton disabled={!props.canReplay} onClick={props.onReplay}>Replay Preview</ToolbarButton>
       </div>
     </section>
   );
@@ -349,7 +349,7 @@ export function PerformanceSpaceView() {
       : snapshot.latestCaptureLog?.id);
   }, [project.captureLogs, snapshot.latestCaptureLog?.id]);
 
-  const coalescePreview = () => {
+  const runPreview = () => {
     if (!snapshot.readiness.previewReady || !snapshot.variant || !snapshot.previewOutputPath) {
       return;
     }
@@ -364,7 +364,7 @@ export function PerformanceSpaceView() {
     });
   };
 
-  const runCaptureReplay = () => {
+  const runReplayPreview = () => {
     if (!snapshot.readiness.replayReady || !snapshot.variant || !snapshot.replayOutputPath || !snapshot.selectedCaptureLog) {
       return;
     }
@@ -408,7 +408,7 @@ export function PerformanceSpaceView() {
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: muted }}>
             <Metric label="scenes" value={snapshot.scenes.length} />
             <Metric label="forces" value={snapshot.scenes.reduce((count, scene) => count + scene.layers.length, 0)} />
-            <Metric label="captures" value={project.captureLogs.length} />
+            <Metric label="replay logs" value={project.captureLogs.length} />
             <Metric label="readiness" value={snapshot.readiness.previewReady ? 'rehearsal ready' : 'blocked'} />
           </div>
         </div>
@@ -438,7 +438,7 @@ export function PerformanceSpaceView() {
           </Label>
         </div>
         <div style={{ display: 'grid', alignContent: 'center', gap: 6, minWidth: 0, padding: 10, borderLeft: `1px solid ${faintLine}`, color: muted }}>
-          <Metric label="capture" value={snapshot.selectedCaptureSession?.id ?? 'none'} />
+          <Metric label="replay source" value={snapshot.selectedCaptureSession?.id ?? 'none'} />
           <Metric label="started" value={formatTime(snapshot.selectedCaptureSession?.startedAt)} />
           <Metric label="events" value={snapshot.selectedCaptureLog?.events.length ?? 0} />
         </div>
@@ -531,7 +531,7 @@ export function PerformanceSpaceView() {
                     style={rangeStyle()}
                   />
                 </Label>
-                <Label label="Render intent">
+                <Label label="Output role">
                   <select
                     value={selectedLayer.renderIntent.passKind}
                     onChange={(event) => updateCompositionLayer(selectedLayer.id, {
@@ -553,14 +553,14 @@ export function PerformanceSpaceView() {
             ) : null}
 
             <div style={{ display: 'grid', gap: 9, paddingTop: 12, borderTop: `1px solid ${faintLine}` }}>
-              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>Capture source</h3>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>Replay source</h3>
               <Label label="Replay log">
                 <select
                   value={selectedCaptureLogId ?? ''}
                   onChange={(event) => setSelectedCaptureLogId(event.target.value || undefined)}
                   style={fieldStyle()}
                 >
-                  {project.captureLogs.length === 0 ? <option value="">No captures</option> : null}
+                  {project.captureLogs.length === 0 ? <option value="">No replay logs</option> : null}
                   {project.captureLogs.map((log) => (
                     <option key={log.id} value={log.id}>{log.id} ({log.events.length} events)</option>
                   ))}
@@ -585,8 +585,8 @@ export function PerformanceSpaceView() {
         replayArtifact={snapshot.replayJob.lastArtifactPath}
         previewError={snapshot.previewJob.error}
         replayError={snapshot.replayJob.error}
-        onCoalesce={coalescePreview}
-        onReplay={runCaptureReplay}
+        onPreview={runPreview}
+        onReplay={runReplayPreview}
         canPreview={snapshot.readiness.previewReady}
         canReplay={snapshot.readiness.replayReady}
         previewReasons={snapshot.readiness.previewReasons}
