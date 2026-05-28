@@ -441,7 +441,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
       mode: 'preview',
       passIds: ['pass:ffmpeg-render'],
       artifactIds: plan.artifacts.map((artifact) => artifact.id),
-      requirementIds: ['requirement:ffmpeg-render'],
+      requirementIds: plan.backendRequirements.map((requirement) => requirement.id),
       diagnosticIds: plan.diagnostics.map((diagnostic) => diagnostic.id)
     });
     expect(report.target).toEqual(plan.target);
@@ -454,7 +454,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
     });
     const report = buildPreviewCapabilityReport(plan);
 
-    expect(report.backendRequirements).toEqual([{
+    expect(report.backendRequirements).toEqual(expect.arrayContaining([{
       id: 'requirement:ffmpeg-render',
       backend: 'ffmpeg',
       required: true,
@@ -476,44 +476,20 @@ describe('@afterimage/ffmpeg-compiler', () => {
       metadata: {
         source: 'path'
       }
-    }]);
-    expect(report.requiredCapabilities).toEqual([
-      {
-        id: 'capability:ffmpeg:filter_complex',
-        label: 'filter_complex',
-        capability: 'filter_complex',
-        backend: 'ffmpeg',
-        requirementIds: ['requirement:ffmpeg-render']
-      },
-      {
-        id: 'capability:ffmpeg:video-codec:libx264',
-        label: 'video-codec:libx264',
-        capability: 'video-codec:libx264',
-        backend: 'ffmpeg',
-        requirementIds: ['requirement:ffmpeg-render']
-      },
-      {
-        id: 'capability:ffmpeg:audio-codec:aac',
-        label: 'audio-codec:aac',
-        capability: 'audio-codec:aac',
-        backend: 'ffmpeg',
-        requirementIds: ['requirement:ffmpeg-render']
-      },
-      {
-        id: 'capability:ffmpeg:container:mp4',
-        label: 'container:mp4',
-        capability: 'container:mp4',
-        backend: 'ffmpeg',
-        requirementIds: ['requirement:ffmpeg-render']
-      },
-      {
-        id: 'capability:ffmpeg:pixel-format:yuv420p',
-        label: 'pixel-format:yuv420p',
-        capability: 'pixel-format:yuv420p',
-        backend: 'ffmpeg',
-        requirementIds: ['requirement:ffmpeg-render']
-      }
+    }]));
+    expect(report.backendRequirements.map((requirement) => requirement.id)).toEqual([
+      'requirement:ffmpeg-render',
+      'requirement:runtime-profile:runtime-profile-draft',
+      'requirement:field-generator:generator-clip-luma-alpha',
+      'requirement:field-generator:generator-live-flights-flow',
+      'requirement:field-generator:generator-seeded-noise-drift',
+      'requirement:field-sampler:sampler-bloom-heat-strength'
     ]);
+    expect(report.requiredCapabilities.map((capability) => capability.capability)).toEqual(
+      plan.backendRequirements
+        .filter((requirement) => requirement.required)
+        .flatMap((requirement) => requirement.capabilities)
+    );
     expect(report.optionalCapabilities).toEqual([]);
   });
 
@@ -700,7 +676,9 @@ describe('@afterimage/ffmpeg-compiler', () => {
       runtime: 'command'
     });
     expect(result.report.requiredCapabilities.map((capability) => capability.capability))
-      .toEqual(plan.backendRequirements.flatMap((requirement) => requirement.capabilities));
+      .toEqual(plan.backendRequirements
+        .filter((requirement) => requirement.required)
+        .flatMap((requirement) => requirement.capabilities));
     expect(result.report.optionalCapabilities).toEqual([{
       id: 'capability:ffmpeg:preview-probe',
       label: 'preview-probe',
@@ -1179,8 +1157,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "9c88ef2665fb76643a9b5f8bb7bd5c85d63f599a236e56e7c2a4d5289d1ba709",
-            "id": "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
+            "cacheKey": "557058ddeaeeac47880199d75480e08a397902f3821c6bae4fe6f1acc09a3d18",
+            "id": "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
             "path": ".afterimage/preview/variant-main.mp4",
             "producedBy": "pass:ffmpeg-render",
             "role": "preview-output",
@@ -1199,8 +1177,52 @@ describe('@afterimage/ffmpeg-compiler', () => {
             ],
             "id": "requirement:ffmpeg-render",
           },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "runtime-profile:draft",
+              "field-scale:quarter",
+              "cost-budget:moderate",
+              "fallback:degrade-quality",
+            ],
+            "id": "requirement:runtime-profile:runtime-profile-draft",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "field-generator:clip-luma",
+            ],
+            "id": "requirement:field-generator:generator-clip-luma-alpha",
+          },
+          {
+            "backend": "external",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "capture-replay",
+              "field-generator:external-capture",
+            ],
+            "id": "requirement:field-generator:generator-live-flights-flow",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "field-generator:seeded-noise",
+            ],
+            "id": "requirement:field-generator:generator-seeded-noise-drift",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "field-sampling",
+            ],
+            "id": "requirement:field-sampler:sampler-bloom-heat-strength",
+          },
         ],
-        "cacheKey": "4b1c106856f211f60c258a30dcd49f0e92e52aa25a0702b64e53cd815fd7a6c9",
+        "cacheKey": "b6f940fa413ca9f0eca709c81b76838fffcd227edf21c3ce69444ca80c0d650a",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -1208,6 +1230,41 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:ffmpeg-render",
             "severity": "info",
+          },
+          {
+            "code": "runtime-profile-cost-budget",
+            "nodeId": "field-generator:generator-live-flights-flow",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:runtime-profile:runtime-profile-draft",
+            "severity": "warning",
+          },
+          {
+            "code": "field-generator-placeholder",
+            "nodeId": "field-generator:generator-clip-luma-alpha",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-clip-luma-alpha",
+            "severity": "info",
+          },
+          {
+            "code": "field-generator-placeholder",
+            "nodeId": "field-generator:generator-live-flights-flow",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-live-flights-flow",
+            "severity": "info",
+          },
+          {
+            "code": "field-generator-placeholder",
+            "nodeId": "field-generator:generator-seeded-noise-drift",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-seeded-noise-drift",
+            "severity": "info",
+          },
+          {
+            "code": "field-sampling-scalar-fallback",
+            "nodeId": "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-sampler:sampler-bloom-heat-strength",
+            "severity": "warning",
           },
         ],
         "edges": [
@@ -1248,15 +1305,68 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "to": "operation:preview:variant-main",
           },
           {
+            "from": "field-generator:generator-clip-luma-alpha",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "luma",
+              ],
+              "fieldId": "field-heat-scene",
+              "generatorId": "generator-clip-luma-alpha",
+              "outputId": "output-heat",
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "field-generator:generator-live-flights-flow",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "magnitude",
+              ],
+              "fieldId": "field-pressure-scene",
+              "generatorId": "generator-live-flights-flow",
+              "outputId": "output-pressure",
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "field-generator:generator-seeded-noise-drift",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "g",
+                "r",
+              ],
+              "fieldId": "field-memory-scene",
+              "generatorId": "generator-seeded-noise-drift",
+              "outputId": "output-memory",
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
+            "kind": "field-consumer",
+            "metadata": {
+              "fallbackValue": 0.24,
+              "fieldId": "field-heat-scene",
+              "filterId": "filter-main-bloom",
+              "parameter": "strength",
+              "samplerId": "sampler-bloom-heat-strength",
+              "stackId": "stack-sequence-main",
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
             "from": "operation:preview:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
+            "to": "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
           },
         ],
         "identity": {
           "mode": "preview",
-          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:4b1c106856f211f60c258a30dcd49f0e92e52aa25a0702b64e53cd815fd7a6c9",
+          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:b6f940fa413ca9f0eca709c81b76838fffcd227edf21c3ce69444ca80c0d650a",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -1304,17 +1414,33 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "input",
           },
           {
+            "id": "field-generator:generator-clip-luma-alpha",
+            "kind": "field-generator",
+          },
+          {
+            "id": "field-generator:generator-live-flights-flow",
+            "kind": "field-generator",
+          },
+          {
+            "id": "field-generator:generator-seeded-noise-drift",
+            "kind": "field-generator",
+          },
+          {
+            "id": "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
+            "kind": "field-consumer",
+          },
+          {
             "id": "operation:preview:variant-main",
             "kind": "operation",
           },
           {
-            "id": "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
+            "id": "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "48d2f1c447cf87da08a269ae08f427024c0fb068cec52e3db29861c3293f699f",
+          "cacheKey": "dec9d6129bac26080f3c1bf31dc3f23e4076de3da9278603398ca8332f9a3f4a",
           "command": {
             "args": [
               "-y",
@@ -1352,10 +1478,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
           "inputNodeIds": [
             "input:asset-alpha",
             "input:asset-music",
+            "field-generator:generator-clip-luma-alpha",
+            "field-generator:generator-live-flights-flow",
+            "field-generator:generator-seeded-noise-drift",
+            "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
           ],
           "nodeId": "operation:preview:variant-main",
           "outputArtifactIds": [
-            "artifact:preview-output:c30c5dd1d95011925d2ae3fd0afb0fcec6a85b2a55224e4a247f71220cbda8da",
+            "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -1391,6 +1521,17 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "videoPreset": "fast",
             "width": 960,
           },
+          "runtimeProfile": {
+            "fallbackPreference": "degrade-quality",
+            "fieldScalePreset": "quarter",
+            "id": "runtime-profile-draft",
+            "kind": "draft",
+            "label": "Draft",
+            "maxCostClass": "moderate",
+            "maxPasses": 2,
+            "memoryBudgetMb": 512,
+            "targetFps": 24,
+          },
         },
       }
     `);
@@ -1406,8 +1547,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "e261ac848317a8987ddf32a5d1d627a260a5f3a1a7953a5829d7ffa248b272f7",
-            "id": "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
+            "cacheKey": "dcce59bd1a4822f1ae755c34a4743e53e89882b790488a224dfb2326c3457f85",
+            "id": "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
             "path": "exports/studio-fixture.mov",
             "producedBy": "pass:ffmpeg-render",
             "role": "export-output",
@@ -1426,8 +1567,52 @@ describe('@afterimage/ffmpeg-compiler', () => {
             ],
             "id": "requirement:ffmpeg-render",
           },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "runtime-profile:render",
+              "field-scale:source",
+              "cost-budget:dangerous",
+              "fallback:fail-fast",
+            ],
+            "id": "requirement:runtime-profile:runtime-profile-render",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "field-generator:clip-luma",
+            ],
+            "id": "requirement:field-generator:generator-clip-luma-alpha",
+          },
+          {
+            "backend": "external",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "capture-replay",
+              "field-generator:external-capture",
+            ],
+            "id": "requirement:field-generator:generator-live-flights-flow",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "field-generator:seeded-noise",
+            ],
+            "id": "requirement:field-generator:generator-seeded-noise-drift",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
+              "field-sampling",
+            ],
+            "id": "requirement:field-sampler:sampler-bloom-heat-strength",
+          },
         ],
-        "cacheKey": "cfef8c914816ee80cfe84839913b26cc4f17725b6d79f016751c6c4f38837818",
+        "cacheKey": "43dfa99a6cade66314df1df1c612e4ed4917d5d542ea77c831d531d3b71a3aa4",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -1435,6 +1620,34 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:ffmpeg-render",
             "severity": "info",
+          },
+          {
+            "code": "field-generator-placeholder",
+            "nodeId": "field-generator:generator-clip-luma-alpha",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-clip-luma-alpha",
+            "severity": "info",
+          },
+          {
+            "code": "field-generator-placeholder",
+            "nodeId": "field-generator:generator-live-flights-flow",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-live-flights-flow",
+            "severity": "info",
+          },
+          {
+            "code": "field-generator-placeholder",
+            "nodeId": "field-generator:generator-seeded-noise-drift",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-seeded-noise-drift",
+            "severity": "info",
+          },
+          {
+            "code": "field-sampling-scalar-fallback",
+            "nodeId": "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-sampler:sampler-bloom-heat-strength",
+            "severity": "warning",
           },
         ],
         "edges": [
@@ -1475,15 +1688,68 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "to": "operation:export:variant-main",
           },
           {
+            "from": "field-generator:generator-clip-luma-alpha",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "luma",
+              ],
+              "fieldId": "field-heat-scene",
+              "generatorId": "generator-clip-luma-alpha",
+              "outputId": "output-heat",
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "field-generator:generator-live-flights-flow",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "magnitude",
+              ],
+              "fieldId": "field-pressure-scene",
+              "generatorId": "generator-live-flights-flow",
+              "outputId": "output-pressure",
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "field-generator:generator-seeded-noise-drift",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "g",
+                "r",
+              ],
+              "fieldId": "field-memory-scene",
+              "generatorId": "generator-seeded-noise-drift",
+              "outputId": "output-memory",
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
+            "kind": "field-consumer",
+            "metadata": {
+              "fallbackValue": 0.24,
+              "fieldId": "field-heat-scene",
+              "filterId": "filter-main-bloom",
+              "parameter": "strength",
+              "samplerId": "sampler-bloom-heat-strength",
+              "stackId": "stack-sequence-main",
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
             "from": "operation:export:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
+            "to": "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
           },
         ],
         "identity": {
           "mode": "export",
-          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:cfef8c914816ee80cfe84839913b26cc4f17725b6d79f016751c6c4f38837818",
+          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:43dfa99a6cade66314df1df1c612e4ed4917d5d542ea77c831d531d3b71a3aa4",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -1531,17 +1797,33 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "input",
           },
           {
+            "id": "field-generator:generator-clip-luma-alpha",
+            "kind": "field-generator",
+          },
+          {
+            "id": "field-generator:generator-live-flights-flow",
+            "kind": "field-generator",
+          },
+          {
+            "id": "field-generator:generator-seeded-noise-drift",
+            "kind": "field-generator",
+          },
+          {
+            "id": "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
+            "kind": "field-consumer",
+          },
+          {
             "id": "operation:export:variant-main",
             "kind": "operation",
           },
           {
-            "id": "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
+            "id": "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "7e5ef4ebae56ced07e9a283fe7456226acb096b1ed7fd4e826fc05c6f06c8935",
+          "cacheKey": "c2472f419f19ce6e9af3c65ec06761abc092455eba10db0fcac2a1ebb3ce14a8",
           "command": {
             "args": [
               "-y",
@@ -1583,10 +1865,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
           "inputNodeIds": [
             "input:asset-alpha",
             "input:asset-music",
+            "field-generator:generator-clip-luma-alpha",
+            "field-generator:generator-live-flights-flow",
+            "field-generator:generator-seeded-noise-drift",
+            "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
           ],
           "nodeId": "operation:export:variant-main",
           "outputArtifactIds": [
-            "artifact:export-output:a74df82ea909ca1f834ffdb619b031465ae3d1e35d381678852533184d3585e6",
+            "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -1625,6 +1911,17 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "videoMaxrateKbps": 12000,
             "videoPreset": "medium",
             "width": 1920,
+          },
+          "runtimeProfile": {
+            "fallbackPreference": "fail-fast",
+            "fieldScalePreset": "source",
+            "id": "runtime-profile-render",
+            "kind": "render",
+            "label": "Render",
+            "maxCostClass": "dangerous",
+            "maxPasses": 12,
+            "memoryBudgetMb": 4096,
+            "targetFps": 24,
           },
         },
       }

@@ -66,6 +66,11 @@
       "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/exportSelection" },
       "default": []
     },
+    "runtimeProfiles": {
+      "type": "array",
+      "items": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/runtimePerformanceProfile" },
+      "default": []
+    },
     "composition": { "$ref": "https://afterimage.local/schemas/shared-defs.schema.json#/$defs/compositionIdentity" },
     "captureSessions": {
       "type": "array",

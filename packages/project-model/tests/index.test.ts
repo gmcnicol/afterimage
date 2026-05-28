@@ -68,6 +68,24 @@ describe('@afterimage/project-model', () => {
       storage: 'gpu-texture',
       access: 'read-write'
     });
+    expect(normalized.composition.spatialFields.find((field) => field.id === 'field-memory-scene')?.persistence).toMatchObject({
+      lifetime: 'composition',
+      previousFrameAccess: 'history-window',
+      accumulation: {
+        kind: 'decay',
+        decay: 0.92,
+        clamp: true
+      },
+      windowFrames: 4,
+      storageIntent: 'replayable'
+    });
+    expect(normalized.composition.fieldGenerators.map((generator) => generator.id)).toEqual([
+      'generator-clip-luma-alpha',
+      'generator-live-flights-flow',
+      'generator-seeded-noise-drift'
+    ]);
+    expect(normalized.filterStacks[0].filters[0].fieldSamplers?.map((sampler) => sampler.id)).toEqual(['sampler-bloom-heat-strength']);
+    expect(normalized.runtimeProfiles.map((profile) => profile.kind)).toEqual(['draft', 'live', 'render', 'studio']);
     expect(normalized.composition.acceptedArchiveReferences.map((reference) => reference.id)).toEqual(['accepted-archive-source-alpha-motif-motif-hallway-composition-main-scene-main']);
     expect(normalized.composition.rejectedArchiveReferences.map((reference) => reference.id)).toEqual(['rejected-archive-source-alpha-motion-motion-drift-composition-main-layer-clip-intro']);
     expect(normalized.captureSessions.map((session) => session.id)).toEqual(['capture-session-main']);
@@ -193,6 +211,7 @@ describe('@afterimage/project-model', () => {
       rejectedArchiveReferences: []
     });
     expect(normalized.composition.spatialFields).toEqual([]);
+    expect(normalized.composition.fieldGenerators).toEqual([]);
     expect(normalized.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
     expect(normalized.composition.layers[0]).toMatchObject({
       id: 'layer-clip-intro',
@@ -616,6 +635,119 @@ describe('@afterimage/project-model', () => {
       expect.objectContaining({
         path: 'composition.modulationRoutes.route-field-valid.source.id'
       })
+    ]));
+  });
+
+  it('reports invalid field generator and field sampling references', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        spatialFields: [
+          ...(fixtureProject.composition?.spatialFields ?? []),
+          {
+            id: 'field-persistent-broken',
+            kind: 'memory',
+            resolution: {
+              kind: 'output-sized'
+            },
+            persistence: {
+              lifetime: 'composition',
+              previousFrameAccess: 'previous-frame',
+              accumulation: {
+                kind: 'accumulate'
+              },
+              replayIdentity: {
+                deterministic: true,
+                seedId: 'seed-missing'
+              },
+              storageIntent: 'replayable'
+            }
+          }
+        ],
+        fieldGenerators: [
+          ...(fixtureProject.composition?.fieldGenerators ?? []),
+          {
+            id: 'generator-broken',
+            kind: 'clip-luma',
+            inputs: [
+              {
+                id: 'input-missing',
+                kind: 'asset',
+                refId: 'asset-missing'
+              }
+            ],
+            outputs: [
+              {
+                id: 'output-missing',
+                kind: 'spatial-field',
+                fieldId: 'field-missing'
+              }
+            ],
+            scope: {
+              compositionId: 'composition-main'
+            },
+            costClass: 'cheap',
+            determinismMode: 'deterministic',
+            capturePolicy: 'ignore',
+            requiredCapabilities: ['field-generator:clip-luma'],
+            cacheIdentity: {
+              version: 'broken@1',
+              inputs: ['asset-missing']
+            }
+          }
+        ]
+      },
+      filterStacks: [
+        {
+          ...fixtureProject.filterStacks[0],
+          filters: [
+            {
+              ...fixtureProject.filterStacks[0].filters[0],
+              fieldSamplers: [
+                ...(fixtureProject.filterStacks[0].filters[0].fieldSamplers ?? []),
+                {
+                  id: 'sampler-missing',
+                  fieldId: 'field-missing',
+                  parameter: 'missing-parameter',
+                  sampleMode: 'linear',
+                  blendMode: 'replace',
+                  channels: ['luma'],
+                  fallbackValue: 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Spatial field "field-persistent-broken" persistence references missing deterministic seed "seed-missing".',
+        path: 'composition.spatialFields.field-persistent-broken.persistence.replayIdentity.seedId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Field generator "generator-broken" input "input-missing" references missing asset "asset-missing".',
+        path: 'composition.fieldGenerators.generator-broken.inputs.input-missing.refId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Field generator "generator-broken" output "output-missing" references missing spatial field "field-missing".',
+        path: 'composition.fieldGenerators.generator-broken.outputs.output-missing.fieldId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Field sampler "sampler-missing" references missing spatial field "field-missing".',
+        path: 'filterStacks.stack-sequence-main.filters.filter-main-bloom.fieldSamplers.sampler-missing.fieldId'
+      },
+      {
+        code: 'unsupported-value',
+        message: 'Field sampler "sampler-missing" targets unsupported parameter "missing-parameter" for filter "filter-main-bloom".',
+        path: 'filterStacks.stack-sequence-main.filters.filter-main-bloom.fieldSamplers.sampler-missing.parameter'
+      }
     ]));
   });
 

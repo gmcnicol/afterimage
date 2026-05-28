@@ -64,6 +64,21 @@ export type SpatialFieldSourceClass = 'source-imagery' | 'behavioural-state';
 export type SpatialFieldResolutionPolicyKind = 'source-sized' | 'output-sized' | 'scaled' | 'fixed';
 export type SpatialFieldStoragePolicy = 'gpu-texture' | 'cpu-buffer';
 export type SpatialFieldAccessPolicy = 'read' | 'write' | 'read-write';
+export type SpatialFieldPersistenceLifetime = 'frame' | 'clip' | 'sequence' | 'composition' | 'capture-session';
+export type SpatialFieldPreviousFrameAccessPolicy = 'none' | 'previous-frame' | 'history-window';
+export type SpatialFieldAccumulationPolicyKind = 'replace' | 'accumulate' | 'decay';
+export type SpatialFieldPersistenceStorageIntent = 'runtime-only' | 'cacheable' | 'replayable';
+export type RuntimePerformanceProfileKind = 'draft' | 'live' | 'studio' | 'render';
+export type RuntimeFieldScalePreset = 'source' | 'full' | 'half' | 'quarter' | 'eighth';
+export type RuntimeFallbackPreference = 'preserve-output' | 'degrade-quality' | 'disable-expensive' | 'fail-fast';
+export type RuntimeCostClass = 'cheap' | 'moderate' | 'expensive' | 'dangerous';
+export type FieldGeneratorKind = 'clip-luma' | 'seeded-noise-drift' | 'external-live-source';
+export type FieldGeneratorInputKind = 'asset' | 'spatial-field' | 'deterministic-seed' | 'capture-source' | 'parameter';
+export type FieldGeneratorOutputKind = 'spatial-field';
+export type FieldGeneratorDeterminismMode = 'deterministic' | 'seeded' | 'captured' | 'live';
+export type FieldSampleMode = 'nearest' | 'linear' | 'mip';
+export type FieldSampleBlendMode = 'replace' | 'add' | 'multiply' | 'screen';
+export type FieldSampleChannel = 'r' | 'g' | 'b' | 'a' | 'luma' | 'magnitude';
 export type ModulationEndpointKind = ModulationSourceKind | ModulationTargetKind | EntropyIdentityKind | 'spatial-field';
 export type ModulationMappingKind = 'linear' | 'exponential' | 'step' | 'toggle' | 'trigger';
 export type EntropyIdentityKind = 'capture-event' | 'modulation-route' | 'entropy-state' | 'scene' | 'layer' | 'composition' | 'manual';
@@ -437,6 +452,7 @@ export interface FilterInstance {
   enabled?: boolean;
   orderIndex: number;
   parameters?: Record<string, JsonPrimitive>;
+  fieldSamplers?: FieldParameterSampler[];
   mix?: number;
   seed?: number;
   automationLaneIds?: string[];
@@ -617,6 +633,28 @@ export interface SpatialFieldResolutionPolicy {
   height?: number;
 }
 
+export interface SpatialFieldAccumulationPolicy {
+  kind: SpatialFieldAccumulationPolicyKind;
+  decay?: number;
+  clamp?: boolean;
+}
+
+export interface SpatialFieldReplayIdentity {
+  deterministic: boolean;
+  seedId?: string;
+  capturePolicy?: CapturePolicy;
+  identityInputs?: string[];
+}
+
+export interface SpatialFieldPersistencePolicy {
+  lifetime: SpatialFieldPersistenceLifetime;
+  previousFrameAccess: SpatialFieldPreviousFrameAccessPolicy;
+  accumulation: SpatialFieldAccumulationPolicy;
+  windowFrames?: number;
+  replayIdentity: SpatialFieldReplayIdentity;
+  storageIntent: SpatialFieldPersistenceStorageIntent;
+}
+
 export interface SpatialFieldDefinition {
   id: string;
   kind: SpatialFieldKind;
@@ -625,6 +663,8 @@ export interface SpatialFieldDefinition {
   resolution: SpatialFieldResolutionPolicy;
   storage?: SpatialFieldStoragePolicy;
   access?: SpatialFieldAccessPolicy;
+  costClass?: RuntimeCostClass;
+  persistence?: SpatialFieldPersistencePolicy;
   scope?: ModulationScope;
   seedId?: string;
 }
@@ -656,10 +696,14 @@ export interface SpatialFieldRuntimeState {
   fieldId: string;
   kind: SpatialFieldKind;
   sourceClass: SpatialFieldSourceClass;
+  currentFrame?: SpatialFieldFrameIdentity;
+  previousFrame?: SpatialFieldFrameIdentity;
   frame: SpatialFieldFrameIdentity;
   dimensions: SpatialFieldDimensions;
   storage: SpatialFieldStoragePolicy;
   access: SpatialFieldAccessPolicy;
+  persistence?: SpatialFieldPersistencePolicy;
+  persistenceWindow?: SpatialFieldFrameIdentity[];
   generation: number;
   provenance: SpatialFieldDeterministicProvenance;
 }
@@ -667,9 +711,24 @@ export interface SpatialFieldRuntimeState {
 export interface SpatialFieldAccessRequest {
   fieldId: string;
   access: SpatialFieldAccessPolicy;
+  currentFrame?: SpatialFieldFrameIdentity;
+  previousFrame?: SpatialFieldFrameIdentity;
   frame: SpatialFieldFrameIdentity;
   requestedStorage?: SpatialFieldStoragePolicy;
   consumerId?: string;
+}
+
+export interface FieldParameterSampler {
+  id: string;
+  fieldId: string;
+  parameter: string;
+  sampleMode: FieldSampleMode;
+  blendMode: FieldSampleBlendMode;
+  channels: FieldSampleChannel[];
+  fallbackValue: number;
+  requiredCapabilities?: string[];
+  degradedCapabilities?: string[];
+  enabled?: boolean;
 }
 
 export interface ModulationEndpoint {
@@ -721,6 +780,52 @@ export interface EntropyState {
   capturePolicy: CapturePolicy;
   seedId?: string;
   enabled?: boolean;
+}
+
+export interface RuntimePerformanceProfile {
+  id: string;
+  kind: RuntimePerformanceProfileKind;
+  label?: string;
+  fieldScalePreset: RuntimeFieldScalePreset;
+  targetFps: number;
+  memoryBudgetMb: number;
+  maxPasses: number;
+  fallbackPreference: RuntimeFallbackPreference;
+  maxCostClass: RuntimeCostClass;
+}
+
+export interface FieldGeneratorInput {
+  id: string;
+  kind: FieldGeneratorInputKind;
+  refId?: string;
+  parameter?: string;
+  required?: boolean;
+}
+
+export interface FieldGeneratorOutput {
+  id: string;
+  kind: FieldGeneratorOutputKind;
+  fieldId: string;
+  channels?: FieldSampleChannel[];
+}
+
+export interface FieldGeneratorCacheIdentity {
+  version: string;
+  inputs: string[];
+}
+
+export interface FieldGeneratorManifest {
+  id: string;
+  kind: FieldGeneratorKind;
+  name?: string;
+  inputs: FieldGeneratorInput[];
+  outputs: FieldGeneratorOutput[];
+  scope: ModulationScope;
+  costClass: RuntimeCostClass;
+  determinismMode: FieldGeneratorDeterminismMode;
+  capturePolicy: CapturePolicy;
+  requiredCapabilities: string[];
+  cacheIdentity: FieldGeneratorCacheIdentity;
 }
 
 export interface SceneClimate {
@@ -801,6 +906,7 @@ export interface CompositionIdentity {
   acceptedArchiveReferences?: CompositionAcceptedArchiveReference[];
   rejectedArchiveReferences?: CompositionRejectedArchiveReference[];
   spatialFields?: SpatialFieldDefinition[];
+  fieldGenerators?: FieldGeneratorManifest[];
   modulationRoutes?: ModulationRoute[];
   entropyStates?: EntropyState[];
   scenes?: SceneDefinition[];
@@ -877,6 +983,7 @@ export interface NormalizedCompositionIdentity extends Omit<CompositionIdentity,
   | 'scenes'
   | 'layers'
   | 'spatialFields'
+  | 'fieldGenerators'
   | 'modulationRoutes'
   | 'entropyStates'
   | 'acceptedArchiveReferences'
@@ -884,6 +991,7 @@ export interface NormalizedCompositionIdentity extends Omit<CompositionIdentity,
   acceptedArchiveReferences: CompositionAcceptedArchiveReference[];
   rejectedArchiveReferences: CompositionRejectedArchiveReference[];
   spatialFields: SpatialFieldDefinition[];
+  fieldGenerators: FieldGeneratorManifest[];
   modulationRoutes: ModulationRoute[];
   entropyStates: EntropyState[];
   scenes: NormalizedSceneDefinition[];
@@ -916,6 +1024,7 @@ export interface ProjectFile {
   automationLanes?: AutomationLane[];
   midiMappings?: MidiMappingFile[];
   exportSelections?: ExportSelection[];
+  runtimeProfiles?: RuntimePerformanceProfile[];
   composition?: CompositionIdentity;
   captureSessions?: CaptureSession[];
   captureLogs?: CaptureLog[];
@@ -933,6 +1042,7 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
   | 'automationLanes'
   | 'midiMappings'
   | 'exportSelections'
+  | 'runtimeProfiles'
   | 'composition'
   | 'captureSessions'
   | 'captureLogs'
@@ -947,6 +1057,7 @@ export interface NormalizedProjectFile extends Omit<ProjectFile,
   automationLanes: AutomationLane[];
   midiMappings: MidiMappingFile[];
   exportSelections: ExportSelection[];
+  runtimeProfiles: RuntimePerformanceProfile[];
   composition: NormalizedCompositionIdentity;
   captureSessions: CaptureSession[];
   captureLogs: CaptureLog[];

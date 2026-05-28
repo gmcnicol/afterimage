@@ -4,12 +4,17 @@ import type {
   ArchiveMetadataFile,
   ArchiveReferenceKind,
   ArchiveWeightedTag,
+  FieldGeneratorInput,
+  FieldGeneratorManifest,
+  FieldGeneratorOutput,
+  FieldParameterSampler,
   NormalizedArchiveMetadataFile,
   AutomationTargetProperty,
   ModulationEndpoint,
   ModulationScope,
   NormalizedProjectFile,
-  ProjectIntegrityIssue
+  ProjectIntegrityIssue,
+  RuntimePerformanceProfile
 } from './types.js';
 import { compareNumbers, compareStrings } from './utils.js';
 
@@ -245,6 +250,90 @@ function validateEndpointReference(
   }
 }
 
+function validateRuntimeProfile(
+  issues: ProjectIntegrityIssue[],
+  profile: RuntimePerformanceProfile
+): void {
+  if (profile.targetFps <= 0) {
+    issues.push({
+      code: 'invalid-range',
+      path: `runtimeProfiles.${profile.id}.targetFps`,
+      message: `Runtime profile "${profile.id}" must have a positive target FPS.`
+    });
+  }
+  if (profile.memoryBudgetMb <= 0) {
+    issues.push({
+      code: 'invalid-range',
+      path: `runtimeProfiles.${profile.id}.memoryBudgetMb`,
+      message: `Runtime profile "${profile.id}" must have a positive memory budget.`
+    });
+  }
+  if (profile.maxPasses <= 0) {
+    issues.push({
+      code: 'invalid-range',
+      path: `runtimeProfiles.${profile.id}.maxPasses`,
+      message: `Runtime profile "${profile.id}" must allow at least one pass.`
+    });
+  }
+}
+
+function validateFieldGeneratorInput(
+  issues: ProjectIntegrityIssue[],
+  generator: FieldGeneratorManifest,
+  input: FieldGeneratorInput,
+  refs: {
+    assetIds: Set<string>;
+    spatialFieldIds: Set<string>;
+    seedIds: Set<string>;
+  }
+): void {
+  if (input.kind === 'asset' && input.refId && !refs.assetIds.has(input.refId)) {
+    pushMissingReference(issues, `composition.fieldGenerators.${generator.id}.inputs.${input.id}.refId`, `Field generator "${generator.id}" input "${input.id}" references missing asset "${input.refId}".`);
+  }
+  if (input.kind === 'spatial-field' && input.refId && !refs.spatialFieldIds.has(input.refId)) {
+    pushMissingReference(issues, `composition.fieldGenerators.${generator.id}.inputs.${input.id}.refId`, `Field generator "${generator.id}" input "${input.id}" references missing spatial field "${input.refId}".`);
+  }
+  if (input.kind === 'deterministic-seed' && input.refId && !refs.seedIds.has(input.refId)) {
+    pushMissingReference(issues, `composition.fieldGenerators.${generator.id}.inputs.${input.id}.refId`, `Field generator "${generator.id}" input "${input.id}" references missing deterministic seed "${input.refId}".`);
+  }
+  if (input.required !== false && (input.kind === 'asset' || input.kind === 'spatial-field' || input.kind === 'deterministic-seed') && !input.refId) {
+    pushMissingReference(issues, `composition.fieldGenerators.${generator.id}.inputs.${input.id}.refId`, `Field generator "${generator.id}" input "${input.id}" requires a reference id.`);
+  }
+}
+
+function validateFieldGeneratorOutput(
+  issues: ProjectIntegrityIssue[],
+  generator: FieldGeneratorManifest,
+  output: FieldGeneratorOutput,
+  spatialFieldIds: Set<string>
+): void {
+  if (!spatialFieldIds.has(output.fieldId)) {
+    pushMissingReference(issues, `composition.fieldGenerators.${generator.id}.outputs.${output.id}.fieldId`, `Field generator "${generator.id}" output "${output.id}" references missing spatial field "${output.fieldId}".`);
+  }
+}
+
+function validateFieldSampler(
+  issues: ProjectIntegrityIssue[],
+  stackId: string,
+  filterId: string,
+  sampler: FieldParameterSampler,
+  refs: {
+    spatialFieldIds: Set<string>;
+    supportedParameterKeys: Set<string>;
+  }
+): void {
+  if (!refs.spatialFieldIds.has(sampler.fieldId)) {
+    pushMissingReference(issues, `filterStacks.${stackId}.filters.${filterId}.fieldSamplers.${sampler.id}.fieldId`, `Field sampler "${sampler.id}" references missing spatial field "${sampler.fieldId}".`);
+  }
+  if (!refs.supportedParameterKeys.has(sampler.parameter)) {
+    issues.push({
+      code: 'unsupported-value',
+      path: `filterStacks.${stackId}.filters.${filterId}.fieldSamplers.${sampler.id}.parameter`,
+      message: `Field sampler "${sampler.id}" targets unsupported parameter "${sampler.parameter}" for filter "${filterId}".`
+    });
+  }
+}
+
 export function collectProjectIntegrityIssues(project: NormalizedProjectFile, context: ProjectIntegrityContext = {}): ProjectIntegrityIssue[] {
   const issues: ProjectIntegrityIssue[] = [];
   const availableArchiveIds = context.availableArchiveIds ? new Set(context.availableArchiveIds) : undefined;
@@ -280,12 +369,14 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   issues.push(...collectDuplicateIdIssues('filterStacks', project.filterStacks.map((stack) => stack.id)));
   issues.push(...collectDuplicateIdIssues('automationLanes', project.automationLanes.map((lane) => lane.id)));
   issues.push(...collectDuplicateIdIssues('midiMappings', project.midiMappings.map((mapping) => mapping.id)));
+  issues.push(...collectDuplicateIdIssues('runtimeProfiles', project.runtimeProfiles.map((profile) => profile.id)));
   issues.push(...collectDuplicateIdIssues('composition.assetIds', project.composition.assetIds));
   issues.push(...collectDuplicateIdIssues('composition.exportProfileIds', project.composition.exportProfileIds));
   issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
   issues.push(...collectDuplicateIdIssues('composition.acceptedArchiveReferences', project.composition.acceptedArchiveReferences.map((reference) => reference.id)));
   issues.push(...collectDuplicateIdIssues('composition.rejectedArchiveReferences', project.composition.rejectedArchiveReferences.map((reference) => reference.id)));
   issues.push(...collectDuplicateIdIssues('composition.spatialFields', project.composition.spatialFields.map((field) => field.id)));
+  issues.push(...collectDuplicateIdIssues('composition.fieldGenerators', project.composition.fieldGenerators.map((generator) => generator.id)));
   issues.push(...collectDuplicateIdIssues('composition.modulationRoutes', project.composition.modulationRoutes.map((route) => route.id)));
   issues.push(...collectDuplicateIdIssues('composition.entropyStates', project.composition.entropyStates.map((state) => state.id)));
   issues.push(...collectDuplicateIdIssues('composition.scenes', project.composition.scenes.map((scene) => scene.id)));
@@ -308,6 +399,11 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
     layerIds,
     spatialFieldIds
   };
+  const fieldGeneratorRefs = { assetIds, spatialFieldIds, seedIds };
+
+  for (const profile of project.runtimeProfiles) {
+    validateRuntimeProfile(issues, profile);
+  }
 
   if (!sequenceIds.has(project.composition.sequenceId)) {
     pushMissingReference(issues, 'composition.sequenceId', `Composition "${project.composition.id}" references missing sequence "${project.composition.sequenceId}".`);
@@ -335,6 +431,35 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
     validateModulationScope(issues, `composition.spatialFields.${field.id}.scope`, `Spatial field "${field.id}"`, field.scope ?? {}, scopeRefs);
     if (field.seedId && !seedIds.has(field.seedId)) {
       pushMissingReference(issues, `composition.spatialFields.${field.id}.seedId`, `Spatial field "${field.id}" references missing deterministic seed "${field.seedId}".`);
+    }
+    if (field.persistence?.replayIdentity.seedId && !seedIds.has(field.persistence.replayIdentity.seedId)) {
+      pushMissingReference(issues, `composition.spatialFields.${field.id}.persistence.replayIdentity.seedId`, `Spatial field "${field.id}" persistence references missing deterministic seed "${field.persistence.replayIdentity.seedId}".`);
+    }
+    if (field.persistence?.lifetime === 'frame' && field.persistence.previousFrameAccess !== 'none') {
+      issues.push({
+        code: 'unsupported-value',
+        path: `composition.spatialFields.${field.id}.persistence.previousFrameAccess`,
+        message: `Spatial field "${field.id}" cannot request previous-frame access with frame lifetime.`
+      });
+    }
+    if (field.persistence?.previousFrameAccess === 'history-window' && (field.persistence.windowFrames ?? 0) < 2) {
+      issues.push({
+        code: 'invalid-range',
+        path: `composition.spatialFields.${field.id}.persistence.windowFrames`,
+        message: `Spatial field "${field.id}" history persistence window must be at least two frames.`
+      });
+    }
+  }
+  for (const generator of project.composition.fieldGenerators) {
+    pushUnstableId(issues, `composition.fieldGenerators.${generator.id}`, generator.id, 'Field generator');
+    validateModulationScope(issues, `composition.fieldGenerators.${generator.id}.scope`, `Field generator "${generator.id}"`, generator.scope, scopeRefs);
+    issues.push(...collectDuplicateIdIssues(`composition.fieldGenerators.${generator.id}.inputs`, generator.inputs.map((input) => input.id)));
+    issues.push(...collectDuplicateIdIssues(`composition.fieldGenerators.${generator.id}.outputs`, generator.outputs.map((output) => output.id)));
+    for (const input of generator.inputs) {
+      validateFieldGeneratorInput(issues, generator, input, fieldGeneratorRefs);
+    }
+    for (const output of generator.outputs) {
+      validateFieldGeneratorOutput(issues, generator, output, spatialFieldIds);
     }
   }
   for (const route of project.composition.modulationRoutes) {
@@ -562,6 +687,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
     issues.push(...collectDuplicateIdIssues(`filterStacks.${stack.id}.filters`, stack.filters.map((filter) => filter.id)));
     for (const filter of stack.filters) {
       const definition = getFilterDefinition(filter.type);
+      issues.push(...collectDuplicateIdIssues(`filterStacks.${stack.id}.filters.${filter.id}.fieldSamplers`, (filter.fieldSamplers ?? []).map((sampler) => sampler.id)));
       if (!definition) {
         issues.push({
           code: 'unsupported-value',
@@ -584,6 +710,12 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
               message: `Filter "${filter.id}" does not support parameter "${parameterKey}".`
             });
           }
+        }
+        for (const sampler of filter.fieldSamplers ?? []) {
+          validateFieldSampler(issues, stack.id, filter.id, sampler, {
+            spatialFieldIds,
+            supportedParameterKeys: supportedKeys
+          });
         }
       }
     }
