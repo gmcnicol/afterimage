@@ -7,6 +7,7 @@
 ## GitHub Workflow
 - When finishing ticket work, always open a GitHub pull request.
 - Open pull requests as normal open PRs, not draft PRs, unless explicitly asked otherwise.
+- When the user replies "lgtm" or "LGTM" after a PR handoff, treat it as approval to proceed with the current PR: check the PR status, merge it if checks are green, and report the result. If checks are pending or failing, do not merge; report the blocking check status and the next action.
 
 ## Linear
 - In this repo, ticket and project management references mean Linear unless the user explicitly names another tracker.

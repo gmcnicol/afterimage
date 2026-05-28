@@ -166,6 +166,14 @@ export type RenderGraphArtifactRole =
 
 export type RenderGraphBackend = 'ffmpeg';
 
+export type PreviewCapabilityBackend = RenderGraphBackend | 'webgpu';
+
+export type PreviewCapabilityStatus =
+  | 'supported'
+  | 'approximated'
+  | 'unsupported'
+  | 'rejected';
+
 export type RenderGraphCapabilityDiagnosticSeverity = 'info' | 'warning' | 'error';
 
 export interface RenderGraphToolchainIdentity {
@@ -268,6 +276,143 @@ export interface RenderGraphCapabilityDiagnostic {
   nodeId?: string;
   passId?: string;
   requirementId?: string;
+}
+
+export interface PreviewBackendIdentity {
+  backend: PreviewCapabilityBackend;
+  label: string;
+  runtime: 'command' | 'webgpu' | 'unknown';
+  version?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewBackendRequirementReport {
+  id: string;
+  backend: PreviewCapabilityBackend;
+  required: boolean;
+  capabilities: string[];
+  binary?: string;
+  sourceRequirementId?: string;
+  provenance?: FfmpegProvenance;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewCapability {
+  id: string;
+  label: string;
+  capability: string;
+  backend?: PreviewCapabilityBackend;
+  requirementIds?: string[];
+  diagnosticIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewCapabilityDegradation {
+  id: string;
+  label: string;
+  reason: string;
+  capabilityIds?: string[];
+  diagnosticIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewCapabilityRejectionReason {
+  id: string;
+  label: string;
+  reason: string;
+  severity: RenderGraphCapabilityDiagnosticSeverity;
+  diagnosticCode: string;
+  capabilityIds?: string[];
+  diagnosticIds?: string[];
+  requirementIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewRuntimeDiagnostics {
+  environment?: 'node' | 'browser' | 'electron' | 'unknown';
+  renderer?: string;
+  available?: boolean;
+  diagnostics?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewDeviceDiagnostics {
+  adapterName?: string;
+  vendorId?: number;
+  deviceId?: number;
+  architecture?: string;
+  features?: string[];
+  limits?: Record<string, number>;
+  lost?: boolean;
+  diagnostics?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewCapabilityReport {
+  schemaVersion: 1;
+  id: string;
+  status: PreviewCapabilityStatus;
+  backend: PreviewBackendIdentity;
+  renderGraph: {
+    planId: string;
+    projectId: string;
+    sequenceId: string;
+    variantId: string;
+    mode: RenderGraphPlanMode;
+    passIds: string[];
+    artifactIds: string[];
+    requirementIds: string[];
+    diagnosticIds: string[];
+  };
+  target: {
+    outputPath: string;
+    profile: RenderProfile;
+    durationMs: number;
+  };
+  backendRequirements: PreviewBackendRequirementReport[];
+  requiredCapabilities: PreviewCapability[];
+  optionalCapabilities: PreviewCapability[];
+  degradations: PreviewCapabilityDegradation[];
+  rejectionReasons: PreviewCapabilityRejectionReason[];
+  diagnostics: RenderGraphCapabilityDiagnostic[];
+  runtimeDiagnostics?: PreviewRuntimeDiagnostics;
+  deviceDiagnostics?: PreviewDeviceDiagnostics;
+  metadata?: Record<string, unknown>;
+}
+
+export interface BuildPreviewCapabilityReportOptions {
+  backend?: PreviewBackendIdentity;
+  status?: PreviewCapabilityStatus;
+  optionalCapabilities?: PreviewCapability[];
+  degradations?: PreviewCapabilityDegradation[];
+  rejectionReasons?: PreviewCapabilityRejectionReason[];
+  additionalDiagnostics?: RenderGraphCapabilityDiagnostic[];
+  runtimeDiagnostics?: PreviewRuntimeDiagnostics;
+  deviceDiagnostics?: PreviewDeviceDiagnostics;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewAdapterCapabilityContext {
+  backend: PreviewBackendIdentity;
+  supportedNodeKinds: RenderGraphNodeKind[];
+  supportedCapabilities: string[];
+  optionalCapabilities?: PreviewCapability[];
+  requiredSeedIds?: string[];
+  availableSeedIds?: string[];
+  runtimeDiagnostics?: PreviewRuntimeDiagnostics;
+  deviceDiagnostics?: PreviewDeviceDiagnostics;
+  rejectionReasons?: PreviewCapabilityRejectionReason[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface PreviewAdapterReadinessResult {
+  status: PreviewCapabilityStatus;
+  report: PreviewCapabilityReport;
+  diagnostics: RenderGraphCapabilityDiagnostic[];
+  unsupportedNodeKinds: RenderGraphNodeKind[];
+  missingRequiredCapabilities: PreviewCapability[];
+  missingRequiredSeedIds: string[];
+  rejectionReasons: PreviewCapabilityRejectionReason[];
 }
 
 export interface CaptureReplayIdentity {

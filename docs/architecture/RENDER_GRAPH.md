@@ -488,6 +488,41 @@ If a preview graph uses cheaper approximations, the plan must label them as
 preview-specific. The default goal is semantic parity between preview and final
 export.
 
+## Preview Capability Reports
+
+Preview capability reports describe whether a planned preview backend can
+execute a render graph plan. They are downstream from render graph planning and
+must not reinterpret composition meaning.
+
+The v1 report shape includes:
+
+- backend identity for FFmpeg today and WebGPU later
+- supported, approximated, unsupported, or rejected status
+- required capabilities derived from render graph backend requirements
+- optional capabilities supplied by a preview adapter
+- explicit degradation entries with stable labels and reasons
+- rejection reasons with severity and diagnostic codes
+- render graph diagnostic references and preserved diagnostic payloads
+- runtime and device diagnostics for future realtime preview negotiation
+
+The current FFmpeg command-backed preview plan reports as supported. Unsupported
+and rejected states are representable for future adapters, but the render graph
+does not deeply infer them yet. A capability report does not implement preview
+execution, define compositing semantics, or replace render graph passes.
+
+## Preview Adapter Boundary
+
+Preview adapters consume a `RenderGraphPlan` plus explicit runtime capability
+context and report readiness. They may check supported node kinds, required
+backend capabilities, deterministic seed availability, runtime diagnostics, and
+device diagnostics before preview execution is attempted.
+
+The adapter boundary is reporting-only. It must not execute FFmpeg or WebGPU
+work, mutate project/capture/Core state, define new composition semantics, or
+silently reinterpret unsupported render graph nodes. If an adapter cannot
+represent the planned graph truthfully, it reports `unsupported` or `rejected`
+with stable diagnostics and rejection reasons.
+
 ## Future Realtime Compatibility
 
 The render graph must remain compatible with a future realtime runtime.

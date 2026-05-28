@@ -45,6 +45,19 @@ export type {
   LibrarySearchResult
 } from './library.js';
 export type {
+  LiveCompositionRef,
+  LiveInvokeEnvelope,
+  LivePreloadBridge,
+  LivePreviewStatus,
+  LiveQueryMap,
+  LiveQueryRoute,
+  LiveSessionDiagnostic,
+  LiveSessionDiagnosticSource,
+  LiveSessionReadiness,
+  LiveSessionSnapshot,
+  LiveSessionStatus
+} from './live.js';
+export type {
   ArchiveDiagnostic,
   ArchiveDiagnosticCode,
   ArchiveDiagnosticSeverity,
