@@ -12,7 +12,8 @@
     "build": "pnpm build:electron && vite build",
     "typecheck": "pnpm --filter @afterimage/domain-operations build && pnpm --filter @afterimage/ffmpeg-compiler build && pnpm --filter @afterimage/schema-validators build && pnpm --filter @afterimage/studio-contracts build && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "lint": "node -e \"console.log('lint placeholder: @afterimage/live-desktop')\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:smoke": "vitest run tests/preview-trust-smoke.test.ts"
   },
   "dependencies": {
     "@afterimage/domain-operations": "workspace:*",
