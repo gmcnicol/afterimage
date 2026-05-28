@@ -43,6 +43,31 @@ describe('@afterimage/project-model', () => {
     expect(normalized.composition.scenes.map((scene) => scene.id)).toEqual(['scene-main']);
     expect(normalized.composition.modulationRoutes.map((route) => route.id)).toEqual(['route-bloom-midi']);
     expect(normalized.composition.entropyStates.map((state) => state.id)).toEqual(['entropy-scene-pressure']);
+    expect(normalized.composition.spatialFields.map((field) => field.id)).toEqual([
+      'field-entropy-scene',
+      'field-flow-x-scene',
+      'field-flow-y-scene',
+      'field-heat-scene',
+      'field-memory-scene',
+      'field-motion-source',
+      'field-pressure-scene',
+      'field-viscosity-scene'
+    ]);
+    expect(normalized.composition.spatialFields.map((field) => field.kind).sort()).toEqual([
+      'entropy',
+      'flow_x',
+      'flow_y',
+      'heat',
+      'memory',
+      'motion',
+      'pressure',
+      'viscosity'
+    ]);
+    expect(normalized.composition.spatialFields.find((field) => field.id === 'field-heat-scene')).toMatchObject({
+      sourceClass: 'behavioural-state',
+      storage: 'gpu-texture',
+      access: 'read-write'
+    });
     expect(normalized.composition.acceptedArchiveReferences.map((reference) => reference.id)).toEqual(['accepted-archive-source-alpha-motif-motif-hallway-composition-main-scene-main']);
     expect(normalized.composition.rejectedArchiveReferences.map((reference) => reference.id)).toEqual(['rejected-archive-source-alpha-motion-motion-drift-composition-main-layer-clip-intro']);
     expect(normalized.captureSessions.map((session) => session.id)).toEqual(['capture-session-main']);
@@ -167,6 +192,7 @@ describe('@afterimage/project-model', () => {
       acceptedArchiveReferences: [],
       rejectedArchiveReferences: []
     });
+    expect(normalized.composition.spatialFields).toEqual([]);
     expect(normalized.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
     expect(normalized.composition.layers[0]).toMatchObject({
       id: 'layer-clip-intro',
@@ -464,6 +490,132 @@ describe('@afterimage/project-model', () => {
         message: 'Capture event "event-broken" references missing modulation route "route-missing".',
         path: 'captureLogs.capture-log-broken.events.event-broken.routeId'
       }
+    ]));
+  });
+
+  it('reports invalid spatial field references and resolves spatial-field endpoints', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        spatialFields: [
+          ...(fixtureProject.composition?.spatialFields ?? []),
+          {
+            id: 'field-pressure-scene',
+            kind: 'pressure',
+            resolution: {
+              kind: 'scaled',
+              scale: 1.5
+            },
+            scope: {
+              compositionId: 'composition-missing',
+              sequenceId: 'sequence-missing',
+              variantId: 'variant-missing',
+              sceneId: 'scene-missing',
+              layerId: 'layer-missing',
+              clipId: 'clip-missing'
+            },
+            seedId: 'seed-missing'
+          },
+          {
+            id: 'field with space',
+            kind: 'heat',
+            resolution: {
+              kind: 'fixed',
+              width: 0,
+              height: 10.8
+            }
+          }
+        ],
+        modulationRoutes: [
+          ...(fixtureProject.composition?.modulationRoutes ?? []),
+          {
+            id: 'route-field-valid',
+            source: {
+              kind: 'spatial-field',
+              id: 'field-pressure-scene'
+            },
+            target: {
+              kind: 'scene-climate',
+              id: 'scene-main',
+              property: 'pressure'
+            },
+            mapping: {
+              kind: 'linear'
+            },
+            scope: {
+              compositionId: 'composition-main'
+            },
+            capturePolicy: 'record'
+          },
+          {
+            id: 'route-field-missing',
+            source: {
+              kind: 'spatial-field',
+              id: 'field-missing'
+            },
+            target: {
+              kind: 'scene-climate',
+              id: 'scene-main',
+              property: 'pressure'
+            },
+            mapping: {
+              kind: 'linear'
+            },
+            scope: {
+              compositionId: 'composition-main'
+            },
+            capturePolicy: 'record'
+          }
+        ]
+      }
+    });
+
+    expect(normalized.composition.spatialFields.find((field) => field.id === 'field with space')?.resolution).toEqual({
+      kind: 'fixed',
+      width: 1,
+      height: 10
+    });
+    expect(normalized.composition.spatialFields.find((field) => field.id === 'field-pressure-scene' && field.resolution.kind === 'scaled')?.resolution).toEqual({
+      kind: 'scaled',
+      scale: 1
+    });
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'duplicate-id',
+        message: 'Duplicate composition.spatialFields id "field-pressure-scene" detected.',
+        path: 'composition.spatialFields'
+      },
+      {
+        code: 'unstable-id',
+        message: 'Spatial field id "field with space" is not stable.',
+        path: 'composition.spatialFields.field with space'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Spatial field "field-pressure-scene" references missing deterministic seed "seed-missing".',
+        path: 'composition.spatialFields.field-pressure-scene.seedId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Spatial field "field-pressure-scene" references missing composition "composition-missing".',
+        path: 'composition.spatialFields.field-pressure-scene.scope.compositionId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Spatial field "field-pressure-scene" references missing sequence "sequence-missing".',
+        path: 'composition.spatialFields.field-pressure-scene.scope.sequenceId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Modulation route "route-field-missing" source references missing spatial field "field-missing".',
+        path: 'composition.modulationRoutes.route-field-missing.source.id'
+      }
+    ]));
+    expect(collectProjectIntegrityIssues(normalized)).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: 'composition.modulationRoutes.route-field-valid.source.id'
+      })
     ]));
   });
 

@@ -185,6 +185,7 @@ function validateEndpointReference(
     filterIds: Set<string>;
     sceneIds: Set<string>;
     layerIds: Set<string>;
+    spatialFieldIds: Set<string>;
   }
 ): void {
   switch (endpoint.kind) {
@@ -229,6 +230,11 @@ function validateEndpointReference(
         pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing layer "${endpoint.id}".`);
       }
       break;
+    case 'spatial-field':
+      if (!refs.spatialFieldIds.has(endpoint.id)) {
+        pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing spatial field "${endpoint.id}".`);
+      }
+      break;
     case 'composition':
       if (endpoint.id !== refs.compositionId) {
         pushMissingReference(issues, `${path}.id`, `${ownerLabel} references missing composition "${endpoint.id}".`);
@@ -259,6 +265,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   const seedIds = new Set(project.composition.deterministicSeeds.map((seed) => seed.id));
   const routeIds = new Set(project.composition.modulationRoutes.map((route) => route.id));
   const entropyIds = new Set(project.composition.entropyStates.map((state) => state.id));
+  const spatialFieldIds = new Set(project.composition.spatialFields.map((field) => field.id));
   const captureSessionIds = new Set(project.captureSessions.map((session) => session.id));
   const captureEventIds = new Set(project.captureLogs.flatMap((log) => log.events.map((event) => event.id)));
   const midiBindingIds = new Set(project.midiMappings.flatMap((mapping) => mapping.bindings.map((binding) => binding.id)));
@@ -278,6 +285,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
   issues.push(...collectDuplicateIdIssues('composition.acceptedArchiveReferences', project.composition.acceptedArchiveReferences.map((reference) => reference.id)));
   issues.push(...collectDuplicateIdIssues('composition.rejectedArchiveReferences', project.composition.rejectedArchiveReferences.map((reference) => reference.id)));
+  issues.push(...collectDuplicateIdIssues('composition.spatialFields', project.composition.spatialFields.map((field) => field.id)));
   issues.push(...collectDuplicateIdIssues('composition.modulationRoutes', project.composition.modulationRoutes.map((route) => route.id)));
   issues.push(...collectDuplicateIdIssues('composition.entropyStates', project.composition.entropyStates.map((state) => state.id)));
   issues.push(...collectDuplicateIdIssues('composition.scenes', project.composition.scenes.map((scene) => scene.id)));
@@ -297,7 +305,8 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
     routeIds,
     filterIds,
     sceneIds,
-    layerIds
+    layerIds,
+    spatialFieldIds
   };
 
   if (!sequenceIds.has(project.composition.sequenceId)) {
@@ -319,6 +328,13 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   for (const profileId of project.composition.exportProfileIds) {
     if (!exportProfileIds.has(profileId)) {
       pushMissingReference(issues, 'composition.exportProfileIds', `Composition "${project.composition.id}" references missing export profile selection "${profileId}".`);
+    }
+  }
+  for (const field of project.composition.spatialFields) {
+    pushUnstableId(issues, `composition.spatialFields.${field.id}`, field.id, 'Spatial field');
+    validateModulationScope(issues, `composition.spatialFields.${field.id}.scope`, `Spatial field "${field.id}"`, field.scope ?? {}, scopeRefs);
+    if (field.seedId && !seedIds.has(field.seedId)) {
+      pushMissingReference(issues, `composition.spatialFields.${field.id}.seedId`, `Spatial field "${field.id}" references missing deterministic seed "${field.seedId}".`);
     }
   }
   for (const route of project.composition.modulationRoutes) {

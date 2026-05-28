@@ -51,6 +51,8 @@ import type {
   Section,
   Sequence,
   SequenceClip,
+  SpatialFieldDefinition,
+  SpatialFieldResolutionPolicy,
   SyncEvent,
   SyncEventTrack,
   Variant
@@ -434,6 +436,38 @@ export function normalizeModulationRoute(route: ModulationRoute): ModulationRout
   };
 }
 
+export function normalizeSpatialFieldResolutionPolicy(resolution: SpatialFieldResolutionPolicy): SpatialFieldResolutionPolicy {
+  const kind = resolution.kind;
+
+  if (kind === 'scaled') {
+    return {
+      kind,
+      scale: clampUnit(resolution.scale) ?? 1
+    };
+  }
+
+  if (kind === 'fixed') {
+    return {
+      kind,
+      width: Math.max(1, Math.trunc(resolution.width ?? 1)),
+      height: Math.max(1, Math.trunc(resolution.height ?? 1))
+    };
+  }
+
+  return { kind };
+}
+
+export function normalizeSpatialFieldDefinition(field: SpatialFieldDefinition): SpatialFieldDefinition {
+  return {
+    ...field,
+    sourceClass: field.sourceClass ?? 'behavioural-state',
+    resolution: normalizeSpatialFieldResolutionPolicy(field.resolution),
+    storage: field.storage ?? 'gpu-texture',
+    access: field.access ?? 'read-write',
+    scope: normalizeModulationScope(field.scope)
+  };
+}
+
 export function normalizeEntropyState(state: EntropyState): EntropyState {
   return {
     ...state,
@@ -680,6 +714,7 @@ export function normalizeCompositionIdentity(project: ProjectFile): NormalizedCo
     deterministicSeeds: sortById((project.composition?.deterministicSeeds ?? []).map((seed) => ({ ...seed }))),
     acceptedArchiveReferences: sortById((project.composition?.acceptedArchiveReferences ?? []).map(normalizeAcceptedArchiveReference)),
     rejectedArchiveReferences: sortById((project.composition?.rejectedArchiveReferences ?? []).map(normalizeRejectedArchiveReference)),
+    spatialFields: sortById((project.composition?.spatialFields ?? []).map(normalizeSpatialFieldDefinition)),
     modulationRoutes: sortById((project.composition?.modulationRoutes ?? []).map(normalizeModulationRoute)),
     entropyStates: sortById((project.composition?.entropyStates ?? []).map(normalizeEntropyState)),
     scenes: sortById(scenes.map(normalizeSceneDefinition)),

@@ -297,6 +297,120 @@
         "note": "Do not use drift as a layer driver in the base fixture."
       }
     ],
+    "spatialFields": [
+      {
+        "id": "field-pressure-scene",
+        "kind": "pressure",
+        "name": "Scene Pressure",
+        "sourceClass": "behavioural-state",
+        "resolution": {
+          "kind": "output-sized"
+        },
+        "storage": "gpu-texture",
+        "access": "read-write",
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        },
+        "seedId": "seed-composition-main"
+      },
+      {
+        "id": "field-motion-source",
+        "kind": "motion",
+        "name": "Source Motion",
+        "sourceClass": "source-imagery",
+        "resolution": {
+          "kind": "source-sized"
+        },
+        "storage": "gpu-texture",
+        "access": "read",
+        "scope": {
+          "compositionId": "composition-main",
+          "layerId": "layer-clip-intro",
+          "clipId": "clip-intro"
+        }
+      },
+      {
+        "id": "field-entropy-scene",
+        "kind": "entropy",
+        "name": "Scene Entropy",
+        "sourceClass": "behavioural-state",
+        "resolution": {
+          "kind": "scaled",
+          "scale": 0.5
+        },
+        "storage": "cpu-buffer",
+        "access": "read-write",
+        "scope": {
+          "compositionId": "composition-main",
+          "sequenceId": "sequence-main",
+          "variantId": "variant-main",
+          "sceneId": "scene-main"
+        },
+        "seedId": "seed-composition-main"
+      },
+      {
+        "id": "field-heat-scene",
+        "kind": "heat",
+        "resolution": {
+          "kind": "fixed",
+          "width": 64,
+          "height": 36
+        },
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        }
+      },
+      {
+        "id": "field-memory-scene",
+        "kind": "memory",
+        "resolution": {
+          "kind": "scaled",
+          "scale": 0.25
+        },
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        },
+        "seedId": "seed-composition-main"
+      },
+      {
+        "id": "field-flow-x-scene",
+        "kind": "flow_x",
+        "resolution": {
+          "kind": "output-sized"
+        },
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        }
+      },
+      {
+        "id": "field-flow-y-scene",
+        "kind": "flow_y",
+        "resolution": {
+          "kind": "output-sized"
+        },
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        }
+      },
+      {
+        "id": "field-viscosity-scene",
+        "kind": "viscosity",
+        "resolution": {
+          "kind": "fixed",
+          "width": 32,
+          "height": 18
+        },
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        }
+      }
+    ],
     "modulationRoutes": [
       {
         "id": "route-bloom-midi",

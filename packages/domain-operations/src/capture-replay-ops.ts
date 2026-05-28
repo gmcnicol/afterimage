@@ -217,6 +217,8 @@ function endpointExists(project: NormalizedProjectFile, endpoint: ModulationEndp
       return project.composition.scenes.some((scene) => scene.id === endpoint.id);
     case 'layer':
       return project.composition.layers.some((layer) => layer.id === endpoint.id);
+    case 'spatial-field':
+      return project.composition.spatialFields.some((field) => field.id === endpoint.id);
     case 'composition':
       return endpoint.id === project.composition.id;
     case 'manual':
@@ -243,6 +245,8 @@ function endpointLabel(endpoint: ModulationEndpoint): string {
       return 'scene';
     case 'layer':
       return 'layer';
+    case 'spatial-field':
+      return 'spatial field';
     case 'composition':
       return 'composition';
     case 'manual':
