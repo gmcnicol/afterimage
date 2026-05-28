@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { NormalizedProjectFile } from '@afterimage/project-model';
 import type {
+  LiveSessionSnapshot,
   StudioAgentInput,
   StudioAgentOutput,
   StudioCommandMap,
@@ -62,5 +63,36 @@ describe('@afterimage/studio-contracts', () => {
     expect(output.kind).toBe('preview');
     expect(output.artifacts?.[0]?.cacheKey).toBe('cache-key');
     expect(output.diagnostics?.[0]).toEqual(diagnostic);
+  });
+
+  it('exposes serializable live session readiness contracts', () => {
+    const snapshot = {
+      schemaVersion: 1,
+      projectPath: '/tmp/studio-fixture.afterimage.json',
+      projectRoot: '/tmp',
+      compositionRef: {
+        projectId: 'project-core-engine-fixture',
+        projectName: 'Studio Fixture',
+        compositionId: 'composition-main',
+        compositionName: 'Studio Fixture',
+        sequenceId: 'sequence-main',
+        sequenceName: 'Main Sequence',
+        variantId: 'variant-main',
+        variantName: 'Assembly A'
+      },
+      readiness: {
+        status: 'ready',
+        previewStatus: 'supported',
+        backend: {
+          backend: 'ffmpeg',
+          label: 'FFmpeg command preview',
+          runtime: 'command'
+        },
+        diagnostics: []
+      }
+    } satisfies LiveSessionSnapshot;
+
+    expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
+    expect(snapshot.readiness.previewStatus).toBe('supported');
   });
 });

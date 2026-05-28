@@ -7,8 +7,10 @@
     "outDir": "dist",
     "paths": {
       "@afterimage/export-profiles": ["packages/export-profiles/dist/index.d.ts"],
+      "@afterimage/ffmpeg-compiler": ["packages/ffmpeg-compiler/dist/index.d.ts"],
       "@afterimage/project-model": ["packages/project-model/dist/index.d.ts"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "references": [{ "path": "../ffmpeg-compiler" }]
 }

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@afterimage/export-profiles": "workspace:*",
+    "@afterimage/ffmpeg-compiler": "workspace:*",
     "@afterimage/project-model": "workspace:*"
   }
 }
