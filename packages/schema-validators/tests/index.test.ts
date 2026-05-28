@@ -34,6 +34,7 @@ describe('@afterimage/schema-validators', () => {
     });
     expect(parsed.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
     expect(parsed.composition.layers[0].id).toBe('layer-clip-intro');
+    expect(parsed.composition.spatialFields).toEqual([]);
     expect(parsed.featureFlags.proxyGeneration).toBe(false);
     expect(parsed.exportSelections).toEqual([]);
     expect(parsed.captureSessions).toEqual([]);
@@ -68,6 +69,22 @@ describe('@afterimage/schema-validators', () => {
       id: 'layer-clip-intro',
       sceneId: 'scene-main',
       contribution: 'source'
+    });
+    expect(parsed.composition.spatialFields.map((field) => field.id)).toEqual([
+      'field-entropy-scene',
+      'field-flow-x-scene',
+      'field-flow-y-scene',
+      'field-heat-scene',
+      'field-memory-scene',
+      'field-motion-source',
+      'field-pressure-scene',
+      'field-viscosity-scene'
+    ]);
+    expect(parsed.composition.spatialFields.find((field) => field.id === 'field-heat-scene')).toMatchObject({
+      kind: 'heat',
+      sourceClass: 'behavioural-state',
+      storage: 'gpu-texture',
+      access: 'read-write'
     });
   });
 
@@ -119,7 +136,8 @@ describe('@afterimage/schema-validators', () => {
       composition: {
         ...fixtureProject.composition,
         modulationRoutes: undefined,
-        entropyStates: undefined
+        entropyStates: undefined,
+        spatialFields: undefined
       }
     });
 
@@ -132,6 +150,7 @@ describe('@afterimage/schema-validators', () => {
     expect(migrated.value.version).toBe(3);
     expect(migrated.value.composition.modulationRoutes).toEqual([]);
     expect(migrated.value.composition.entropyStates).toEqual([]);
+    expect(migrated.value.composition.spatialFields).toEqual([]);
     expect(migrated.value.captureSessions).toEqual([]);
     expect(migrated.value.captureLogs).toEqual([]);
   });
@@ -390,6 +409,98 @@ describe('@afterimage/schema-validators', () => {
           source: 'schema'
         }
       ]
+    });
+  });
+
+  it('rejects invalid spatial field schema values', () => {
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        spatialFields: [
+          {
+            id: 'field-bad-kind',
+            kind: 'fog',
+            resolution: {
+              kind: 'output-sized'
+            }
+          }
+        ]
+      }
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: [
+        {
+          keyword: 'enum',
+          message: 'must be equal to one of the allowed values',
+          path: '/composition/spatialFields/0/kind',
+          source: 'schema'
+        }
+      ]
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        spatialFields: [
+          {
+            id: 'field-bad-resolution',
+            kind: 'heat',
+            resolution: {
+              kind: 'fixed',
+              width: 64
+            }
+          }
+        ]
+      }
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: expect.arrayContaining([
+        {
+          keyword: 'required',
+          message: "must have required property 'height'",
+          path: '/composition/spatialFields/0/resolution',
+          source: 'schema'
+        }
+      ])
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        spatialFields: [
+          {
+            id: 'field-bad-policy',
+            kind: 'heat',
+            resolution: {
+              kind: 'output-sized'
+            },
+            access: 'execute',
+            storage: 'shared-memory'
+          }
+        ]
+      }
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: expect.arrayContaining([
+        {
+          keyword: 'enum',
+          message: 'must be equal to one of the allowed values',
+          path: '/composition/spatialFields/0/storage',
+          source: 'schema'
+        },
+        {
+          keyword: 'enum',
+          message: 'must be equal to one of the allowed values',
+          path: '/composition/spatialFields/0/access',
+          source: 'schema'
+        }
+      ])
     });
   });
 

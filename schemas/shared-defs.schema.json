@@ -114,6 +114,26 @@
       "type": "string",
       "enum": ["filter", "scene-climate", "layer", "composition"]
     },
+    "spatialFieldKind": {
+      "type": "string",
+      "enum": ["entropy", "motion", "heat", "memory", "flow_x", "flow_y", "pressure", "viscosity"]
+    },
+    "spatialFieldSourceClass": {
+      "type": "string",
+      "enum": ["source-imagery", "behavioural-state"]
+    },
+    "spatialFieldResolutionPolicyKind": {
+      "type": "string",
+      "enum": ["source-sized", "output-sized", "scaled", "fixed"]
+    },
+    "spatialFieldStoragePolicy": {
+      "type": "string",
+      "enum": ["gpu-texture", "cpu-buffer"]
+    },
+    "spatialFieldAccessPolicy": {
+      "type": "string",
+      "enum": ["read", "write", "read-write"]
+    },
     "modulationEndpointKind": {
       "type": "string",
       "enum": [
@@ -126,6 +146,7 @@
         "scene-climate",
         "layer",
         "composition",
+        "spatial-field",
         "modulation-route",
         "scene"
       ]
@@ -828,6 +849,60 @@
       },
       "additionalProperties": false
     },
+    "spatialFieldResolutionPolicy": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/spatialFieldResolutionPolicyKind" },
+        "scale": { "type": "number", "minimum": 0, "maximum": 1 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "scaled" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "scale": { "type": "number", "minimum": 0, "maximum": 1 }
+            },
+            "required": ["scale"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "fixed" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 }
+            },
+            "required": ["width", "height"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "spatialFieldDefinition": {
+      "type": "object",
+      "required": ["id", "kind", "resolution"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "kind": { "$ref": "#/$defs/spatialFieldKind" },
+        "name": { "type": "string", "minLength": 1 },
+        "sourceClass": { "$ref": "#/$defs/spatialFieldSourceClass", "default": "behavioural-state" },
+        "resolution": { "$ref": "#/$defs/spatialFieldResolutionPolicy" },
+        "storage": { "$ref": "#/$defs/spatialFieldStoragePolicy", "default": "gpu-texture" },
+        "access": { "$ref": "#/$defs/spatialFieldAccessPolicy", "default": "read-write" },
+        "scope": { "$ref": "#/$defs/modulationScope" },
+        "seedId": { "$ref": "#/$defs/idString" }
+      },
+      "additionalProperties": false
+    },
     "modulationEndpoint": {
       "type": "object",
       "required": ["kind", "id"],
@@ -1090,6 +1165,11 @@
         "rejectedArchiveReferences": {
           "type": "array",
           "items": { "$ref": "#/$defs/compositionArchiveReference" },
+          "default": []
+        },
+        "spatialFields": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/spatialFieldDefinition" },
           "default": []
         },
         "modulationRoutes": {

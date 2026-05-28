@@ -59,6 +59,12 @@ export type SceneLayerRenderPassKind = 'source' | 'mask' | 'overlay' | 'behaviou
 export type CapturePolicy = 'ignore' | 'record' | 'replay-critical';
 export type ModulationSourceKind = 'automation-lane' | 'midi-binding' | 'capture-event' | 'entropy-state' | 'manual';
 export type ModulationTargetKind = 'filter' | 'scene-climate' | 'layer' | 'composition';
+export type SpatialFieldKind = 'entropy' | 'motion' | 'heat' | 'memory' | 'flow_x' | 'flow_y' | 'pressure' | 'viscosity';
+export type SpatialFieldSourceClass = 'source-imagery' | 'behavioural-state';
+export type SpatialFieldResolutionPolicyKind = 'source-sized' | 'output-sized' | 'scaled' | 'fixed';
+export type SpatialFieldStoragePolicy = 'gpu-texture' | 'cpu-buffer';
+export type SpatialFieldAccessPolicy = 'read' | 'write' | 'read-write';
+export type ModulationEndpointKind = ModulationSourceKind | ModulationTargetKind | EntropyIdentityKind | 'spatial-field';
 export type ModulationMappingKind = 'linear' | 'exponential' | 'step' | 'toggle' | 'trigger';
 export type EntropyIdentityKind = 'capture-event' | 'modulation-route' | 'entropy-state' | 'scene' | 'layer' | 'composition' | 'manual';
 export type CaptureSessionStatus = 'open' | 'completed';
@@ -604,8 +610,70 @@ export interface CompositionRejectedArchiveReference {
   note?: string;
 }
 
+export interface SpatialFieldResolutionPolicy {
+  kind: SpatialFieldResolutionPolicyKind;
+  scale?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface SpatialFieldDefinition {
+  id: string;
+  kind: SpatialFieldKind;
+  name?: string;
+  sourceClass?: SpatialFieldSourceClass;
+  resolution: SpatialFieldResolutionPolicy;
+  storage?: SpatialFieldStoragePolicy;
+  access?: SpatialFieldAccessPolicy;
+  scope?: ModulationScope;
+  seedId?: string;
+}
+
+export interface SpatialFieldDimensions {
+  width: number;
+  height: number;
+}
+
+export interface SpatialFieldFrameIdentity {
+  frameId: string;
+  frameIndex: number;
+  timeMs: number;
+  compositionId: string;
+  sequenceId?: string;
+  variantId?: string;
+}
+
+export interface SpatialFieldDeterministicProvenance {
+  seedId?: string;
+  generation: number;
+  sourceFieldIds?: string[];
+  inputContentIds?: string[];
+  generator?: string;
+  generatorVersion?: string;
+}
+
+export interface SpatialFieldRuntimeState {
+  fieldId: string;
+  kind: SpatialFieldKind;
+  sourceClass: SpatialFieldSourceClass;
+  frame: SpatialFieldFrameIdentity;
+  dimensions: SpatialFieldDimensions;
+  storage: SpatialFieldStoragePolicy;
+  access: SpatialFieldAccessPolicy;
+  generation: number;
+  provenance: SpatialFieldDeterministicProvenance;
+}
+
+export interface SpatialFieldAccessRequest {
+  fieldId: string;
+  access: SpatialFieldAccessPolicy;
+  frame: SpatialFieldFrameIdentity;
+  requestedStorage?: SpatialFieldStoragePolicy;
+  consumerId?: string;
+}
+
 export interface ModulationEndpoint {
-  kind: ModulationSourceKind | ModulationTargetKind | EntropyIdentityKind;
+  kind: ModulationEndpointKind;
   id: string;
   property?: string;
 }
@@ -732,6 +800,7 @@ export interface CompositionIdentity {
   deterministicSeeds: CompositionDeterministicSeed[];
   acceptedArchiveReferences?: CompositionAcceptedArchiveReference[];
   rejectedArchiveReferences?: CompositionRejectedArchiveReference[];
+  spatialFields?: SpatialFieldDefinition[];
   modulationRoutes?: ModulationRoute[];
   entropyStates?: EntropyState[];
   scenes?: SceneDefinition[];
@@ -807,12 +876,14 @@ export interface NormalizedSceneLayerDefinition extends Omit<SceneLayerDefinitio
 export interface NormalizedCompositionIdentity extends Omit<CompositionIdentity,
   | 'scenes'
   | 'layers'
+  | 'spatialFields'
   | 'modulationRoutes'
   | 'entropyStates'
   | 'acceptedArchiveReferences'
   | 'rejectedArchiveReferences'> {
   acceptedArchiveReferences: CompositionAcceptedArchiveReference[];
   rejectedArchiveReferences: CompositionRejectedArchiveReference[];
+  spatialFields: SpatialFieldDefinition[];
   modulationRoutes: ModulationRoute[];
   entropyStates: EntropyState[];
   scenes: NormalizedSceneDefinition[];
