@@ -1,4 +1,5 @@
 import type { ExportProfileDefinition } from '@afterimage/export-profiles';
+import type { RuntimePerformanceProfile, SpatialFieldRuntimePlan } from '@afterimage/project-model';
 
 type ResolutionSource = 'env' | 'path';
 
@@ -52,6 +53,7 @@ export interface PreviewRequest {
   width?: number;
   height?: number;
   frameRate?: number;
+  runtimeProfileId?: string;
 }
 
 export interface ExportRequest {
@@ -60,6 +62,7 @@ export interface ExportRequest {
   outputPath: string;
   overwrite?: boolean;
   profile: ExportProfileDefinition;
+  runtimeProfileId?: string;
 }
 
 export interface AnalysisPlan {
@@ -120,6 +123,7 @@ export interface RenderRequest {
   profile: RenderProfile;
   sequenceId?: string;
   variantId?: string;
+  runtimeProfileId?: string;
 }
 
 export interface PreviewPlan {
@@ -146,6 +150,8 @@ export type RenderGraphNodeKind =
   | 'variant'
   | 'capture-replay'
   | 'input'
+  | 'field-generator'
+  | 'field-consumer'
   | 'operation'
   | 'artifact';
 
@@ -154,6 +160,8 @@ export type RenderGraphEdgeKind =
   | 'timeline'
   | 'capture-input'
   | 'media-input'
+  | 'field-output'
+  | 'field-consumer'
   | 'artifact-output';
 
 export type RenderGraphArtifactKind = 'video';
@@ -164,7 +172,7 @@ export type RenderGraphArtifactRole =
   | 'render-output'
   | 'finalize-output';
 
-export type RenderGraphBackend = 'ffmpeg';
+export type RenderGraphBackend = 'ffmpeg' | 'webgpu' | 'external';
 
 export type PreviewCapabilityBackend = RenderGraphBackend | 'webgpu';
 
@@ -367,6 +375,7 @@ export interface PreviewCapabilityReport {
   target: {
     outputPath: string;
     profile: RenderProfile;
+    runtimeProfile?: RuntimePerformanceProfile;
     durationMs: number;
   };
   backendRequirements: PreviewBackendRequirementReport[];
@@ -498,6 +507,7 @@ export interface RenderGraphPlan {
   target: {
     outputPath: string;
     profile: RenderProfile;
+    runtimeProfile?: RuntimePerformanceProfile;
     durationMs: number;
   };
   inputs: RenderGraphInputReference[];
@@ -507,6 +517,7 @@ export interface RenderGraphPlan {
   artifacts: RenderGraphArtifact[];
   backendRequirements: RenderGraphBackendRequirement[];
   diagnostics: RenderGraphCapabilityDiagnostic[];
+  fieldRuntime?: SpatialFieldRuntimePlan;
   cacheIdentity: RenderGraphCacheIdentity;
 }
 

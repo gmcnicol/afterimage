@@ -1,7 +1,13 @@
 import type {
+  FieldGeneratorManifest,
+  FieldParameterSampler,
   NormalizedProjectFile,
-  ProjectFile
+  ProjectFile,
+  RuntimeCostClass,
+  SpatialFieldRuntimeDiagnostic,
+  RuntimePerformanceProfile
 } from '@afterimage/project-model';
+import { buildSpatialFieldRuntimePlan } from '@afterimage/project-model';
 import { createCacheIdentity, hashIdentity } from './identity.js';
 import {
   buildRenderCommand,
@@ -45,6 +51,17 @@ function withoutUndefinedEntries<T extends Record<string, unknown>>(value: T): R
 
 function compareStrings(left: string, right: string): number {
   return left.localeCompare(right);
+}
+
+const runtimeCostRank: Record<RuntimeCostClass, number> = {
+  cheap: 0,
+  moderate: 1,
+  expensive: 2,
+  dangerous: 3
+};
+
+function exceedsRuntimeBudget(costClass: RuntimeCostClass, profile: RuntimePerformanceProfile): boolean {
+  return runtimeCostRank[costClass] > runtimeCostRank[profile.maxCostClass];
 }
 
 function normalizeRenderProfileForGraph(profile: RenderProfile): RenderProfile {
@@ -102,6 +119,24 @@ function toRenderProfile(request: PreviewRequest | ExportRequest | RenderRequest
   }
 
   return normalizeRenderProfileForGraph((request as RenderRequest).profile);
+}
+
+function selectRuntimePerformanceProfile(
+  project: NormalizedProjectFile,
+  request: PreviewRequest | ExportRequest | RenderRequest,
+  mode: RenderGraphPlanMode
+): RuntimePerformanceProfile | undefined {
+  const requestedProfileId = request.runtimeProfileId;
+  if (requestedProfileId) {
+    return project.runtimeProfiles.find((profile) => profile.id === requestedProfileId);
+  }
+
+  const preferredKind = mode === 'preview'
+    ? 'draft'
+    : 'render';
+
+  return project.runtimeProfiles.find((profile) => profile.kind === preferredKind)
+    ?? project.runtimeProfiles[0];
 }
 
 function getArtifactRole(mode: RenderGraphPlanMode): RenderGraphArtifactRole {
@@ -196,6 +231,77 @@ function captureReplayMetadata(captureReplay: CaptureReplayRenderContext | undef
   };
 }
 
+interface PlannedFieldSampler {
+  stackId: string;
+  filterId: string;
+  sampler: FieldParameterSampler;
+}
+
+function collectPlannedFieldSamplers(project: NormalizedProjectFile): PlannedFieldSampler[] {
+  return project.filterStacks.flatMap((stack) => stack.filters.flatMap((filter) => (filter.fieldSamplers ?? [])
+    .filter((sampler) => sampler.enabled !== false)
+    .map((sampler) => ({
+      stackId: stack.id,
+      filterId: filter.id,
+      sampler
+    }))));
+}
+
+function createFieldGeneratorRequirement(generator: FieldGeneratorManifest): RenderGraphBackendRequirement {
+  const backend = generator.kind === 'external-live-source' ? 'external' : 'webgpu';
+
+  return {
+    id: `requirement:field-generator:${generator.id}`,
+    backend,
+    binary: '<runtime-placeholder>',
+    required: true,
+    capabilities: generator.requiredCapabilities,
+    metadata: {
+      generatorId: generator.id,
+      kind: generator.kind,
+      costClass: generator.costClass,
+      determinismMode: generator.determinismMode,
+      capturePolicy: generator.capturePolicy,
+      cacheIdentity: generator.cacheIdentity
+    }
+  };
+}
+
+function createFieldSamplerRequirement(plannedSampler: PlannedFieldSampler): RenderGraphBackendRequirement {
+  return {
+    id: `requirement:field-sampler:${plannedSampler.sampler.id}`,
+    backend: 'webgpu',
+    binary: '<runtime-placeholder>',
+    required: false,
+    capabilities: plannedSampler.sampler.requiredCapabilities ?? ['field-sampling'],
+    metadata: {
+      stackId: plannedSampler.stackId,
+      filterId: plannedSampler.filterId,
+      samplerId: plannedSampler.sampler.id,
+      fieldId: plannedSampler.sampler.fieldId,
+      fallbackValue: plannedSampler.sampler.fallbackValue,
+      degradedCapabilities: plannedSampler.sampler.degradedCapabilities ?? []
+    }
+  };
+}
+
+function toRenderGraphFieldRuntimeDiagnostic(
+  diagnostic: SpatialFieldRuntimeDiagnostic,
+  operationNodeId: string,
+  passId: string
+): RenderGraphCapabilityDiagnostic {
+  return {
+    id: diagnostic.id,
+    severity: diagnostic.severity,
+    code: diagnostic.code,
+    message: diagnostic.message,
+    path: diagnostic.fieldId ? `composition.spatialFields.${diagnostic.fieldId}` : undefined,
+    nodeId: diagnostic.generatorId ? `field-generator:${diagnostic.generatorId}` : operationNodeId,
+    passId,
+    requirementId: diagnostic.generatorId ? `requirement:field-generator:${diagnostic.generatorId}` : undefined
+  };
+}
+
 export function buildRenderGraphPlan(
   project: ProjectFile | NormalizedProjectFile,
   request: PreviewRequest | ExportRequest | RenderRequest,
@@ -209,6 +315,8 @@ export function buildRenderGraphPlan(
   const { sequenceId, variant } = resolveTimeline(normalizedProject, request.sequenceId, request.variantId);
   const resolvedTools = makePlanningTools(tools);
   const graphProfile = normalizeRenderProfileForGraph(profile);
+  const runtimeProfile = selectRuntimePerformanceProfile(normalizedProject, request, mode);
+  const fieldSamplers = collectPlannedFieldSamplers(normalizedProject);
   const commandPlan = buildRenderCommand(normalizedProject, variant, sequenceId, request, graphProfile, resolvedTools, {
     captureReplay: normalizedCaptureReplay
   }) as RenderPlan | PreviewPlan;
@@ -229,11 +337,70 @@ export function buildRenderGraphPlan(
   });
   const durationMs = getTargetRenderDurationMs(normalizedProject, variant);
   const operationNodeId = `operation:${mode}:${variant.id}`;
+  const passId = 'pass:ffmpeg-render';
+  const fieldRuntime = buildSpatialFieldRuntimePlan({
+    project: normalizedProject,
+    runtimeProfile,
+    outputDimensions: {
+      width: graphProfile.width,
+      height: graphProfile.height
+    },
+    sourceDimensions: {
+      width: graphProfile.width,
+      height: graphProfile.height
+    },
+    frameIndex: 0,
+    timeMs: 0,
+    highQualityOpticalFlowAvailable: false
+  });
+  const fieldGenerators = fieldRuntime.generators ?? normalizedProject.composition.fieldGenerators;
   const cacheInputs = [
     `project:${normalizedProject.id}`,
     `sequence:${sequenceId}`,
     `variant:${variant.id}`,
     `profile:${hashIdentity(graphProfile)}`,
+    `runtime-profile:${runtimeProfile ? hashIdentity(runtimeProfile) : 'none'}`,
+    `spatial-fields:${hashIdentity(normalizedProject.composition.spatialFields)}`,
+    `field-runtime:${hashIdentity({
+      sessions: fieldRuntime.executionSessions.map((session) => ({
+        id: session.id,
+        fieldId: session.fieldId,
+        dimensions: session.dimensions,
+        storageMode: session.storageMode,
+        persistence: {
+          kind: session.persistencePlan.kind,
+          windowFrames: session.persistencePlan.windowFrames,
+          bufferCount: session.persistencePlan.bufferCount,
+          slots: session.persistencePlan.slots.map((slot) => ({
+            id: slot.id,
+            role: slot.role,
+            bufferIndex: slot.bufferIndex,
+            frameId: slot.frame.frameId
+          }))
+        },
+        updatePasses: session.updatePasses.map((pass) => ({
+          id: pass.id,
+          kind: pass.kind,
+          sourceSlotIds: pass.sourceSlotIds,
+          targetSlotId: pass.targetSlotId,
+          iterationCount: pass.iterationCount,
+          deterministicFrameId: pass.deterministicFrameId
+        })),
+        deterministicIdentity: session.deterministicIdentity
+      })),
+      reports: fieldRuntime.reports.map((report) => ({
+        fieldId: report.fieldId,
+        dimensions: report.dimensions,
+        storageMode: report.storageMode,
+        profileFit: report.profileFit,
+        bufferCount: report.bufferCount,
+        estimatedBytes: report.estimatedBytes,
+        currentFrameId: report.currentFrameId,
+        previousFrameId: report.previousFrameId
+      }))
+    })}`,
+    `field-generators:${hashIdentity(fieldGenerators)}`,
+    `field-samplers:${hashIdentity(fieldSamplers)}`,
     `toolchain:${hashIdentity(toolchain)}`,
     ...captureReplayCacheInputs(normalizedCaptureReplay),
     ...inputReferences.map((input) => `asset:${input.assetId}:${input.path}`)
@@ -251,6 +418,10 @@ export function buildRenderGraphPlan(
     'accepted-archive-references',
     'rejected-archive-references',
     'capture-replay-context',
+    'runtime-performance-profile',
+    'spatial-fields',
+    'field-generators',
+    'field-samplers',
     'render-command-semantics',
     'ffmpeg-toolchain'
   ];
@@ -262,6 +433,10 @@ export function buildRenderGraphPlan(
     profile: graphProfile,
     inputs: inputReferences,
     captureReplay: normalizedCaptureReplay,
+    runtimeProfile,
+    fieldRuntime,
+    fieldGenerators,
+    fieldSamplers,
     command: reusableCommand,
     toolchain
   };
@@ -274,7 +449,12 @@ export function buildRenderGraphPlan(
     toolchain,
     metadata: {
       profile: graphProfile,
+      runtimeProfile,
       inputAssetIds: inputReferences.map((input) => input.assetId),
+      spatialFieldIds: normalizedProject.composition.spatialFields.map((field) => field.id),
+      fieldRuntimeReportIds: fieldRuntime.reports.map((report) => report.fieldId),
+      fieldGeneratorIds: fieldGenerators.map((generator) => generator.id),
+      fieldSamplerIds: fieldSamplers.map((plannedSampler) => plannedSampler.sampler.id),
       ...(captureMetadata ? { captureReplay: captureMetadata } : {})
     }
   };
@@ -338,10 +518,13 @@ export function buildRenderGraphPlan(
     cacheKey: artifactCacheIdentity.key
   };
   const requirementId = 'requirement:ffmpeg-render';
-  const passId = 'pass:ffmpeg-render';
   const captureReplayNodeId = normalizedCaptureReplay ? `capture-replay:${normalizedCaptureReplay.identity.captureLogId}` : undefined;
+  const fieldGeneratorNodeIds = fieldGenerators.map((generator) => `field-generator:${generator.id}`);
+  const fieldConsumerNodeIds = fieldSamplers.map((plannedSampler) => `field-consumer:${plannedSampler.filterId}:${plannedSampler.sampler.id}`);
   const inputNodeIds = [
     ...inputReferences.map((input) => input.id),
+    ...fieldGeneratorNodeIds,
+    ...fieldConsumerNodeIds,
     ...(captureReplayNodeId ? [captureReplayNodeId] : [])
   ];
   const nodes: RenderGraphNode[] = [
@@ -393,6 +576,66 @@ export function buildRenderGraphPlan(
         skippedEvents: normalizedCaptureReplay.skippedEvents
       })
     }] : []),
+    ...fieldGenerators.map((generator) => ({
+      id: `field-generator:${generator.id}`,
+      kind: 'field-generator' as const,
+      label: generator.name ?? generator.id,
+      cacheIdentity: createCacheIdentity('field-generator-placeholder', [
+        `generator:${generator.id}`,
+        `version:${generator.cacheIdentity.version}`,
+        ...generator.cacheIdentity.inputs
+      ], generator, [
+        'field-generator-manifest',
+        'spatial-fields',
+        'capture-sessions',
+        'input-assets'
+      ], {
+        ...baseProvenance,
+        planId,
+        metadata: {
+          generatorId: generator.id,
+          kind: generator.kind,
+          cacheIdentity: generator.cacheIdentity
+        }
+      }),
+      metadata: {
+        generatorId: generator.id,
+        kind: generator.kind,
+        inputs: generator.inputs,
+        outputs: generator.outputs,
+        scope: generator.scope,
+        costClass: generator.costClass,
+        determinismMode: generator.determinismMode,
+        capturePolicy: generator.capturePolicy,
+        requiredCapabilities: generator.requiredCapabilities,
+        cacheIdentity: generator.cacheIdentity,
+        execution: generator.kind === 'motion-frame-difference' ? 'frame-difference-runtime' : 'placeholder',
+        runtimeReports: fieldRuntime.reports.filter((report) => report.generatorId === generator.id).map((report) => ({
+          fieldId: report.fieldId,
+          dimensions: report.dimensions,
+          storageMode: report.storageMode,
+          currentFrameId: report.currentFrameId,
+          previousFrameId: report.previousFrameId,
+          profileFit: report.profileFit,
+          diagnostics: report.diagnostics.map((diagnostic) => diagnostic.id)
+        }))
+      }
+    })),
+    ...fieldSamplers.map((plannedSampler) => ({
+      id: `field-consumer:${plannedSampler.filterId}:${plannedSampler.sampler.id}`,
+      kind: 'field-consumer' as const,
+      label: plannedSampler.sampler.id,
+      metadata: {
+        stackId: plannedSampler.stackId,
+        filterId: plannedSampler.filterId,
+        sampler: plannedSampler.sampler,
+        fallback: {
+          scalarValue: plannedSampler.sampler.fallbackValue,
+          appliesToParameter: plannedSampler.sampler.parameter
+        },
+        execution: 'scalar-fallback'
+      }
+    })),
     {
       id: operationNodeId,
       kind: 'operation',
@@ -452,6 +695,32 @@ export function buildRenderGraphPlan(
       kind: 'capture-input' as const,
       metadata: captureMetadata
     }] : []),
+    ...fieldGenerators.flatMap((generator) => generator.outputs.map((output) => ({
+      id: `edge:field-generator:${generator.id}:${output.fieldId}`,
+      from: `field-generator:${generator.id}`,
+      to: operationNodeId,
+      kind: 'field-output' as const,
+      metadata: {
+        generatorId: generator.id,
+        outputId: output.id,
+        fieldId: output.fieldId,
+        channels: output.channels ?? []
+      }
+    }))),
+    ...fieldSamplers.map((plannedSampler) => ({
+      id: `edge:field-consumer:${plannedSampler.filterId}:${plannedSampler.sampler.id}:${operationNodeId}`,
+      from: `field-consumer:${plannedSampler.filterId}:${plannedSampler.sampler.id}`,
+      to: operationNodeId,
+      kind: 'field-consumer' as const,
+      metadata: {
+        stackId: plannedSampler.stackId,
+        filterId: plannedSampler.filterId,
+        samplerId: plannedSampler.sampler.id,
+        fieldId: plannedSampler.sampler.fieldId,
+        parameter: plannedSampler.sampler.parameter,
+        fallbackValue: plannedSampler.sampler.fallbackValue
+      }
+    })),
     {
       id: `edge:${operationNodeId}:${artifactId}`,
       from: operationNodeId,
@@ -477,7 +746,24 @@ export function buildRenderGraphPlan(
         source: resolvedTools.ffmpeg.source,
         envVar: resolvedTools.ffmpeg.envVar
       })
-    }
+    },
+    ...(runtimeProfile ? [{
+      id: `requirement:runtime-profile:${runtimeProfile.id}`,
+      backend: 'webgpu' as const,
+      binary: '<runtime-placeholder>',
+      required: false,
+      capabilities: [
+        `runtime-profile:${runtimeProfile.kind}`,
+        `field-scale:${runtimeProfile.fieldScalePreset}`,
+        `cost-budget:${runtimeProfile.maxCostClass}`,
+        `fallback:${runtimeProfile.fallbackPreference}`
+      ],
+      metadata: {
+        runtimeProfile
+      }
+    }] : []),
+    ...fieldGenerators.map(createFieldGeneratorRequirement),
+    ...fieldSamplers.map(createFieldSamplerRequirement)
   ];
   const diagnostics: RenderGraphCapabilityDiagnostic[] = [
     buildFfmpegCompatibilityDiagnostic({
@@ -485,6 +771,64 @@ export function buildRenderGraphPlan(
       passId,
       requirementId
     }),
+    ...fieldRuntime.diagnostics.map((diagnostic) => toRenderGraphFieldRuntimeDiagnostic(diagnostic, operationNodeId, passId)),
+    ...(runtimeProfile ? normalizedProject.composition.spatialFields
+      .filter((field) => exceedsRuntimeBudget(field.costClass ?? 'moderate', runtimeProfile))
+      .map((field) => ({
+        id: `diagnostic:runtime-profile:${runtimeProfile.id}:spatial-field:${field.id}:cost-budget`,
+        severity: 'warning' as const,
+        code: 'runtime-profile-cost-budget',
+        message: `Spatial field "${field.id}" cost class "${field.costClass ?? 'moderate'}" exceeds runtime profile "${runtimeProfile.id}" budget "${runtimeProfile.maxCostClass}".`,
+        path: `composition.spatialFields.${field.id}`,
+        nodeId: operationNodeId,
+        passId,
+        requirementId: `requirement:runtime-profile:${runtimeProfile.id}`
+      }))
+      : []),
+    ...(runtimeProfile ? fieldGenerators
+      .filter((generator) => exceedsRuntimeBudget(generator.costClass, runtimeProfile))
+      .map((generator) => ({
+        id: `diagnostic:runtime-profile:${runtimeProfile.id}:field-generator:${generator.id}:cost-budget`,
+        severity: 'warning' as const,
+        code: 'runtime-profile-cost-budget',
+        message: `Field generator "${generator.id}" cost class "${generator.costClass}" exceeds runtime profile "${runtimeProfile.id}" budget "${runtimeProfile.maxCostClass}".`,
+        path: `composition.fieldGenerators.${generator.id}`,
+        nodeId: `field-generator:${generator.id}`,
+        passId,
+        requirementId: `requirement:runtime-profile:${runtimeProfile.id}`
+      }))
+      : []),
+    ...fieldGenerators.map((generator) => generator.kind === 'motion-frame-difference'
+      ? {
+          id: `diagnostic:field-generator:${generator.id}:motion-frame-difference-runtime`,
+          severity: 'info' as const,
+          code: 'field-generator-motion-frame-difference-runtime',
+          message: `Field generator "${generator.id}" is planned as deterministic frame differencing for preview/runtime inspection.`,
+          path: `composition.fieldGenerators.${generator.id}`,
+          nodeId: `field-generator:${generator.id}`,
+          passId,
+          requirementId: `requirement:field-generator:${generator.id}`
+        }
+      : {
+          id: `diagnostic:field-generator:${generator.id}:placeholder`,
+          severity: 'info' as const,
+          code: 'field-generator-placeholder',
+          message: `Field generator "${generator.id}" is represented in the render graph but is not executed by the FFmpeg planner.`,
+          path: `composition.fieldGenerators.${generator.id}`,
+          nodeId: `field-generator:${generator.id}`,
+          passId,
+          requirementId: `requirement:field-generator:${generator.id}`
+        }),
+    ...fieldSamplers.map((plannedSampler) => ({
+      id: `diagnostic:field-sampler:${plannedSampler.sampler.id}:scalar-fallback`,
+      severity: 'warning' as const,
+      code: 'field-sampling-scalar-fallback',
+      message: `Field sampler "${plannedSampler.sampler.id}" is planned with scalar fallback value ${plannedSampler.sampler.fallbackValue}.`,
+      path: `filterStacks.${plannedSampler.stackId}.filters.${plannedSampler.filterId}.fieldSamplers.${plannedSampler.sampler.id}`,
+      nodeId: `field-consumer:${plannedSampler.filterId}:${plannedSampler.sampler.id}`,
+      passId,
+      requirementId: `requirement:field-sampler:${plannedSampler.sampler.id}`
+    })),
     ...(normalizedCaptureReplay
       ? buildCaptureReplayDiagnostics([
         ...(normalizedCaptureReplay.diagnostics ?? []),
@@ -560,6 +904,7 @@ export function buildRenderGraphPlan(
     target: {
       outputPath: request.outputPath,
       profile: graphProfile,
+      ...(runtimeProfile ? { runtimeProfile } : {}),
       durationMs
     },
     inputs: inputReferences,
@@ -569,6 +914,7 @@ export function buildRenderGraphPlan(
     artifacts,
     backendRequirements,
     diagnostics,
+    fieldRuntime,
     cacheIdentity: planCacheIdentity
   };
 }

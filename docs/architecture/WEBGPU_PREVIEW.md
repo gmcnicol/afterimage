@@ -22,8 +22,13 @@ behaviour, capture replay policy, or export semantics.
 
 ## Current V1 Anchor
 
-The current repository does not implement a WebGPU runtime. The v1 anchor is
-architectural:
+The current repository implements the first runtime substrate for spatial
+fields. It is intentionally narrow: field execution sessions can allocate
+WebGPU textures, encode bounded compute update passes, submit them, and fall
+back to CPU diagnostics when WebGPU is unavailable or unsafe. It is not a full
+preview renderer and does not change FFmpeg export semantics.
+
+The v1 anchor is:
 
 - `docs/architecture/RENDER_GRAPH.md`: FFmpeg is the current deterministic
   offline backend; a future realtime runtime must consume the same render graph
@@ -38,6 +43,13 @@ architectural:
   must remain replayable where it affects capture or export.
 - `docs/architecture/DETERMINISTIC_CAPTURE.md`: captured state is distinct from
   live state, preview render, and final export.
+- `@afterimage/project-model` plans spatial-field execution sessions from the
+  normalized project, selected runtime profile, output dimensions, frame
+  identity, persistence policy, and generator manifests.
+- `@afterimage/ffmpeg-compiler` owns the current executable field-runtime
+  substrate because the command-backed FFmpeg graph remains the canonical
+  render graph. It negotiates WebGPU, allocates field textures, encodes update
+  passes, submits queue work, and reports fallback diagnostics.
 - WebGPU itself requires explicit adapter and device negotiation, feature and
   limit checks, validation/error handling, command submission, presentation
   surfaces, and device-loss recovery.
@@ -86,6 +98,22 @@ The GPU execution layer owns:
 - disposal and recovery
 
 It must not mutate canonical project or capture state.
+
+For spatial fields, GPU execution is session based. A session owns one field,
+its planned dimensions, its storage mode, a persistence plan, and the update
+passes required for the selected frame. Texture allocation follows the planned
+buffer slots:
+
+- `current` is the writable slot for the deterministic frame identity.
+- `previous` is the immediate prior frame when the field requests prior-frame
+  access.
+- `history` slots hold the bounded window requested by history-window
+  persistence, capped by the selected runtime profile.
+
+History-window fields use current plus N history buffers, not an implicit
+two-buffer approximation. The plan records slot ids, frame ids, estimated
+bytes, buffer counts, and update-pass ids so cache identity changes when
+persistence, dimensions, profile, or execution shape changes.
 
 ### Studio
 
@@ -200,6 +228,19 @@ Some concepts may need to degrade in preview:
 Degradation must be explicit. Studio and Capture Space should be able to show
 whether the preview is semantically equivalent, approximated, partially
 unsupported, or invalid for trust decisions.
+
+Field runtime degradation is diagnostic first. If WebGPU is missing, no adapter
+is selected, device creation fails, a texture exceeds device limits, validation
+or out-of-memory scopes report an error, pass encoding fails, queue submission
+fails, or device loss is observed, the runtime returns CPU fallback mode with
+the same deterministic replay metadata. The CPU fallback does not attempt
+visual feature parity with the GPU update passes; it preserves planning truth
+and explains why the output view is degraded.
+
+The supported update-pass vocabulary is deliberately small: replace,
+accumulate, decay, diffuse, and smear-compatible updates. The WGSL path is a
+minimal bounded compute substrate for field texture execution, not a shader
+authoring surface.
 
 ## Rejection Policy
 

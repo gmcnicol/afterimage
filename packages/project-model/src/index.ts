@@ -6,4 +6,5 @@ export * from './selectors.js';
 export * from './factory.js';
 export * from './runtime-profiles.js';
 export * from './spatial-runtime.js';
+export * from './spatial-field-runtime.js';
 export { slugify } from './utils.js';

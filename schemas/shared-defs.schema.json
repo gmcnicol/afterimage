@@ -134,6 +134,66 @@
       "type": "string",
       "enum": ["read", "write", "read-write"]
     },
+    "spatialFieldPersistenceLifetime": {
+      "type": "string",
+      "enum": ["frame", "clip", "sequence", "composition", "capture-session"]
+    },
+    "spatialFieldPreviousFrameAccessPolicy": {
+      "type": "string",
+      "enum": ["none", "previous-frame", "history-window"]
+    },
+    "spatialFieldAccumulationPolicyKind": {
+      "type": "string",
+      "enum": ["replace", "accumulate", "decay"]
+    },
+    "spatialFieldPersistenceStorageIntent": {
+      "type": "string",
+      "enum": ["runtime-only", "cacheable", "replayable"]
+    },
+    "runtimePerformanceProfileKind": {
+      "type": "string",
+      "enum": ["draft", "live", "studio", "render"]
+    },
+    "runtimeFieldScalePreset": {
+      "type": "string",
+      "enum": ["source", "full", "three-quarter", "half", "quarter", "eighth"]
+    },
+    "runtimeFallbackPreference": {
+      "type": "string",
+      "enum": ["preserve-output", "degrade-quality", "disable-expensive", "fail-fast"]
+    },
+    "runtimeCostClass": {
+      "type": "string",
+      "enum": ["cheap", "moderate", "expensive", "dangerous"]
+    },
+    "fieldGeneratorKind": {
+      "type": "string",
+      "enum": ["clip-luma", "seeded-noise-drift", "external-live-source", "motion-frame-difference"]
+    },
+    "fieldGeneratorInputKind": {
+      "type": "string",
+      "enum": ["asset", "spatial-field", "deterministic-seed", "capture-source", "parameter"]
+    },
+    "fieldGeneratorOutputKind": {
+      "type": "string",
+      "enum": ["spatial-field"]
+    },
+    "fieldGeneratorDeterminismMode": {
+      "type": "string",
+      "enum": ["deterministic", "seeded", "captured", "live"]
+    },
+    "fieldSampleMode": {
+      "type": "string",
+      "enum": ["nearest", "linear", "mip"]
+    },
+    "fieldSampleBlendMode": {
+      "type": "string",
+      "enum": ["replace", "add", "multiply", "screen"]
+    },
+    "fieldSampleChannel": {
+      "type": "string",
+      "enum": ["r", "g", "b", "a", "luma", "magnitude"]
+    },
     "modulationEndpointKind": {
       "type": "string",
       "enum": [
@@ -559,6 +619,27 @@
       },
       "additionalProperties": false
     },
+    "fieldParameterSampler": {
+      "type": "object",
+      "required": ["id", "fieldId", "parameter", "sampleMode", "blendMode", "channels", "fallbackValue"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "fieldId": { "$ref": "#/$defs/idString" },
+        "parameter": { "type": "string", "minLength": 1 },
+        "sampleMode": { "$ref": "#/$defs/fieldSampleMode" },
+        "blendMode": { "$ref": "#/$defs/fieldSampleBlendMode" },
+        "channels": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fieldSampleChannel" },
+          "minItems": 1
+        },
+        "fallbackValue": { "type": "number" },
+        "requiredCapabilities": { "$ref": "#/$defs/stringArray" },
+        "degradedCapabilities": { "$ref": "#/$defs/stringArray" },
+        "enabled": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
     "filterInstance": {
       "type": "object",
       "required": ["id", "type", "orderIndex"],
@@ -572,6 +653,11 @@
           "propertyNames": { "type": "string", "minLength": 1 },
           "additionalProperties": { "$ref": "#/$defs/jsonPrimitive" },
           "default": {}
+        },
+        "fieldSamplers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fieldParameterSampler" },
+          "default": []
         },
         "mix": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
         "seed": { "type": "integer", "minimum": 0 },
@@ -887,6 +973,40 @@
       ],
       "additionalProperties": false
     },
+    "spatialFieldAccumulationPolicy": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/spatialFieldAccumulationPolicyKind" },
+        "decay": { "type": "number", "minimum": 0, "maximum": 1 },
+        "clamp": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "spatialFieldReplayIdentity": {
+      "type": "object",
+      "required": ["deterministic"],
+      "properties": {
+        "deterministic": { "type": "boolean" },
+        "seedId": { "$ref": "#/$defs/idString" },
+        "capturePolicy": { "$ref": "#/$defs/capturePolicy" },
+        "identityInputs": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "spatialFieldPersistencePolicy": {
+      "type": "object",
+      "required": ["lifetime", "previousFrameAccess", "accumulation", "replayIdentity", "storageIntent"],
+      "properties": {
+        "lifetime": { "$ref": "#/$defs/spatialFieldPersistenceLifetime" },
+        "previousFrameAccess": { "$ref": "#/$defs/spatialFieldPreviousFrameAccessPolicy" },
+        "accumulation": { "$ref": "#/$defs/spatialFieldAccumulationPolicy" },
+        "windowFrames": { "type": "integer", "minimum": 1 },
+        "replayIdentity": { "$ref": "#/$defs/spatialFieldReplayIdentity" },
+        "storageIntent": { "$ref": "#/$defs/spatialFieldPersistenceStorageIntent" }
+      },
+      "additionalProperties": false
+    },
     "spatialFieldDefinition": {
       "type": "object",
       "required": ["id", "kind", "resolution"],
@@ -898,6 +1018,8 @@
         "resolution": { "$ref": "#/$defs/spatialFieldResolutionPolicy" },
         "storage": { "$ref": "#/$defs/spatialFieldStoragePolicy", "default": "gpu-texture" },
         "access": { "$ref": "#/$defs/spatialFieldAccessPolicy", "default": "read-write" },
+        "costClass": { "$ref": "#/$defs/runtimeCostClass", "default": "moderate" },
+        "persistence": { "$ref": "#/$defs/spatialFieldPersistencePolicy" },
         "scope": { "$ref": "#/$defs/modulationScope" },
         "seedId": { "$ref": "#/$defs/idString" }
       },
@@ -970,6 +1092,94 @@
         "capturePolicy": { "$ref": "#/$defs/capturePolicy" },
         "seedId": { "$ref": "#/$defs/idString" },
         "enabled": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "runtimePerformanceProfile": {
+      "type": "object",
+      "required": ["id", "kind", "fieldScalePreset", "targetFps", "memoryBudgetMb", "maxPasses", "fallbackPreference", "maxCostClass"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "kind": { "$ref": "#/$defs/runtimePerformanceProfileKind" },
+        "label": { "type": "string", "minLength": 1 },
+        "fieldScalePreset": { "$ref": "#/$defs/runtimeFieldScalePreset" },
+        "targetFps": { "type": "number", "exclusiveMinimum": 0 },
+        "memoryBudgetMb": { "type": "integer", "minimum": 1 },
+        "maxPasses": { "type": "integer", "minimum": 1 },
+        "fallbackPreference": { "$ref": "#/$defs/runtimeFallbackPreference" },
+        "maxCostClass": { "$ref": "#/$defs/runtimeCostClass" }
+      },
+      "additionalProperties": false
+    },
+    "fieldGeneratorInput": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "kind": { "$ref": "#/$defs/fieldGeneratorInputKind" },
+        "refId": { "$ref": "#/$defs/idString" },
+        "parameter": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "fieldGeneratorOutput": {
+      "type": "object",
+      "required": ["id", "kind", "fieldId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "kind": { "$ref": "#/$defs/fieldGeneratorOutputKind" },
+        "fieldId": { "$ref": "#/$defs/idString" },
+        "channels": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fieldSampleChannel" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "fieldGeneratorCacheIdentity": {
+      "type": "object",
+      "required": ["version", "inputs"],
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "inputs": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "fieldGeneratorManifest": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "inputs",
+        "outputs",
+        "scope",
+        "costClass",
+        "determinismMode",
+        "capturePolicy",
+        "requiredCapabilities",
+        "cacheIdentity"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/idString" },
+        "kind": { "$ref": "#/$defs/fieldGeneratorKind" },
+        "name": { "type": "string", "minLength": 1 },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fieldGeneratorInput" },
+          "default": []
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fieldGeneratorOutput" },
+          "default": []
+        },
+        "scope": { "$ref": "#/$defs/modulationScope" },
+        "costClass": { "$ref": "#/$defs/runtimeCostClass" },
+        "determinismMode": { "$ref": "#/$defs/fieldGeneratorDeterminismMode" },
+        "capturePolicy": { "$ref": "#/$defs/capturePolicy" },
+        "requiredCapabilities": { "$ref": "#/$defs/stringArray" },
+        "cacheIdentity": { "$ref": "#/$defs/fieldGeneratorCacheIdentity" }
       },
       "additionalProperties": false
     },
@@ -1170,6 +1380,11 @@
         "spatialFields": {
           "type": "array",
           "items": { "$ref": "#/$defs/spatialFieldDefinition" },
+          "default": []
+        },
+        "fieldGenerators": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fieldGeneratorManifest" },
           "default": []
         },
         "modulationRoutes": {

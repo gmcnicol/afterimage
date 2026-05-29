@@ -21,6 +21,11 @@ import type {
   CutCandidate,
   EntropyState,
   ExportSelection,
+  FieldGeneratorCacheIdentity,
+  FieldGeneratorInput,
+  FieldGeneratorManifest,
+  FieldGeneratorOutput,
+  FieldParameterSampler,
   FilterInstance,
   FilterStack,
   JsonPrimitive,
@@ -42,6 +47,7 @@ import type {
   ProbeMetadata,
   ProjectFile,
   ProjectPathRef,
+  RuntimePerformanceProfile,
   SceneActivation,
   SceneClimate,
   SceneDefinition,
@@ -51,7 +57,10 @@ import type {
   Section,
   Sequence,
   SequenceClip,
+  SpatialFieldAccumulationPolicy,
   SpatialFieldDefinition,
+  SpatialFieldPersistencePolicy,
+  SpatialFieldReplayIdentity,
   SpatialFieldResolutionPolicy,
   SyncEvent,
   SyncEventTrack,
@@ -69,12 +78,28 @@ import {
   normalizeUnit,
   sortById
 } from './utils.js';
+import { createDefaultRuntimePerformanceProfiles } from './runtime-profiles.js';
 
 export function normalizeProjectPathRef(path: ProjectPathRef): ProjectPathRef {
   return {
     absolutePath: path.absolutePath,
     relativePath: path.relativePath
   };
+}
+
+export const DEFAULT_RUNTIME_PERFORMANCE_PROFILES: RuntimePerformanceProfile[] = createDefaultRuntimePerformanceProfiles();
+
+export function normalizeRuntimePerformanceProfile(profile: RuntimePerformanceProfile): RuntimePerformanceProfile {
+  return {
+    ...profile,
+    targetFps: Math.max(1, Math.trunc(profile.targetFps)),
+    memoryBudgetMb: Math.max(1, Math.trunc(profile.memoryBudgetMb)),
+    maxPasses: Math.max(1, Math.trunc(profile.maxPasses))
+  };
+}
+
+export function getDefaultRuntimePerformanceProfiles(): RuntimePerformanceProfile[] {
+  return DEFAULT_RUNTIME_PERFORMANCE_PROFILES.map(normalizeRuntimePerformanceProfile);
 }
 
 export function normalizePresetFilter(filter: PresetFilter): PresetFilter {
@@ -291,6 +316,16 @@ export function normalizeSection(section: Section): Section {
   return { ...section };
 }
 
+export function normalizeFieldParameterSampler(sampler: FieldParameterSampler): FieldParameterSampler {
+  return {
+    ...sampler,
+    channels: normalizeStringArray(sampler.channels) as FieldParameterSampler['channels'],
+    requiredCapabilities: normalizeStringArray(sampler.requiredCapabilities),
+    degradedCapabilities: normalizeStringArray(sampler.degradedCapabilities),
+    enabled: normalizeBoolean(sampler.enabled, true)
+  };
+}
+
 export function normalizeFilterInstance(filter: FilterInstance): FilterInstance {
   const definition = getFilterDefinition(filter.type);
   const normalizedParameters = normalizeJsonRecord(filter.parameters);
@@ -308,6 +343,7 @@ export function normalizeFilterInstance(filter: FilterInstance): FilterInstance 
     ...filter,
     enabled: normalizeBoolean(filter.enabled, true),
     parameters: mergedParameters,
+    fieldSamplers: sortById((filter.fieldSamplers ?? []).map(normalizeFieldParameterSampler)),
     mix: clampUnit(filter.mix) ?? 1,
     automationLaneIds: normalizeStringArray(filter.automationLaneIds)
   };
@@ -457,6 +493,38 @@ export function normalizeSpatialFieldResolutionPolicy(resolution: SpatialFieldRe
   return { kind };
 }
 
+export function normalizeSpatialFieldAccumulationPolicy(policy: SpatialFieldAccumulationPolicy): SpatialFieldAccumulationPolicy {
+  return {
+    kind: policy.kind,
+    decay: policy.kind === 'decay' ? clampUnit(policy.decay) ?? 0.95 : policy.decay,
+    clamp: normalizeBoolean(policy.clamp, true)
+  };
+}
+
+export function normalizeSpatialFieldReplayIdentity(identity: SpatialFieldReplayIdentity): SpatialFieldReplayIdentity {
+  return {
+    deterministic: normalizeBoolean(identity.deterministic, false),
+    seedId: identity.seedId,
+    capturePolicy: identity.capturePolicy ?? 'ignore',
+    identityInputs: normalizeStringArray(identity.identityInputs)
+  };
+}
+
+export function normalizeSpatialFieldPersistencePolicy(policy: SpatialFieldPersistencePolicy): SpatialFieldPersistencePolicy {
+  const previousFrameAccess = policy.lifetime === 'frame' ? 'none' : policy.previousFrameAccess;
+
+  return {
+    lifetime: policy.lifetime,
+    previousFrameAccess,
+    accumulation: normalizeSpatialFieldAccumulationPolicy(policy.accumulation),
+    windowFrames: previousFrameAccess === 'history-window'
+      ? Math.max(2, Math.trunc(policy.windowFrames ?? 2))
+      : policy.windowFrames,
+    replayIdentity: normalizeSpatialFieldReplayIdentity(policy.replayIdentity),
+    storageIntent: policy.storageIntent
+  };
+}
+
 export function normalizeSpatialFieldDefinition(field: SpatialFieldDefinition): SpatialFieldDefinition {
   return {
     ...field,
@@ -464,7 +532,41 @@ export function normalizeSpatialFieldDefinition(field: SpatialFieldDefinition): 
     resolution: normalizeSpatialFieldResolutionPolicy(field.resolution),
     storage: field.storage ?? 'gpu-texture',
     access: field.access ?? 'read-write',
+    costClass: field.costClass ?? 'moderate',
+    persistence: field.persistence ? normalizeSpatialFieldPersistencePolicy(field.persistence) : undefined,
     scope: normalizeModulationScope(field.scope)
+  };
+}
+
+export function normalizeFieldGeneratorInput(input: FieldGeneratorInput): FieldGeneratorInput {
+  return {
+    ...input,
+    required: normalizeBoolean(input.required, true)
+  };
+}
+
+export function normalizeFieldGeneratorOutput(output: FieldGeneratorOutput): FieldGeneratorOutput {
+  return {
+    ...output,
+    channels: output.channels ? normalizeStringArray(output.channels) as FieldGeneratorOutput['channels'] : undefined
+  };
+}
+
+export function normalizeFieldGeneratorCacheIdentity(identity: FieldGeneratorCacheIdentity): FieldGeneratorCacheIdentity {
+  return {
+    version: identity.version,
+    inputs: normalizeStringArray(identity.inputs)
+  };
+}
+
+export function normalizeFieldGeneratorManifest(generator: FieldGeneratorManifest): FieldGeneratorManifest {
+  return {
+    ...generator,
+    inputs: sortById(generator.inputs.map(normalizeFieldGeneratorInput)),
+    outputs: sortById(generator.outputs.map(normalizeFieldGeneratorOutput)),
+    scope: normalizeModulationScope(generator.scope),
+    requiredCapabilities: normalizeStringArray(generator.requiredCapabilities),
+    cacheIdentity: normalizeFieldGeneratorCacheIdentity(generator.cacheIdentity)
   };
 }
 
@@ -715,6 +817,7 @@ export function normalizeCompositionIdentity(project: ProjectFile): NormalizedCo
     acceptedArchiveReferences: sortById((project.composition?.acceptedArchiveReferences ?? []).map(normalizeAcceptedArchiveReference)),
     rejectedArchiveReferences: sortById((project.composition?.rejectedArchiveReferences ?? []).map(normalizeRejectedArchiveReference)),
     spatialFields: sortById((project.composition?.spatialFields ?? []).map(normalizeSpatialFieldDefinition)),
+    fieldGenerators: sortById((project.composition?.fieldGenerators ?? []).map(normalizeFieldGeneratorManifest)),
     modulationRoutes: sortById((project.composition?.modulationRoutes ?? []).map(normalizeModulationRoute)),
     entropyStates: sortById((project.composition?.entropyStates ?? []).map(normalizeEntropyState)),
     scenes: sortById(scenes.map(normalizeSceneDefinition)),
@@ -747,6 +850,12 @@ export function normalizeProject(project: ProjectFile): NormalizedProjectFile {
     exportSelections: [...(project.exportSelections ?? [])]
       .map(normalizeExportSelection)
       .sort((left, right) => compareStrings(left.profileId, right.profileId)),
+    runtimeProfiles: (project.runtimeProfiles && project.runtimeProfiles.length > 0
+      ? project.runtimeProfiles
+      : getDefaultRuntimePerformanceProfiles()
+    )
+      .map(normalizeRuntimePerformanceProfile)
+      .sort((left, right) => compareStrings(left.id, right.id)),
     composition: normalizeCompositionIdentity(project),
     captureSessions: sortById((project.captureSessions ?? []).map(normalizeCaptureSession)),
     captureLogs: sortById((project.captureLogs ?? []).map(normalizeCaptureLog)),

@@ -187,6 +187,19 @@
           "parameters": {
             "strength": 0.24
           },
+          "fieldSamplers": [
+            {
+              "id": "sampler-bloom-heat-strength",
+              "fieldId": "field-heat-scene",
+              "parameter": "strength",
+              "sampleMode": "linear",
+              "blendMode": "add",
+              "channels": ["luma"],
+              "fallbackValue": 0.24,
+              "requiredCapabilities": ["field-sampling"],
+              "degradedCapabilities": ["scalar-parameter-fallback"]
+            }
+          ],
           "mix": 0.9,
           "automationLaneIds": ["lane-bloom-mix"]
         }
@@ -373,6 +386,23 @@
           "compositionId": "composition-main",
           "sceneId": "scene-main"
         },
+        "persistence": {
+          "lifetime": "composition",
+          "previousFrameAccess": "history-window",
+          "accumulation": {
+            "kind": "decay",
+            "decay": 0.92,
+            "clamp": true
+          },
+          "windowFrames": 4,
+          "replayIdentity": {
+            "deterministic": true,
+            "seedId": "seed-composition-main",
+            "capturePolicy": "replay-critical",
+            "identityInputs": ["field-memory-scene", "seed-composition-main"]
+          },
+          "storageIntent": "replayable"
+        },
         "seedId": "seed-composition-main"
       },
       {
@@ -408,6 +438,105 @@
         "scope": {
           "compositionId": "composition-main",
           "sceneId": "scene-main"
+        }
+      }
+    ],
+    "fieldGenerators": [
+      {
+        "id": "generator-clip-luma-alpha",
+        "kind": "clip-luma",
+        "name": "Clip Luma Field",
+        "inputs": [
+          {
+            "id": "input-asset-alpha",
+            "kind": "asset",
+            "refId": "asset-alpha"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "output-heat",
+            "kind": "spatial-field",
+            "fieldId": "field-heat-scene",
+            "channels": ["luma"]
+          }
+        ],
+        "scope": {
+          "compositionId": "composition-main",
+          "layerId": "layer-clip-intro",
+          "clipId": "clip-intro"
+        },
+        "costClass": "cheap",
+        "determinismMode": "deterministic",
+        "capturePolicy": "ignore",
+        "requiredCapabilities": ["field-generator:clip-luma"],
+        "cacheIdentity": {
+          "version": "clip-luma@1",
+          "inputs": ["asset-alpha", "analysis-asset-alpha"]
+        }
+      },
+      {
+        "id": "generator-seeded-noise-drift",
+        "kind": "seeded-noise-drift",
+        "name": "Seeded Noise Drift",
+        "inputs": [
+          {
+            "id": "input-seed-main",
+            "kind": "deterministic-seed",
+            "refId": "seed-composition-main"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "output-memory",
+            "kind": "spatial-field",
+            "fieldId": "field-memory-scene",
+            "channels": ["r", "g"]
+          }
+        ],
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        },
+        "costClass": "moderate",
+        "determinismMode": "seeded",
+        "capturePolicy": "ignore",
+        "requiredCapabilities": ["field-generator:seeded-noise"],
+        "cacheIdentity": {
+          "version": "seeded-noise-drift@1",
+          "inputs": ["seed-composition-main", "field-memory-scene"]
+        }
+      },
+      {
+        "id": "generator-live-flights-flow",
+        "kind": "external-live-source",
+        "name": "Live Flights Flow",
+        "inputs": [
+          {
+            "id": "input-live-flights",
+            "kind": "capture-source",
+            "refId": "live-flights"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "output-pressure",
+            "kind": "spatial-field",
+            "fieldId": "field-pressure-scene",
+            "channels": ["magnitude"]
+          }
+        ],
+        "scope": {
+          "compositionId": "composition-main",
+          "sceneId": "scene-main"
+        },
+        "costClass": "expensive",
+        "determinismMode": "captured",
+        "capturePolicy": "record",
+        "requiredCapabilities": ["field-generator:external-capture", "capture-replay"],
+        "cacheIdentity": {
+          "version": "live-flights-flow@1",
+          "inputs": ["live-flights", "capture-session-main"]
         }
       }
     ],

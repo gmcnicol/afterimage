@@ -1,6 +1,9 @@
 import { resolveCompositionIntent } from '@afterimage/domain-operations';
+import { exportProfiles } from '@afterimage/export-profiles';
 import {
+  buildSpatialFieldRuntimePlan,
   collectProjectIntegrityIssues,
+  DEFAULT_RUNTIME_PERFORMANCE_PROFILES,
   getDefaultSequence,
   getDefaultVariant,
   getSequenceById,
@@ -15,17 +18,26 @@ import {
   type NormalizedSceneDefinition,
   type NormalizedSceneLayerDefinition,
   type ProjectIntegrityIssue,
+  type RuntimePerformanceProfile,
+  type RuntimePerformanceProfileKind,
   type Sequence,
+  type SpatialFieldRuntimePlan,
+  type SpatialFieldRuntimeReport,
   type Variant
 } from '@afterimage/project-model';
 import type { StudioRenderDiagnostic } from '@afterimage/studio-contracts';
 import type { DesktopJob, DiagnosticsSnapshot, LogEntry } from '../lib/studio-client';
+import {
+  resolveBehaviouralFieldCopy,
+  type BehaviouralFieldCopy
+} from './observatory-field-language';
 
 export type ObservatoryLaneId = 'world-state' | 'trust' | 'render-graph' | 'backend' | 'activity';
 export type ObservatorySignalSeverity = 'healthy' | 'info' | 'warning' | 'blocked';
 export type ObservatorySignalKind =
   | 'scene'
   | 'layer'
+  | 'spatial-field'
   | 'route'
   | 'entropy-state'
   | 'archive-reference'
@@ -80,6 +92,8 @@ export interface ObservatoryTelemetry {
   captureEventCount: number;
   replayCriticalEventCount: number;
   renderDiagnosticCount: number;
+  spatialFieldCount: number;
+  fieldRuntimeDiagnosticCount: number;
 }
 
 export interface ObservatorySceneSnapshot {
@@ -116,6 +130,8 @@ export interface ObservatorySnapshot {
   latestCaptureLog?: CaptureLog;
   latestCaptureEvents: CaptureEvent[];
   renderDiagnostics: ObservatoryRenderDiagnosticSnapshot[];
+  fieldRuntime: SpatialFieldRuntimePlan;
+  fieldLanguage: Record<string, BehaviouralFieldCopy>;
   trust: ObservatoryTrustSummary;
   lanes: ObservatoryLane[];
   signals: ObservatorySignal[];
@@ -129,6 +145,8 @@ export interface DeriveObservatorySnapshotInput {
   diagnostics?: DiagnosticsSnapshot;
   logs?: LogEntry[];
   selectedSignalId?: string;
+  runtimeProfileKind?: RuntimePerformanceProfileKind;
+  runtimeProfileId?: string;
 }
 
 const laneOrder: ObservatoryLaneId[] = ['world-state', 'trust', 'render-graph', 'backend', 'activity'];
@@ -510,6 +528,69 @@ function buildRenderSignals(renderDiagnostics: ObservatoryRenderDiagnosticSnapsh
   }));
 }
 
+function fieldReportSeverity(report: SpatialFieldRuntimeReport): ObservatorySignalSeverity {
+  if (report.diagnostics.some((diagnostic) => diagnostic.severity === 'error') || report.profileFit === 'memory-exceeded') {
+    return 'blocked';
+  }
+  if (report.diagnostics.some((diagnostic) => diagnostic.severity === 'warning') || report.profileFit === 'cost-exceeded') {
+    return 'warning';
+  }
+  if (report.profileFit === 'degraded') {
+    return 'info';
+  }
+
+  return 'healthy';
+}
+
+function runtimeProfileDisplay(profile: RuntimePerformanceProfile | undefined): string {
+  return profile?.label ?? profile?.kind ?? 'Studio';
+}
+
+function buildFieldRuntimeSignals(
+  fieldRuntime: SpatialFieldRuntimePlan,
+  fieldLanguage: Record<string, BehaviouralFieldCopy>,
+  runtimeProfile: RuntimePerformanceProfile | undefined
+): ObservatorySignal[] {
+  return fieldRuntime.reports.map((report) => {
+    const copy = fieldLanguage[report.fieldId] ?? resolveBehaviouralFieldCopy(report);
+
+    return signal({
+      id: `spatial-field:${report.fieldId}`,
+      laneId: 'render-graph' as const,
+      kind: 'spatial-field' as const,
+      severity: fieldReportSeverity(report),
+      label: copy.label,
+      summary: `${copy.description} Current fit is ${copy.status}.`,
+      metadata: [
+        copy.term.toLowerCase(),
+        `${report.bufferCount} buffer${report.bufferCount === 1 ? '' : 's'}`,
+        report.previousFrameId ? 'previous frame' : 'current frame only'
+      ],
+      detail: {
+        semantic: `${copy.label} describes ${copy.term.toLowerCase()} across ${copy.context}. ${runtimeProfileDisplay(runtimeProfile)} sets the stability, persistence, detail, depth, and resolution budget for this view.`,
+        backend: JSON.stringify({
+          fieldId: report.fieldId,
+          generatorId: report.generatorId,
+          dimensions: report.dimensions,
+          storageMode: report.storageMode,
+          currentFrameId: report.currentFrameId,
+          previousFrameId: report.previousFrameId,
+          persistencePlan: report.persistencePlan,
+          updatePasses: report.updatePasses,
+          costClass: report.costClass,
+          profileFit: report.profileFit,
+          diagnostics: report.diagnostics
+        }),
+        properties: [
+          ...copy.detailRows,
+          ['dimensions', `${report.dimensions.width} x ${report.dimensions.height}`],
+          ['cost class', report.costClass]
+        ]
+      }
+    });
+  });
+}
+
 function buildBackendSignals(diagnostics: DiagnosticsSnapshot | undefined): ObservatorySignal[] {
   if (!diagnostics) {
     return [signal({
@@ -657,8 +738,12 @@ function buildLanes(signals: ObservatorySignal[], trust: ObservatoryTrustSummary
       case 'render-graph':
         return {
           id: laneId,
-          title: 'Render Graph',
-          summary: telemetry.renderDiagnosticCount > 0 ? `${telemetry.renderDiagnosticCount} render graph diagnostics found.` : 'No render graph diagnostics found in preview/export jobs.',
+          title: 'Runtime',
+          summary: telemetry.fieldRuntimeDiagnosticCount > 0
+            ? `${telemetry.spatialFieldCount} fields, ${telemetry.fieldRuntimeDiagnosticCount} field diagnostic notes.`
+            : telemetry.renderDiagnosticCount > 0
+              ? `${telemetry.renderDiagnosticCount} runtime diagnostics found.`
+              : `${telemetry.spatialFieldCount} fields available for inspection.`,
           severity,
           signals: laneSignals
         };
@@ -759,6 +844,35 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
   const failedJobs = jobs.filter((job) => (job.type === 'preview' || job.type === 'export') && job.status === 'failed');
   const logs = input.logs ?? input.diagnostics?.logs ?? [];
   const renderDiagnostics = collectRenderDiagnostics(jobs);
+  const runtimeProfiles = input.project.runtimeProfiles && input.project.runtimeProfiles.length > 0
+    ? input.project.runtimeProfiles
+    : DEFAULT_RUNTIME_PERFORMANCE_PROFILES;
+  const runtimeProfile = (input.runtimeProfileId
+    ? runtimeProfiles.find((profile) => profile.id === input.runtimeProfileId)
+    : undefined)
+    ?? runtimeProfiles.find((profile) => profile.kind === (input.runtimeProfileKind ?? 'studio'))
+    ?? runtimeProfiles[0];
+  const enabledProfileId = input.project.composition.exportProfileIds[0] ?? input.project.exportSelections.find((selection) => selection.enabled)?.profileId;
+  const outputProfile = exportProfiles.find((profile) => profile.id === enabledProfileId) ?? exportProfiles[0];
+  const fieldRuntime = buildSpatialFieldRuntimePlan({
+    project: input.project,
+    runtimeProfile,
+    outputDimensions: {
+      width: outputProfile.width,
+      height: outputProfile.height
+    },
+    sourceDimensions: {
+      width: outputProfile.width,
+      height: outputProfile.height
+    },
+    frameIndex: 0,
+    timeMs: 0,
+    highQualityOpticalFlowAvailable: false
+  });
+  const fieldLanguage = Object.fromEntries(fieldRuntime.reports.map((report) => [
+    report.fieldId,
+    resolveBehaviouralFieldCopy(report, input.project)
+  ]));
   const archiveReferenceIds = collectArchiveReferenceIds(input.project);
   const telemetry: ObservatoryTelemetry = {
     sceneCount: scenes.length,
@@ -775,7 +889,9 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     captureLogCount: input.project.captureLogs.length,
     captureEventCount: input.project.captureLogs.reduce((sum, log) => sum + log.events.length, 0),
     replayCriticalEventCount: input.project.captureLogs.reduce((sum, log) => sum + log.events.filter((event) => event.replayCritical).length, 0),
-    renderDiagnosticCount: renderDiagnostics.length
+    renderDiagnosticCount: renderDiagnostics.length,
+    spatialFieldCount: fieldRuntime.reports.length,
+    fieldRuntimeDiagnosticCount: fieldRuntime.diagnostics.length
   };
 
   const worldSignals = [
@@ -810,7 +926,10 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     diagnostics: input.diagnostics,
     failedJobs
   });
-  const renderSignals = buildRenderSignals(renderDiagnostics);
+  const renderSignals = [
+    ...buildRenderSignals(renderDiagnostics),
+    ...buildFieldRuntimeSignals(fieldRuntime, fieldLanguage, runtimeProfile)
+  ];
   const backendSignals = buildBackendSignals(input.diagnostics);
   const activitySignals = buildActivitySignals(jobs, logs);
   const trust = deriveTrustSummary(trustSignals);
@@ -837,6 +956,8 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     latestCaptureLog,
     latestCaptureEvents,
     renderDiagnostics,
+    fieldRuntime,
+    fieldLanguage,
     trust,
     lanes,
     signals,

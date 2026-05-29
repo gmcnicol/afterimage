@@ -4,14 +4,13 @@ import {
   collectArchiveIntegrityIssues,
   collectProjectIntegrityIssues,
   createEmptyProject,
-  getBehaviourRuntimeProfile,
+  buildSpatialFieldRuntimePlan,
+  createMotionFrameDifferenceManifest,
+  generateFrameDifferenceMotionFields,
   getAssetById,
   getDefaultVariant,
   normalizeArchiveMetadataFile,
   normalizeProject,
-  planSpatialRuntime,
-  resolveSpatialFieldDimensions,
-  resolveRuntimeScaledDimensions,
   resolveProjectPathCandidates
 } from '../src';
 
@@ -72,6 +71,24 @@ describe('@afterimage/project-model', () => {
       storage: 'gpu-texture',
       access: 'read-write'
     });
+    expect(normalized.composition.spatialFields.find((field) => field.id === 'field-memory-scene')?.persistence).toMatchObject({
+      lifetime: 'composition',
+      previousFrameAccess: 'history-window',
+      accumulation: {
+        kind: 'decay',
+        decay: 0.92,
+        clamp: true
+      },
+      windowFrames: 4,
+      storageIntent: 'replayable'
+    });
+    expect(normalized.composition.fieldGenerators.map((generator) => generator.id)).toEqual([
+      'generator-clip-luma-alpha',
+      'generator-live-flights-flow',
+      'generator-seeded-noise-drift'
+    ]);
+    expect(normalized.filterStacks[0].filters[0].fieldSamplers?.map((sampler) => sampler.id)).toEqual(['sampler-bloom-heat-strength']);
+    expect(normalized.runtimeProfiles.map((profile) => profile.kind)).toEqual(['draft', 'live', 'render', 'studio']);
     expect(normalized.composition.acceptedArchiveReferences.map((reference) => reference.id)).toEqual(['accepted-archive-source-alpha-motif-motif-hallway-composition-main-scene-main']);
     expect(normalized.composition.rejectedArchiveReferences.map((reference) => reference.id)).toEqual(['rejected-archive-source-alpha-motion-motion-drift-composition-main-layer-clip-intro']);
     expect(normalized.captureSessions.map((session) => session.id)).toEqual(['capture-session-main']);
@@ -181,158 +198,6 @@ describe('@afterimage/project-model', () => {
     expect(project.composition.layers).toEqual([]);
   });
 
-  it('defines behaviour runtime profile defaults and field scale mapping', () => {
-    expect(getBehaviourRuntimeProfile('draft')).toMatchObject({
-      fieldResolutionScale: 0.5,
-      fpsTarget: 30,
-      maxPassesPerFrame: 4,
-      fallbackPolicy: 'cpu-first',
-      behaviourCostClass: 'low'
-    });
-    expect(getBehaviourRuntimeProfile('live')).toMatchObject({
-      fieldResolutionScale: 0.75,
-      fpsTarget: 60,
-      fallbackPolicy: 'gpu-preferred',
-      behaviourCostClass: 'interactive'
-    });
-    expect(getBehaviourRuntimeProfile('studio')).toMatchObject({
-      fieldResolutionScale: 1,
-      fpsTarget: 30,
-      fallbackPolicy: 'cpu-allowed',
-      behaviourCostClass: 'balanced'
-    });
-    expect(getBehaviourRuntimeProfile('render')).toMatchObject({
-      fieldResolutionScale: 1,
-      fpsTarget: 24,
-      fallbackPolicy: 'gpu-required',
-      behaviourCostClass: 'offline'
-    });
-    expect(resolveRuntimeScaledDimensions({ width: 1920, height: 1080 }, 'draft')).toEqual({ width: 960, height: 540 });
-    expect(resolveRuntimeScaledDimensions({ width: 1920, height: 1080 }, 'live')).toEqual({ width: 1440, height: 810 });
-  });
-
-  it('plans spatial field runtime dimensions, buffers, fallbacks, and diagnostics deterministically', () => {
-    const fields = [
-      {
-        id: 'motion',
-        kind: 'motion' as const,
-        sourceClass: 'source-imagery' as const,
-        resolution: { kind: 'source-sized' as const },
-        storage: 'gpu-texture' as const,
-        access: 'read' as const
-      },
-      {
-        id: 'entropy',
-        kind: 'entropy' as const,
-        resolution: { kind: 'scaled' as const, scale: 0.5 },
-        storage: 'gpu-texture' as const,
-        access: 'read-write' as const
-      },
-      {
-        id: 'memory',
-        kind: 'memory' as const,
-        resolution: { kind: 'fixed' as const, width: 4, height: 3 },
-        storage: 'cpu-buffer' as const,
-        access: 'write' as const
-      }
-    ];
-
-    expect(resolveSpatialFieldDimensions(fields[0].resolution, { width: 640, height: 480 }, { width: 1280, height: 720 }, 'draft')).toEqual({ width: 320, height: 240 });
-    expect(resolveSpatialFieldDimensions(fields[1].resolution, { width: 640, height: 480 }, { width: 1280, height: 720 }, 'draft')).toEqual({ width: 320, height: 180 });
-    expect(resolveSpatialFieldDimensions(fields[2].resolution, { width: 640, height: 480 }, { width: 1280, height: 720 }, 'render')).toEqual({ width: 4, height: 3 });
-
-    const plan = planSpatialRuntime({
-      fields,
-      sourceDimensions: { width: 640, height: 480 },
-      outputDimensions: { width: 1280, height: 720 },
-      profile: 'draft',
-      capabilities: {
-        webgpuAvailable: false,
-        supportedStoragePolicies: ['cpu-buffer']
-      }
-    });
-
-    expect(plan.fields.map((field) => ({
-      fieldId: field.fieldId,
-      dimensions: field.dimensions,
-      storage: field.storage,
-      pingPong: field.pingPong,
-      passCount: field.passCount,
-      cpuFallback: field.cpuFallback
-    }))).toEqual([
-      {
-        fieldId: 'motion',
-        dimensions: { width: 320, height: 240 },
-        storage: 'cpu-buffer',
-        pingPong: false,
-        passCount: 1,
-        cpuFallback: true
-      },
-      {
-        fieldId: 'entropy',
-        dimensions: { width: 320, height: 180 },
-        storage: 'cpu-buffer',
-        pingPong: true,
-        passCount: 2,
-        cpuFallback: true
-      },
-      {
-        fieldId: 'memory',
-        dimensions: { width: 4, height: 3 },
-        storage: 'cpu-buffer',
-        pingPong: false,
-        passCount: 1,
-        cpuFallback: false
-      }
-    ]);
-    expect(plan.diagnostics.map((diagnostic) => diagnostic.id)).toEqual([
-      'spatial-field.motion.gpu-unavailable',
-      'spatial-field.entropy.gpu-unavailable'
-    ]);
-  });
-
-  it('reports spatial runtime memory and pass budget warnings with stable ids', () => {
-    const plan = planSpatialRuntime({
-      fields: [
-        {
-          id: 'pressure',
-          kind: 'pressure',
-          resolution: { kind: 'output-sized' },
-          storage: 'cpu-buffer',
-          access: 'read-write'
-        },
-        {
-          id: 'heat',
-          kind: 'heat',
-          resolution: { kind: 'output-sized' },
-          storage: 'cpu-buffer',
-          access: 'read-write'
-        },
-        {
-          id: 'viscosity',
-          kind: 'viscosity',
-          resolution: { kind: 'output-sized' },
-          storage: 'cpu-buffer',
-          access: 'read-write'
-        }
-      ],
-      sourceDimensions: { width: 32, height: 32 },
-      outputDimensions: { width: 32, height: 32 },
-      profile: {
-        ...getBehaviourRuntimeProfile('draft'),
-        memoryBudgetBytes: 64,
-        maxPassesPerFrame: 2
-      }
-    });
-
-    expect(plan.totalBytes).toBe(6144);
-    expect(plan.passCount).toBe(6);
-    expect(plan.diagnostics.map((diagnostic) => diagnostic.id)).toEqual([
-      'spatial-runtime.draft.memory-budget-exceeded',
-      'spatial-runtime.draft.pass-budget-exceeded'
-    ]);
-  });
-
   it('defaults composition identity for projects without authored composition', () => {
     const { composition: _composition, ...projectWithoutComposition } = fixtureProject;
     const normalized = normalizeProject(projectWithoutComposition);
@@ -349,6 +214,7 @@ describe('@afterimage/project-model', () => {
       rejectedArchiveReferences: []
     });
     expect(normalized.composition.spatialFields).toEqual([]);
+    expect(normalized.composition.fieldGenerators).toEqual([]);
     expect(normalized.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
     expect(normalized.composition.layers[0]).toMatchObject({
       id: 'layer-clip-intro',
@@ -356,6 +222,120 @@ describe('@afterimage/project-model', () => {
       assetId: 'asset-alpha',
       clipId: 'clip-intro'
     });
+  });
+
+  it('reports spatial field runtime fallback, profile fit, memory pressure, and persistent frame identities', () => {
+    const project = normalizeProject(fixtureProject);
+    const draftProfile = project.runtimeProfiles.find((profile) => profile.kind === 'draft');
+    const tightProfile = draftProfile ? {
+      ...draftProfile,
+      id: 'runtime-profile-tight',
+      memoryBudgetMb: 1,
+      maxCostClass: 'cheap' as const
+    } : undefined;
+    const plan = buildSpatialFieldRuntimePlan({
+      project,
+      runtimeProfile: tightProfile,
+      outputDimensions: { width: 1920, height: 1080 },
+      sourceDimensions: { width: 1920, height: 1080 },
+      frameIndex: 12,
+      timeMs: 500,
+      webgpuAvailable: false,
+      highQualityOpticalFlowAvailable: false
+    });
+    const memoryReport = plan.reports.find((report) => report.fieldId === 'field-memory-scene');
+    const flowReport = plan.reports.find((report) => report.fieldId === 'field-flow-x-scene');
+    const motionReport = plan.reports.find((report) => report.fieldId === 'field-motion-source');
+
+    expect(plan.generators.map((generator) => generator.id)).toContain('generator-motion-frame-difference-runtime');
+    expect(motionReport?.generatorId).toBe('generator-motion-frame-difference-runtime');
+    expect(flowReport).toMatchObject({
+      dimensions: { width: 960, height: 540 },
+      storageMode: 'cpu-fallback',
+      profileFit: 'memory-exceeded'
+    });
+    expect(memoryReport?.currentFrameId).toBe('composition-main:sequence-main:variant-main:12:500');
+    expect(memoryReport?.previousFrameId).toBe('composition-main:sequence-main:variant-main:11:466');
+    expect(memoryReport?.bufferCount).toBe(5);
+    expect(memoryReport?.persistencePlan).toMatchObject({
+      kind: 'history-window',
+      windowFrames: 4,
+      bufferCount: 5
+    });
+    expect(memoryReport?.frameSlots.map((slot) => [slot.role, slot.frame.frameId])).toEqual([
+      ['current', 'composition-main:sequence-main:variant-main:12:500'],
+      ['previous', 'composition-main:sequence-main:variant-main:11:466'],
+      ['history', 'composition-main:sequence-main:variant-main:10:433'],
+      ['history', 'composition-main:sequence-main:variant-main:9:400'],
+      ['history', 'composition-main:sequence-main:variant-main:8:366']
+    ]);
+    expect(memoryReport?.updatePasses.map((pass) => pass.kind)).toEqual(['decay']);
+    expect(flowReport?.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-high-quality-flow-unavailable');
+    expect(plan.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining([
+      'field-runtime-webgpu-unavailable',
+      'field-runtime-memory-budget',
+      'field-runtime-persistent-ping-pong',
+      'field-runtime-history-window'
+    ]));
+  });
+
+  it('generates deterministic lightweight motion and flow fields', () => {
+    const previous = {
+      width: 2,
+      height: 2,
+      channels: 1 as const,
+      data: [0, 0, 0, 0]
+    };
+    const current = {
+      width: 2,
+      height: 2,
+      channels: 1 as const,
+      data: [0, 128, 64, 255]
+    };
+    const first = generateFrameDifferenceMotionFields({
+      previous,
+      current,
+      cacheIdentityInputs: ['frame:1']
+    });
+    const second = generateFrameDifferenceMotionFields({
+      previous,
+      current,
+      cacheIdentityInputs: ['frame:1']
+    });
+
+    expect(first.dimensions).toEqual({ width: 2, height: 2 });
+    expect(Array.from(first.outputs[0].values)).toEqual(Array.from(second.outputs[0].values));
+    expect(first.outputs.map((output) => output.kind)).toEqual(['motion', 'flow_x', 'flow_y']);
+    expect(first.outputs[0].stats.max).toBeCloseTo(1);
+    expect(first.cacheIdentityInputs).toEqual(second.cacheIdentityInputs);
+  });
+
+  it('creates a manifest-compatible frame difference motion generator', () => {
+    const manifest = createMotionFrameDifferenceManifest({
+      assetId: 'asset-alpha',
+      motionFieldId: 'field-motion-source',
+      flowXFieldId: 'field-flow-x-scene',
+      flowYFieldId: 'field-flow-y-scene',
+      cacheIdentityInputs: ['runtime-profile-draft']
+    });
+
+    expect(manifest).toMatchObject({
+      kind: 'motion-frame-difference',
+      determinismMode: 'deterministic',
+      requiredCapabilities: ['field-generator:motion-frame-difference']
+    });
+    expect(manifest.outputs.map((output) => output.fieldId)).toEqual([
+      'field-motion-source',
+      'field-flow-x-scene',
+      'field-flow-y-scene'
+    ]);
+    expect(manifest.cacheIdentity.inputs).toEqual([
+      'asset-alpha',
+      'field-flow-x-scene',
+      'field-flow-y-scene',
+      'field-motion-source',
+      'runtime-profile-draft'
+    ]);
   });
 
   it('defaults scene and layer identity for older authored composition objects', () => {
@@ -772,6 +752,119 @@ describe('@afterimage/project-model', () => {
       expect.objectContaining({
         path: 'composition.modulationRoutes.route-field-valid.source.id'
       })
+    ]));
+  });
+
+  it('reports invalid field generator and field sampling references', () => {
+    const normalized = normalizeProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        spatialFields: [
+          ...(fixtureProject.composition?.spatialFields ?? []),
+          {
+            id: 'field-persistent-broken',
+            kind: 'memory',
+            resolution: {
+              kind: 'output-sized'
+            },
+            persistence: {
+              lifetime: 'composition',
+              previousFrameAccess: 'previous-frame',
+              accumulation: {
+                kind: 'accumulate'
+              },
+              replayIdentity: {
+                deterministic: true,
+                seedId: 'seed-missing'
+              },
+              storageIntent: 'replayable'
+            }
+          }
+        ],
+        fieldGenerators: [
+          ...(fixtureProject.composition?.fieldGenerators ?? []),
+          {
+            id: 'generator-broken',
+            kind: 'clip-luma',
+            inputs: [
+              {
+                id: 'input-missing',
+                kind: 'asset',
+                refId: 'asset-missing'
+              }
+            ],
+            outputs: [
+              {
+                id: 'output-missing',
+                kind: 'spatial-field',
+                fieldId: 'field-missing'
+              }
+            ],
+            scope: {
+              compositionId: 'composition-main'
+            },
+            costClass: 'cheap',
+            determinismMode: 'deterministic',
+            capturePolicy: 'ignore',
+            requiredCapabilities: ['field-generator:clip-luma'],
+            cacheIdentity: {
+              version: 'broken@1',
+              inputs: ['asset-missing']
+            }
+          }
+        ]
+      },
+      filterStacks: [
+        {
+          ...fixtureProject.filterStacks[0],
+          filters: [
+            {
+              ...fixtureProject.filterStacks[0].filters[0],
+              fieldSamplers: [
+                ...(fixtureProject.filterStacks[0].filters[0].fieldSamplers ?? []),
+                {
+                  id: 'sampler-missing',
+                  fieldId: 'field-missing',
+                  parameter: 'missing-parameter',
+                  sampleMode: 'linear',
+                  blendMode: 'replace',
+                  channels: ['luma'],
+                  fallbackValue: 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(collectProjectIntegrityIssues(normalized)).toEqual(expect.arrayContaining([
+      {
+        code: 'missing-reference',
+        message: 'Spatial field "field-persistent-broken" persistence references missing deterministic seed "seed-missing".',
+        path: 'composition.spatialFields.field-persistent-broken.persistence.replayIdentity.seedId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Field generator "generator-broken" input "input-missing" references missing asset "asset-missing".',
+        path: 'composition.fieldGenerators.generator-broken.inputs.input-missing.refId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Field generator "generator-broken" output "output-missing" references missing spatial field "field-missing".',
+        path: 'composition.fieldGenerators.generator-broken.outputs.output-missing.fieldId'
+      },
+      {
+        code: 'missing-reference',
+        message: 'Field sampler "sampler-missing" references missing spatial field "field-missing".',
+        path: 'filterStacks.stack-sequence-main.filters.filter-main-bloom.fieldSamplers.sampler-missing.fieldId'
+      },
+      {
+        code: 'unsupported-value',
+        message: 'Field sampler "sampler-missing" targets unsupported parameter "missing-parameter" for filter "filter-main-bloom".',
+        path: 'filterStacks.stack-sequence-main.filters.filter-main-bloom.fieldSamplers.sampler-missing.parameter'
+      }
     ]));
   });
 

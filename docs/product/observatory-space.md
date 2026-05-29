@@ -27,6 +27,36 @@ Selecting any signal opens the detail drawer. The drawer explains the signal in 
 
 ![Behaviour map and signal detail](assets/observatory-space/behaviour-map-detail.png)
 
+## Inspect Behavioural Fields
+
+Spatial fields appear as behavioural signals rather than raw runtime ids. Their primary labels use artist-facing field language such as **Drift**, **Pressure**, **Corrosion**, **Instability**, **Memory**, **Viscosity**, and **Turbulence**.
+
+Selecting a spatial-field signal in the behaviour map selects the same field in the field inspector. Selecting a field in the inspector also selects the matching Observatory signal, so the map, detail drawer, and field preview stay in sync.
+
+The field inspector controls describe what you are looking at:
+
+- **Field** shows the selected field on its own.
+- **Motion** emphasizes where the field is strongest.
+- **Drift** shows directional movement across the frame.
+- **Balance** shows the distribution of values for diagnostics.
+
+Runtime details are still available, but they are secondary. Use the detail rows for field id, generator id, frame id, storage mode, profile fit, dimensions, and cost class when debugging output planning.
+
+## Choose A Runtime Profile
+
+The Observatory header includes a compact profile selector:
+
+- **Draft** favors quick checks with reduced resolution, short persistence, and lighter detail.
+- **Live** favors responsive rehearsal with active memory and balanced resolution.
+- **Studio** is the default working view, with steady playback, held memory, rich detail, layered depth, and full field resolution.
+- **Render** favors locked output review with maximum detail, complete memory, deeper passes, and source resolution.
+
+The selection is local to Studio. It does not write project schema or change export settings. Switching profiles replans the Observatory field view so dimensions, persistence depth, diagnostics, and profile fit reflect the selected budget while keeping the selected field and overlay mode where possible.
+
+Field cards lead with artist-facing qualities: stability, persistence, detail, depth, and resolution. Backend identifiers such as frame id, storage mode, profile fit, generator id, update-pass count, and diagnostics remain in the Runtime details disclosure.
+
+High-quality motion and optical-flow generation remains future THE-72 work. Observatory may show deterministic frame-difference motion inputs, but this profile selector does not add the full optical-flow pipeline.
+
 ## Decide What Can Be Trusted
 
 The Trust lane categorizes existing system truth:
@@ -38,9 +68,9 @@ The Trust lane categorizes existing system truth:
 
 When no blockers are present, Observatory still shows the current world state and explicitly reports that no blockers are present.
 
-## Understand Render And Backend State
+## Understand Runtime And Backend State
 
-Render Graph collects diagnostics returned by preview and export jobs. Backend collects FFmpeg availability, tool versions, toolchain warnings, environment summaries, and recent commands from desktop diagnostics.
+Runtime collects field and output diagnostics returned by planning, preview, and export jobs. Backend collects FFmpeg availability, tool versions, toolchain warnings, environment summaries, and recent commands from desktop diagnostics.
 
 These signals explain output planning without changing the public job result shape or diagnostics wire contract.
 

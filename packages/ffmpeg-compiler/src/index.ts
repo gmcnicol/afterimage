@@ -34,6 +34,11 @@ export {
 } from './preview-adapter.js';
 export { buildPreviewCapabilityReport } from './preview-capability.js';
 export {
+  createFieldTextureDescriptors,
+  negotiateWebGpuFieldRuntime,
+  releaseWebGpuFieldRuntime
+} from './field-runtime.js';
+export {
   CAPTURE_REPLAY_MISSING_REFERENCE,
   CAPTURE_REPLAY_PLANNING_FAILED,
   CAPTURE_REPLAY_UNSUPPORTED_VALUE,

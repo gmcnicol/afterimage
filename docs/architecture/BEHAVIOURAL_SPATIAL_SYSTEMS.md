@@ -89,6 +89,21 @@ World State
 
 The renderer is downstream from behaviour.
 
+Spatial fields now plan explicit runtime execution sessions. Each session has
+deterministic frame identity, dimensions, storage mode, a persistence plan, and
+bounded update passes. Persistence is represented as frame slots:
+
+- current-frame fields allocate one current slot
+- previous-frame fields allocate current plus previous slots for ping-pong
+  updates
+- history-window fields allocate current plus a bounded history window, capped
+  by the active runtime profile
+
+The same plan drives byte estimates, profile fit, cache identity, diagnostics,
+and GPU texture allocation. Draft, Live, Studio, and Render profiles scale field
+resolution, pass depth, memory budget, cost tolerance, and fallback policy
+without changing the project schema.
+
 ## Data Requirements
 
 Spatial systems should define system ID, system type, scene or world scope,
@@ -106,10 +121,21 @@ curves, or backend-specific shader and filter inputs.
 The graph should prefer intermediate passes over enormous monolithic
 `filter_complex` chains when the system has state or reuse value.
 
+The current executable path is intentionally limited to WebGPU field texture
+sessions inside `@afterimage/ffmpeg-compiler`. It allocates planned field
+textures, encodes minimal compute updates for replace, accumulate, decay,
+diffuse, and smear-compatible passes, submits command buffers, and reports CPU
+fallback diagnostics on missing WebGPU, allocation errors, validation errors,
+out-of-memory, limit failures, pass execution failures, or device loss.
+
+Higher-quality motion generation and optical-flow inputs are still future
+THE-72 work. The runtime may use deterministic frame-difference motion inputs
+where they already exist, but it must not introduce the full optical-flow
+pipeline here.
+
 ## Constraint
 
 Do not pursue physically accurate fluid simulation initially.
 
 The target is emotionally and behaviourally convincing audiovisual evolution,
 not computational fluid dynamics correctness.
-
