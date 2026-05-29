@@ -69,6 +69,16 @@ scaffolding. When an old workflow, screen, or implementation pattern conflicts
 with the foundations, do the opposite of preserving it by inertia. Migrate it
 into the current architecture or leave it behind.
 
+## UI Maxim
+
+The UI must be an inspiration.
+
+Studio should make the foundations feel inevitable: alive, legible, playable,
+and emotionally coherent. It should not merely expose data or recreate old
+screens with better styling. Each surface should help the user believe in the
+world they are shaping and understand what the system is asking them to do
+next.
+
 ---
 
 # What Afterimage Is
