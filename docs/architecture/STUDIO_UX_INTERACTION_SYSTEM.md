@@ -616,6 +616,11 @@ actions.
 
 Wireframes describe structure and workflow, not final visual design.
 
+Archived v0 Studio screens are historical warning signs, not templates. Treat
+them as evidence of what became too generic, too screen-bound, or too detached
+from Core meaning. Current implementation should follow the workspace principles
+in this document and the active product docs, not copy archived layouts.
+
 See `assets/studio-v1-shell-mockup.svg` for a visual shell mockup.
 
 The common shell should preserve:
