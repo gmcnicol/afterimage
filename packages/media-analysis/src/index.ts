@@ -17,6 +17,7 @@ import type {
   WaveformSummary
 } from '@afterimage/project-model';
 import { normalizeAnalysisFile } from '@afterimage/project-model';
+export * from './motion-fields.js';
 
 interface FfprobeStreamInput {
   codec_type?: string;

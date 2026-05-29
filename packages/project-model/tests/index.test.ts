@@ -4,10 +4,14 @@ import {
   collectArchiveIntegrityIssues,
   collectProjectIntegrityIssues,
   createEmptyProject,
+  getBehaviourRuntimeProfile,
   getAssetById,
   getDefaultVariant,
   normalizeArchiveMetadataFile,
   normalizeProject,
+  planSpatialRuntime,
+  resolveSpatialFieldDimensions,
+  resolveRuntimeScaledDimensions,
   resolveProjectPathCandidates
 } from '../src';
 
@@ -175,6 +179,158 @@ describe('@afterimage/project-model', () => {
       layerIds: []
     });
     expect(project.composition.layers).toEqual([]);
+  });
+
+  it('defines behaviour runtime profile defaults and field scale mapping', () => {
+    expect(getBehaviourRuntimeProfile('draft')).toMatchObject({
+      fieldResolutionScale: 0.5,
+      fpsTarget: 30,
+      maxPassesPerFrame: 4,
+      fallbackPolicy: 'cpu-first',
+      behaviourCostClass: 'low'
+    });
+    expect(getBehaviourRuntimeProfile('live')).toMatchObject({
+      fieldResolutionScale: 0.75,
+      fpsTarget: 60,
+      fallbackPolicy: 'gpu-preferred',
+      behaviourCostClass: 'interactive'
+    });
+    expect(getBehaviourRuntimeProfile('studio')).toMatchObject({
+      fieldResolutionScale: 1,
+      fpsTarget: 30,
+      fallbackPolicy: 'cpu-allowed',
+      behaviourCostClass: 'balanced'
+    });
+    expect(getBehaviourRuntimeProfile('render')).toMatchObject({
+      fieldResolutionScale: 1,
+      fpsTarget: 24,
+      fallbackPolicy: 'gpu-required',
+      behaviourCostClass: 'offline'
+    });
+    expect(resolveRuntimeScaledDimensions({ width: 1920, height: 1080 }, 'draft')).toEqual({ width: 960, height: 540 });
+    expect(resolveRuntimeScaledDimensions({ width: 1920, height: 1080 }, 'live')).toEqual({ width: 1440, height: 810 });
+  });
+
+  it('plans spatial field runtime dimensions, buffers, fallbacks, and diagnostics deterministically', () => {
+    const fields = [
+      {
+        id: 'motion',
+        kind: 'motion' as const,
+        sourceClass: 'source-imagery' as const,
+        resolution: { kind: 'source-sized' as const },
+        storage: 'gpu-texture' as const,
+        access: 'read' as const
+      },
+      {
+        id: 'entropy',
+        kind: 'entropy' as const,
+        resolution: { kind: 'scaled' as const, scale: 0.5 },
+        storage: 'gpu-texture' as const,
+        access: 'read-write' as const
+      },
+      {
+        id: 'memory',
+        kind: 'memory' as const,
+        resolution: { kind: 'fixed' as const, width: 4, height: 3 },
+        storage: 'cpu-buffer' as const,
+        access: 'write' as const
+      }
+    ];
+
+    expect(resolveSpatialFieldDimensions(fields[0].resolution, { width: 640, height: 480 }, { width: 1280, height: 720 }, 'draft')).toEqual({ width: 320, height: 240 });
+    expect(resolveSpatialFieldDimensions(fields[1].resolution, { width: 640, height: 480 }, { width: 1280, height: 720 }, 'draft')).toEqual({ width: 320, height: 180 });
+    expect(resolveSpatialFieldDimensions(fields[2].resolution, { width: 640, height: 480 }, { width: 1280, height: 720 }, 'render')).toEqual({ width: 4, height: 3 });
+
+    const plan = planSpatialRuntime({
+      fields,
+      sourceDimensions: { width: 640, height: 480 },
+      outputDimensions: { width: 1280, height: 720 },
+      profile: 'draft',
+      capabilities: {
+        webgpuAvailable: false,
+        supportedStoragePolicies: ['cpu-buffer']
+      }
+    });
+
+    expect(plan.fields.map((field) => ({
+      fieldId: field.fieldId,
+      dimensions: field.dimensions,
+      storage: field.storage,
+      pingPong: field.pingPong,
+      passCount: field.passCount,
+      cpuFallback: field.cpuFallback
+    }))).toEqual([
+      {
+        fieldId: 'motion',
+        dimensions: { width: 320, height: 240 },
+        storage: 'cpu-buffer',
+        pingPong: false,
+        passCount: 1,
+        cpuFallback: true
+      },
+      {
+        fieldId: 'entropy',
+        dimensions: { width: 320, height: 180 },
+        storage: 'cpu-buffer',
+        pingPong: true,
+        passCount: 2,
+        cpuFallback: true
+      },
+      {
+        fieldId: 'memory',
+        dimensions: { width: 4, height: 3 },
+        storage: 'cpu-buffer',
+        pingPong: false,
+        passCount: 1,
+        cpuFallback: false
+      }
+    ]);
+    expect(plan.diagnostics.map((diagnostic) => diagnostic.id)).toEqual([
+      'spatial-field.motion.gpu-unavailable',
+      'spatial-field.entropy.gpu-unavailable'
+    ]);
+  });
+
+  it('reports spatial runtime memory and pass budget warnings with stable ids', () => {
+    const plan = planSpatialRuntime({
+      fields: [
+        {
+          id: 'pressure',
+          kind: 'pressure',
+          resolution: { kind: 'output-sized' },
+          storage: 'cpu-buffer',
+          access: 'read-write'
+        },
+        {
+          id: 'heat',
+          kind: 'heat',
+          resolution: { kind: 'output-sized' },
+          storage: 'cpu-buffer',
+          access: 'read-write'
+        },
+        {
+          id: 'viscosity',
+          kind: 'viscosity',
+          resolution: { kind: 'output-sized' },
+          storage: 'cpu-buffer',
+          access: 'read-write'
+        }
+      ],
+      sourceDimensions: { width: 32, height: 32 },
+      outputDimensions: { width: 32, height: 32 },
+      profile: {
+        ...getBehaviourRuntimeProfile('draft'),
+        memoryBudgetBytes: 64,
+        maxPassesPerFrame: 2
+      }
+    });
+
+    expect(plan.totalBytes).toBe(6144);
+    expect(plan.passCount).toBe(6);
+    expect(plan.diagnostics.map((diagnostic) => diagnostic.id)).toEqual([
+      'spatial-runtime.draft.memory-budget-exceeded',
+      'spatial-runtime.draft.pass-budget-exceeded'
+    ]);
   });
 
   it('defaults composition identity for projects without authored composition', () => {
