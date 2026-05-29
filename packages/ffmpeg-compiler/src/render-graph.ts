@@ -4,8 +4,10 @@ import type {
   NormalizedProjectFile,
   ProjectFile,
   RuntimeCostClass,
+  SpatialFieldRuntimeDiagnostic,
   RuntimePerformanceProfile
 } from '@afterimage/project-model';
+import { buildSpatialFieldRuntimePlan } from '@afterimage/project-model';
 import { createCacheIdentity, hashIdentity } from './identity.js';
 import {
   buildRenderCommand,
@@ -283,6 +285,23 @@ function createFieldSamplerRequirement(plannedSampler: PlannedFieldSampler): Ren
   };
 }
 
+function toRenderGraphFieldRuntimeDiagnostic(
+  diagnostic: SpatialFieldRuntimeDiagnostic,
+  operationNodeId: string,
+  passId: string
+): RenderGraphCapabilityDiagnostic {
+  return {
+    id: diagnostic.id,
+    severity: diagnostic.severity,
+    code: diagnostic.code,
+    message: diagnostic.message,
+    path: diagnostic.fieldId ? `composition.spatialFields.${diagnostic.fieldId}` : undefined,
+    nodeId: diagnostic.generatorId ? `field-generator:${diagnostic.generatorId}` : operationNodeId,
+    passId,
+    requirementId: diagnostic.generatorId ? `requirement:field-generator:${diagnostic.generatorId}` : undefined
+  };
+}
+
 export function buildRenderGraphPlan(
   project: ProjectFile | NormalizedProjectFile,
   request: PreviewRequest | ExportRequest | RenderRequest,
@@ -297,7 +316,6 @@ export function buildRenderGraphPlan(
   const resolvedTools = makePlanningTools(tools);
   const graphProfile = normalizeRenderProfileForGraph(profile);
   const runtimeProfile = selectRuntimePerformanceProfile(normalizedProject, request, mode);
-  const fieldGenerators = normalizedProject.composition.fieldGenerators;
   const fieldSamplers = collectPlannedFieldSamplers(normalizedProject);
   const commandPlan = buildRenderCommand(normalizedProject, variant, sequenceId, request, graphProfile, resolvedTools, {
     captureReplay: normalizedCaptureReplay
@@ -319,6 +337,23 @@ export function buildRenderGraphPlan(
   });
   const durationMs = getTargetRenderDurationMs(normalizedProject, variant);
   const operationNodeId = `operation:${mode}:${variant.id}`;
+  const passId = 'pass:ffmpeg-render';
+  const fieldRuntime = buildSpatialFieldRuntimePlan({
+    project: normalizedProject,
+    runtimeProfile,
+    outputDimensions: {
+      width: graphProfile.width,
+      height: graphProfile.height
+    },
+    sourceDimensions: {
+      width: graphProfile.width,
+      height: graphProfile.height
+    },
+    frameIndex: 0,
+    timeMs: 0,
+    highQualityOpticalFlowAvailable: false
+  });
+  const fieldGenerators = fieldRuntime.generators ?? normalizedProject.composition.fieldGenerators;
   const cacheInputs = [
     `project:${normalizedProject.id}`,
     `sequence:${sequenceId}`,
@@ -326,6 +361,14 @@ export function buildRenderGraphPlan(
     `profile:${hashIdentity(graphProfile)}`,
     `runtime-profile:${runtimeProfile ? hashIdentity(runtimeProfile) : 'none'}`,
     `spatial-fields:${hashIdentity(normalizedProject.composition.spatialFields)}`,
+    `field-runtime:${hashIdentity(fieldRuntime.reports.map((report) => ({
+      fieldId: report.fieldId,
+      dimensions: report.dimensions,
+      storageMode: report.storageMode,
+      profileFit: report.profileFit,
+      currentFrameId: report.currentFrameId,
+      previousFrameId: report.previousFrameId
+    })))}`,
     `field-generators:${hashIdentity(fieldGenerators)}`,
     `field-samplers:${hashIdentity(fieldSamplers)}`,
     `toolchain:${hashIdentity(toolchain)}`,
@@ -361,6 +404,7 @@ export function buildRenderGraphPlan(
     inputs: inputReferences,
     captureReplay: normalizedCaptureReplay,
     runtimeProfile,
+    fieldRuntime,
     fieldGenerators,
     fieldSamplers,
     command: reusableCommand,
@@ -378,6 +422,7 @@ export function buildRenderGraphPlan(
       runtimeProfile,
       inputAssetIds: inputReferences.map((input) => input.assetId),
       spatialFieldIds: normalizedProject.composition.spatialFields.map((field) => field.id),
+      fieldRuntimeReportIds: fieldRuntime.reports.map((report) => report.fieldId),
       fieldGeneratorIds: fieldGenerators.map((generator) => generator.id),
       fieldSamplerIds: fieldSamplers.map((plannedSampler) => plannedSampler.sampler.id),
       ...(captureMetadata ? { captureReplay: captureMetadata } : {})
@@ -443,7 +488,6 @@ export function buildRenderGraphPlan(
     cacheKey: artifactCacheIdentity.key
   };
   const requirementId = 'requirement:ffmpeg-render';
-  const passId = 'pass:ffmpeg-render';
   const captureReplayNodeId = normalizedCaptureReplay ? `capture-replay:${normalizedCaptureReplay.identity.captureLogId}` : undefined;
   const fieldGeneratorNodeIds = fieldGenerators.map((generator) => `field-generator:${generator.id}`);
   const fieldConsumerNodeIds = fieldSamplers.map((plannedSampler) => `field-consumer:${plannedSampler.filterId}:${plannedSampler.sampler.id}`);
@@ -535,7 +579,16 @@ export function buildRenderGraphPlan(
         capturePolicy: generator.capturePolicy,
         requiredCapabilities: generator.requiredCapabilities,
         cacheIdentity: generator.cacheIdentity,
-        execution: 'placeholder'
+        execution: generator.kind === 'motion-frame-difference' ? 'frame-difference-runtime' : 'placeholder',
+        runtimeReports: fieldRuntime.reports.filter((report) => report.generatorId === generator.id).map((report) => ({
+          fieldId: report.fieldId,
+          dimensions: report.dimensions,
+          storageMode: report.storageMode,
+          currentFrameId: report.currentFrameId,
+          previousFrameId: report.previousFrameId,
+          profileFit: report.profileFit,
+          diagnostics: report.diagnostics.map((diagnostic) => diagnostic.id)
+        }))
       }
     })),
     ...fieldSamplers.map((plannedSampler) => ({
@@ -688,6 +741,7 @@ export function buildRenderGraphPlan(
       passId,
       requirementId
     }),
+    ...fieldRuntime.diagnostics.map((diagnostic) => toRenderGraphFieldRuntimeDiagnostic(diagnostic, operationNodeId, passId)),
     ...(runtimeProfile ? normalizedProject.composition.spatialFields
       .filter((field) => exceedsRuntimeBudget(field.costClass ?? 'moderate', runtimeProfile))
       .map((field) => ({
@@ -714,16 +768,27 @@ export function buildRenderGraphPlan(
         requirementId: `requirement:runtime-profile:${runtimeProfile.id}`
       }))
       : []),
-    ...fieldGenerators.map((generator) => ({
-      id: `diagnostic:field-generator:${generator.id}:placeholder`,
-      severity: 'info' as const,
-      code: 'field-generator-placeholder',
-      message: `Field generator "${generator.id}" is represented in the render graph but is not executed by the FFmpeg planner.`,
-      path: `composition.fieldGenerators.${generator.id}`,
-      nodeId: `field-generator:${generator.id}`,
-      passId,
-      requirementId: `requirement:field-generator:${generator.id}`
-    })),
+    ...fieldGenerators.map((generator) => generator.kind === 'motion-frame-difference'
+      ? {
+          id: `diagnostic:field-generator:${generator.id}:motion-frame-difference-runtime`,
+          severity: 'info' as const,
+          code: 'field-generator-motion-frame-difference-runtime',
+          message: `Field generator "${generator.id}" is planned as deterministic frame differencing for preview/runtime inspection.`,
+          path: `composition.fieldGenerators.${generator.id}`,
+          nodeId: `field-generator:${generator.id}`,
+          passId,
+          requirementId: `requirement:field-generator:${generator.id}`
+        }
+      : {
+          id: `diagnostic:field-generator:${generator.id}:placeholder`,
+          severity: 'info' as const,
+          code: 'field-generator-placeholder',
+          message: `Field generator "${generator.id}" is represented in the render graph but is not executed by the FFmpeg planner.`,
+          path: `composition.fieldGenerators.${generator.id}`,
+          nodeId: `field-generator:${generator.id}`,
+          passId,
+          requirementId: `requirement:field-generator:${generator.id}`
+        }),
     ...fieldSamplers.map((plannedSampler) => ({
       id: `diagnostic:field-sampler:${plannedSampler.sampler.id}:scalar-fallback`,
       severity: 'warning' as const,
@@ -819,6 +884,7 @@ export function buildRenderGraphPlan(
     artifacts,
     backendRequirements,
     diagnostics,
+    fieldRuntime,
     cacheIdentity: planCacheIdentity
   };
 }

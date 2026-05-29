@@ -1,5 +1,7 @@
 import { resolveCompositionIntent } from '@afterimage/domain-operations';
+import { exportProfiles } from '@afterimage/export-profiles';
 import {
+  buildSpatialFieldRuntimePlan,
   collectProjectIntegrityIssues,
   getDefaultSequence,
   getDefaultVariant,
@@ -16,6 +18,8 @@ import {
   type NormalizedSceneLayerDefinition,
   type ProjectIntegrityIssue,
   type Sequence,
+  type SpatialFieldRuntimePlan,
+  type SpatialFieldRuntimeReport,
   type Variant
 } from '@afterimage/project-model';
 import type { StudioRenderDiagnostic } from '@afterimage/studio-contracts';
@@ -26,6 +30,7 @@ export type ObservatorySignalSeverity = 'healthy' | 'info' | 'warning' | 'blocke
 export type ObservatorySignalKind =
   | 'scene'
   | 'layer'
+  | 'spatial-field'
   | 'route'
   | 'entropy-state'
   | 'archive-reference'
@@ -80,6 +85,8 @@ export interface ObservatoryTelemetry {
   captureEventCount: number;
   replayCriticalEventCount: number;
   renderDiagnosticCount: number;
+  spatialFieldCount: number;
+  fieldRuntimeDiagnosticCount: number;
 }
 
 export interface ObservatorySceneSnapshot {
@@ -116,6 +123,7 @@ export interface ObservatorySnapshot {
   latestCaptureLog?: CaptureLog;
   latestCaptureEvents: CaptureEvent[];
   renderDiagnostics: ObservatoryRenderDiagnosticSnapshot[];
+  fieldRuntime: SpatialFieldRuntimePlan;
   trust: ObservatoryTrustSummary;
   lanes: ObservatoryLane[];
   signals: ObservatorySignal[];
@@ -510,6 +518,58 @@ function buildRenderSignals(renderDiagnostics: ObservatoryRenderDiagnosticSnapsh
   }));
 }
 
+function fieldReportSeverity(report: SpatialFieldRuntimeReport): ObservatorySignalSeverity {
+  if (report.diagnostics.some((diagnostic) => diagnostic.severity === 'error') || report.profileFit === 'memory-exceeded') {
+    return 'blocked';
+  }
+  if (report.diagnostics.some((diagnostic) => diagnostic.severity === 'warning') || report.profileFit === 'cost-exceeded') {
+    return 'warning';
+  }
+  if (report.profileFit === 'degraded') {
+    return 'info';
+  }
+
+  return 'healthy';
+}
+
+function buildFieldRuntimeSignals(fieldRuntime: SpatialFieldRuntimePlan): ObservatorySignal[] {
+  return fieldRuntime.reports.map((report) => signal({
+    id: `spatial-field:${report.fieldId}`,
+    laneId: 'render-graph' as const,
+    kind: 'spatial-field' as const,
+    severity: fieldReportSeverity(report),
+    label: report.fieldId,
+    summary: `${report.fieldKind} ${report.dimensions.width} x ${report.dimensions.height}, ${report.storageMode}, ${report.profileFit}.`,
+    metadata: [
+      report.generatorId ?? 'no generator',
+      `${report.bufferCount} buffer${report.bufferCount === 1 ? '' : 's'}`,
+      report.previousFrameId ? 'previous frame' : 'current frame only'
+    ],
+    detail: {
+      semantic: `This runtime report shows how spatial field "${report.fieldId}" is planned for inspection and preview diagnostics.`,
+      backend: JSON.stringify({
+        fieldId: report.fieldId,
+        generatorId: report.generatorId,
+        dimensions: report.dimensions,
+        storageMode: report.storageMode,
+        currentFrameId: report.currentFrameId,
+        previousFrameId: report.previousFrameId,
+        costClass: report.costClass,
+        profileFit: report.profileFit,
+        diagnostics: report.diagnostics
+      }),
+      properties: [
+        ['generator', report.generatorId ?? '-'],
+        ['dimensions', `${report.dimensions.width} x ${report.dimensions.height}`],
+        ['storage', report.storageMode],
+        ['cost', report.costClass],
+        ['current', report.currentFrameId],
+        ['previous', report.previousFrameId ?? '-']
+      ]
+    }
+  }));
+}
+
 function buildBackendSignals(diagnostics: DiagnosticsSnapshot | undefined): ObservatorySignal[] {
   if (!diagnostics) {
     return [signal({
@@ -658,7 +718,11 @@ function buildLanes(signals: ObservatorySignal[], trust: ObservatoryTrustSummary
         return {
           id: laneId,
           title: 'Render Graph',
-          summary: telemetry.renderDiagnosticCount > 0 ? `${telemetry.renderDiagnosticCount} render graph diagnostics found.` : 'No render graph diagnostics found in preview/export jobs.',
+          summary: telemetry.fieldRuntimeDiagnosticCount > 0
+            ? `${telemetry.spatialFieldCount} fields, ${telemetry.fieldRuntimeDiagnosticCount} field runtime diagnostics.`
+            : telemetry.renderDiagnosticCount > 0
+              ? `${telemetry.renderDiagnosticCount} render graph diagnostics found.`
+              : `${telemetry.spatialFieldCount} field runtime reports available.`,
           severity,
           signals: laneSignals
         };
@@ -759,6 +823,26 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
   const failedJobs = jobs.filter((job) => (job.type === 'preview' || job.type === 'export') && job.status === 'failed');
   const logs = input.logs ?? input.diagnostics?.logs ?? [];
   const renderDiagnostics = collectRenderDiagnostics(jobs);
+  const runtimeProfiles = input.project.runtimeProfiles ?? [];
+  const runtimeProfile = runtimeProfiles.find((profile) => profile.kind === 'studio')
+    ?? runtimeProfiles[0];
+  const enabledProfileId = input.project.composition.exportProfileIds[0] ?? input.project.exportSelections.find((selection) => selection.enabled)?.profileId;
+  const outputProfile = exportProfiles.find((profile) => profile.id === enabledProfileId) ?? exportProfiles[0];
+  const fieldRuntime = buildSpatialFieldRuntimePlan({
+    project: input.project,
+    runtimeProfile,
+    outputDimensions: {
+      width: outputProfile.width,
+      height: outputProfile.height
+    },
+    sourceDimensions: {
+      width: outputProfile.width,
+      height: outputProfile.height
+    },
+    frameIndex: 0,
+    timeMs: 0,
+    highQualityOpticalFlowAvailable: false
+  });
   const archiveReferenceIds = collectArchiveReferenceIds(input.project);
   const telemetry: ObservatoryTelemetry = {
     sceneCount: scenes.length,
@@ -775,7 +859,9 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     captureLogCount: input.project.captureLogs.length,
     captureEventCount: input.project.captureLogs.reduce((sum, log) => sum + log.events.length, 0),
     replayCriticalEventCount: input.project.captureLogs.reduce((sum, log) => sum + log.events.filter((event) => event.replayCritical).length, 0),
-    renderDiagnosticCount: renderDiagnostics.length
+    renderDiagnosticCount: renderDiagnostics.length,
+    spatialFieldCount: fieldRuntime.reports.length,
+    fieldRuntimeDiagnosticCount: fieldRuntime.diagnostics.length
   };
 
   const worldSignals = [
@@ -810,7 +896,10 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     diagnostics: input.diagnostics,
     failedJobs
   });
-  const renderSignals = buildRenderSignals(renderDiagnostics);
+  const renderSignals = [
+    ...buildRenderSignals(renderDiagnostics),
+    ...buildFieldRuntimeSignals(fieldRuntime)
+  ];
   const backendSignals = buildBackendSignals(input.diagnostics);
   const activitySignals = buildActivitySignals(jobs, logs);
   const trust = deriveTrustSummary(trustSignals);
@@ -837,6 +926,7 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     latestCaptureLog,
     latestCaptureEvents,
     renderDiagnostics,
+    fieldRuntime,
     trust,
     lanes,
     signals,

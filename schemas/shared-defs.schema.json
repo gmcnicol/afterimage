@@ -168,7 +168,7 @@
     },
     "fieldGeneratorKind": {
       "type": "string",
-      "enum": ["clip-luma", "seeded-noise-drift", "external-live-source"]
+      "enum": ["clip-luma", "seeded-noise-drift", "external-live-source", "motion-frame-difference"]
     },
     "fieldGeneratorInputKind": {
       "type": "string",

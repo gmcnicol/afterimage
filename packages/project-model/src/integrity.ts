@@ -358,6 +358,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   const captureSessionIds = new Set(project.captureSessions.map((session) => session.id));
   const captureEventIds = new Set(project.captureLogs.flatMap((log) => log.events.map((event) => event.id)));
   const midiBindingIds = new Set(project.midiMappings.flatMap((mapping) => mapping.bindings.map((binding) => binding.id)));
+  const runtimeProfiles = project.runtimeProfiles ?? [];
 
   issues.push(...collectDuplicateIdIssues('assets', project.assets.map((asset) => asset.id)));
   issues.push(...collectDuplicateIdIssues('presets', project.presets.map((preset) => preset.id)));
@@ -369,7 +370,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   issues.push(...collectDuplicateIdIssues('filterStacks', project.filterStacks.map((stack) => stack.id)));
   issues.push(...collectDuplicateIdIssues('automationLanes', project.automationLanes.map((lane) => lane.id)));
   issues.push(...collectDuplicateIdIssues('midiMappings', project.midiMappings.map((mapping) => mapping.id)));
-  issues.push(...collectDuplicateIdIssues('runtimeProfiles', project.runtimeProfiles.map((profile) => profile.id)));
+  issues.push(...collectDuplicateIdIssues('runtimeProfiles', runtimeProfiles.map((profile) => profile.id)));
   issues.push(...collectDuplicateIdIssues('composition.assetIds', project.composition.assetIds));
   issues.push(...collectDuplicateIdIssues('composition.exportProfileIds', project.composition.exportProfileIds));
   issues.push(...collectDuplicateIdIssues('composition.deterministicSeeds', project.composition.deterministicSeeds.map((seed) => seed.id)));
@@ -401,7 +402,7 @@ export function collectProjectIntegrityIssues(project: NormalizedProjectFile, co
   };
   const fieldGeneratorRefs = { assetIds, spatialFieldIds, seedIds };
 
-  for (const profile of project.runtimeProfiles) {
+  for (const profile of runtimeProfiles) {
     validateRuntimeProfile(issues, profile);
   }
 

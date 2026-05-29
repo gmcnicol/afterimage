@@ -24,6 +24,7 @@ import {
   CAPTURE_REPLAY_MISSING_REFERENCE,
   CAPTURE_REPLAY_PLANNING_FAILED,
   CAPTURE_REPLAY_UNSUPPORTED_VALUE,
+  negotiateWebGpuFieldRuntime,
   evaluatePreviewAdapterReadiness,
   executeCommandSpec,
   FFMPEG_PASS_COMPATIBILITY,
@@ -419,6 +420,91 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(artifact.provenance.parentCacheKeys).toContain(pass.cacheIdentity.key);
   });
 
+  it('attaches spatial field runtime reports to render graph plans without changing FFmpeg commands', () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    });
+    const commandArgs = plan.passes[0].command.args;
+    const memoryReport = plan.fieldRuntime?.reports.find((report) => report.fieldId === 'field-memory-scene');
+
+    expect(commandArgs).toEqual(buildPreviewPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }).command.args);
+    expect(plan.fieldRuntime?.runtimeProfileId).toBe('runtime-profile-draft');
+    expect(plan.fieldRuntime?.reports.map((report) => report.fieldId)).toContain('field-motion-source');
+    expect(memoryReport).toMatchObject({
+      bufferCount: 2,
+      currentFrameId: 'composition-main:sequence-main:variant-main:0:0',
+      previousFrameId: 'composition-main:sequence-main:variant-main:0:0'
+    });
+    expect(plan.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-high-quality-flow-unavailable');
+  });
+
+  it('negotiates WebGPU field textures and falls back cleanly when WebGPU is unavailable or lost', async () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }).fieldRuntime;
+
+    expect(plan).toBeDefined();
+    if (!plan) {
+      return;
+    }
+
+    const unavailable = await negotiateWebGpuFieldRuntime(plan, {
+      gpu: undefined
+    });
+    expect(unavailable.mode).toBe('cpu-fallback');
+    expect(unavailable.runtimeDiagnostics.diagnostics).toContain('navigator.gpu is not available');
+
+    const createdDescriptors: GPUTextureDescriptor[] = [];
+    const fakeDevice = {
+      limits: { maxTextureDimension2D: 4096 },
+      lost: new Promise<GPUDeviceLostInfo>(() => undefined),
+      pushErrorScope: () => undefined,
+      popErrorScope: async () => null,
+      createTexture: (descriptor: GPUTextureDescriptor) => {
+        createdDescriptors.push(descriptor);
+        return { label: descriptor.label } as GPUTexture;
+      }
+    };
+    const fakeAdapter = {
+      features: new Set<string>(['texture-compression-bc']),
+      limits: { maxTextureDimension2D: 4096 },
+      requestDevice: async () => fakeDevice
+    };
+    const fakeGpu = {
+      requestAdapter: async () => fakeAdapter
+    };
+    const webgpu = await negotiateWebGpuFieldRuntime(plan, {
+      gpu: fakeGpu as unknown as GPU
+    });
+
+    expect(webgpu.mode).toBe('webgpu');
+    expect(webgpu.descriptors.length).toBeGreaterThan(0);
+    expect(webgpu.allocations.length).toBe(webgpu.descriptors.length);
+    expect(createdDescriptors.map((descriptor) => descriptor.format)).toEqual(
+      Array.from({ length: createdDescriptors.length }, () => 'rgba8unorm')
+    );
+
+    const lostDevice = {
+      ...fakeDevice,
+      lost: Promise.resolve({ reason: 'destroyed', message: 'device lost in test' } as GPUDeviceLostInfo)
+    };
+    const lostGpu = {
+      requestAdapter: async () => ({
+        ...fakeAdapter,
+        requestDevice: async () => lostDevice
+      })
+    };
+    const lost = await negotiateWebGpuFieldRuntime(plan, {
+      gpu: lostGpu as unknown as GPU
+    });
+
+    expect(lost.mode).toBe('cpu-fallback');
+    expect(lost.deviceDiagnostics?.lost).toBe(true);
+    expect(lost.runtimeDiagnostics.diagnostics?.join(' ')).toContain('device lost in test');
+  });
+
   it('builds a supported FFmpeg preview capability report from a preview render graph plan', () => {
     const plan = buildPreviewRenderGraphPlan(project, {
       outputPath: '.afterimage/preview/variant-main.mp4'
@@ -482,6 +568,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
       'requirement:runtime-profile:runtime-profile-draft',
       'requirement:field-generator:generator-clip-luma-alpha',
       'requirement:field-generator:generator-live-flights-flow',
+      'requirement:field-generator:generator-motion-frame-difference-runtime',
       'requirement:field-generator:generator-seeded-noise-drift',
       'requirement:field-sampler:sampler-bloom-heat-strength'
     ]);
@@ -1157,8 +1244,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "557058ddeaeeac47880199d75480e08a397902f3821c6bae4fe6f1acc09a3d18",
-            "id": "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
+            "cacheKey": "d329d8876664e70c38c662fa5390f656349a0485f7bce28b021bc5e90e58e7dd",
+            "id": "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
             "path": ".afterimage/preview/variant-main.mp4",
             "producedBy": "pass:ffmpeg-render",
             "role": "preview-output",
@@ -1209,6 +1296,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "backend": "webgpu",
             "binary": "<runtime-placeholder>",
             "capabilities": [
+              "field-generator:motion-frame-difference",
+            ],
+            "id": "requirement:field-generator:generator-motion-frame-difference-runtime",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
               "field-generator:seeded-noise",
             ],
             "id": "requirement:field-generator:generator-seeded-noise-drift",
@@ -1222,13 +1317,34 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:field-sampler:sampler-bloom-heat-strength",
           },
         ],
-        "cacheKey": "b6f940fa413ca9f0eca709c81b76838fffcd227edf21c3ce69444ca80c0d650a",
+        "cacheKey": "d7be4283a4dc21eb543f6f62246c1932008fc2c4fb6e650b08a039c8d2ab2cfd",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
             "nodeId": "operation:preview:variant-main",
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:ffmpeg-render",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-high-quality-flow-unavailable",
+            "nodeId": "field-generator:generator-motion-frame-difference-runtime",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-high-quality-flow-unavailable",
+            "nodeId": "field-generator:generator-motion-frame-difference-runtime",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-persistent-ping-pong",
+            "nodeId": "field-generator:generator-seeded-noise-drift",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-seeded-noise-drift",
             "severity": "info",
           },
           {
@@ -1250,6 +1366,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "nodeId": "field-generator:generator-live-flights-flow",
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:field-generator:generator-live-flights-flow",
+            "severity": "info",
+          },
+          {
+            "code": "field-generator-motion-frame-difference-runtime",
+            "nodeId": "field-generator:generator-motion-frame-difference-runtime",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
             "severity": "info",
           },
           {
@@ -1331,6 +1454,45 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "to": "operation:preview:variant-main",
           },
           {
+            "from": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "magnitude",
+              ],
+              "fieldId": "field-motion-source",
+              "generatorId": "generator-motion-frame-difference-runtime",
+              "outputId": "output-motion",
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "r",
+              ],
+              "fieldId": "field-flow-x-scene",
+              "generatorId": "generator-motion-frame-difference-runtime",
+              "outputId": "output-flow-x",
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
+            "from": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "g",
+              ],
+              "fieldId": "field-flow-y-scene",
+              "generatorId": "generator-motion-frame-difference-runtime",
+              "outputId": "output-flow-y",
+            },
+            "to": "operation:preview:variant-main",
+          },
+          {
             "from": "field-generator:generator-seeded-noise-drift",
             "kind": "field-output",
             "metadata": {
@@ -1361,12 +1523,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:preview:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
+            "to": "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
           },
         ],
         "identity": {
           "mode": "preview",
-          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:b6f940fa413ca9f0eca709c81b76838fffcd227edf21c3ce69444ca80c0d650a",
+          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:d7be4283a4dc21eb543f6f62246c1932008fc2c4fb6e650b08a039c8d2ab2cfd",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -1422,6 +1584,10 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "field-generator",
           },
           {
+            "id": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-generator",
+          },
+          {
             "id": "field-generator:generator-seeded-noise-drift",
             "kind": "field-generator",
           },
@@ -1434,13 +1600,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
+            "id": "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "dec9d6129bac26080f3c1bf31dc3f23e4076de3da9278603398ca8332f9a3f4a",
+          "cacheKey": "53075f77a70c2008b4be37cf0286709df9578f94e2e8afbedcf3ea3634038f77",
           "command": {
             "args": [
               "-y",
@@ -1480,12 +1646,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "input:asset-music",
             "field-generator:generator-clip-luma-alpha",
             "field-generator:generator-live-flights-flow",
+            "field-generator:generator-motion-frame-difference-runtime",
             "field-generator:generator-seeded-noise-drift",
             "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
           ],
           "nodeId": "operation:preview:variant-main",
           "outputArtifactIds": [
-            "artifact:preview-output:12f3a9052922edd8125a2d7f0002f4adaf8ddfbb1a58f55c6245b723c935a6ca",
+            "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -1547,8 +1714,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "dcce59bd1a4822f1ae755c34a4743e53e89882b790488a224dfb2326c3457f85",
-            "id": "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
+            "cacheKey": "508158a917165ef26e342cf9aa83b84d8c001ac00ed695755a6a0cd39eeec986",
+            "id": "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
             "path": "exports/studio-fixture.mov",
             "producedBy": "pass:ffmpeg-render",
             "role": "export-output",
@@ -1599,6 +1766,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "backend": "webgpu",
             "binary": "<runtime-placeholder>",
             "capabilities": [
+              "field-generator:motion-frame-difference",
+            ],
+            "id": "requirement:field-generator:generator-motion-frame-difference-runtime",
+          },
+          {
+            "backend": "webgpu",
+            "binary": "<runtime-placeholder>",
+            "capabilities": [
               "field-generator:seeded-noise",
             ],
             "id": "requirement:field-generator:generator-seeded-noise-drift",
@@ -1612,13 +1787,34 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:field-sampler:sampler-bloom-heat-strength",
           },
         ],
-        "cacheKey": "43dfa99a6cade66314df1df1c612e4ed4917d5d542ea77c831d531d3b71a3aa4",
+        "cacheKey": "b6529156d088575d00400b69abdd6e58fccc3eb5caafd7352dcb6feb341021de",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
             "nodeId": "operation:export:variant-main",
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:ffmpeg-render",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-high-quality-flow-unavailable",
+            "nodeId": "field-generator:generator-motion-frame-difference-runtime",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-high-quality-flow-unavailable",
+            "nodeId": "field-generator:generator-motion-frame-difference-runtime",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-persistent-ping-pong",
+            "nodeId": "field-generator:generator-seeded-noise-drift",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-seeded-noise-drift",
             "severity": "info",
           },
           {
@@ -1633,6 +1829,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "nodeId": "field-generator:generator-live-flights-flow",
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:field-generator:generator-live-flights-flow",
+            "severity": "info",
+          },
+          {
+            "code": "field-generator-motion-frame-difference-runtime",
+            "nodeId": "field-generator:generator-motion-frame-difference-runtime",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
             "severity": "info",
           },
           {
@@ -1714,6 +1917,45 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "to": "operation:export:variant-main",
           },
           {
+            "from": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "magnitude",
+              ],
+              "fieldId": "field-motion-source",
+              "generatorId": "generator-motion-frame-difference-runtime",
+              "outputId": "output-motion",
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "r",
+              ],
+              "fieldId": "field-flow-x-scene",
+              "generatorId": "generator-motion-frame-difference-runtime",
+              "outputId": "output-flow-x",
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
+            "from": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-output",
+            "metadata": {
+              "channels": [
+                "g",
+              ],
+              "fieldId": "field-flow-y-scene",
+              "generatorId": "generator-motion-frame-difference-runtime",
+              "outputId": "output-flow-y",
+            },
+            "to": "operation:export:variant-main",
+          },
+          {
             "from": "field-generator:generator-seeded-noise-drift",
             "kind": "field-output",
             "metadata": {
@@ -1744,12 +1986,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:export:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
+            "to": "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
           },
         ],
         "identity": {
           "mode": "export",
-          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:43dfa99a6cade66314df1df1c612e4ed4917d5d542ea77c831d531d3b71a3aa4",
+          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:b6529156d088575d00400b69abdd6e58fccc3eb5caafd7352dcb6feb341021de",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -1805,6 +2047,10 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "field-generator",
           },
           {
+            "id": "field-generator:generator-motion-frame-difference-runtime",
+            "kind": "field-generator",
+          },
+          {
             "id": "field-generator:generator-seeded-noise-drift",
             "kind": "field-generator",
           },
@@ -1817,13 +2063,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
+            "id": "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "c2472f419f19ce6e9af3c65ec06761abc092455eba10db0fcac2a1ebb3ce14a8",
+          "cacheKey": "f26f2fd46d40d5631d94df2ac7c80581ca239721241bb26fad668e853b41f8d6",
           "command": {
             "args": [
               "-y",
@@ -1867,12 +2113,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "input:asset-music",
             "field-generator:generator-clip-luma-alpha",
             "field-generator:generator-live-flights-flow",
+            "field-generator:generator-motion-frame-difference-runtime",
             "field-generator:generator-seeded-noise-drift",
             "field-consumer:filter-main-bloom:sampler-bloom-heat-strength",
           ],
           "nodeId": "operation:export:variant-main",
           "outputArtifactIds": [
-            "artifact:export-output:69edb19dc9a147dbf277eafa752292fe36ce78c02360ea4f9f2d71349abfeb2f",
+            "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
           ],
           "semantics": {
             "chunkedExportRecommended": false,

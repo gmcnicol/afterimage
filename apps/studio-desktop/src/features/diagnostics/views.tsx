@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import type { SpatialFieldRuntimeReport } from '@afterimage/project-model';
 import { muted, pillStyle } from '../../app/styles';
 import { useDiagnosticsStore } from '../../stores/diagnostics-store';
 import { useJobsStore } from '../../stores/jobs-store';
@@ -232,6 +233,178 @@ function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: stri
   );
 }
 
+type FieldOverlayMode = 'isolate' | 'magnitude' | 'flow' | 'histogram';
+
+function hashFieldValue(value: string, index: number): number {
+  let hash = 2166136261;
+  const input = `${value}:${index}`;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return ((hash >>> 0) % 1000) / 1000;
+}
+
+function buildFieldHistogram(report: SpatialFieldRuntimeReport): number[] {
+  return Array.from({ length: 10 }, (_, index) => {
+    const base = hashFieldValue(report.fieldId, index);
+    const storageWeight = report.storageMode === 'gpu-texture' ? 0.35 : 0.2;
+    const persistenceWeight = report.previousFrameId ? 0.25 : 0.08;
+
+    return Math.min(1, 0.16 + base * 0.58 + storageWeight + persistenceWeight);
+  });
+}
+
+function FieldPreview(props: { report: SpatialFieldRuntimeReport; mode: FieldOverlayMode }) {
+  const cells = useMemo(() => Array.from({ length: 96 }, (_, index) => hashFieldValue(props.report.fieldId, index)), [props.report.fieldId]);
+  const histogram = useMemo(() => buildFieldHistogram(props.report), [props.report]);
+
+  if (props.mode === 'histogram') {
+    return (
+      <div aria-label="Field histogram summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: 5, alignItems: 'end', height: '100%', minHeight: 0 }}>
+        {histogram.map((value, index) => (
+          <div key={index} style={{ display: 'grid', alignItems: 'end', height: '100%', minHeight: 0 }}>
+            <div style={{
+              minHeight: 4,
+              height: `${Math.round(value * 100)}%`,
+              background: value > 0.72 ? '#e6c36a' : value > 0.48 ? '#8fb8da' : '#8fd3aa',
+              border: `1px solid ${faintLine}`
+            }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (props.mode === 'flow') {
+    return (
+      <div aria-label="Flow vector visualization" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gridTemplateRows: 'repeat(8, minmax(0, 1fr))', gap: 4, height: '100%', minHeight: 0 }}>
+        {cells.map((value, index) => (
+          <div key={index} style={{ display: 'grid', placeItems: 'center', minWidth: 0, minHeight: 0, background: 'rgba(255,255,255,0.025)' }}>
+            <span style={{
+              width: `${8 + value * 16}px`,
+              height: 2,
+              background: value > 0.6 ? '#e6c36a' : '#8fb8da',
+              transform: `rotate(${Math.round((value - 0.5) * 160)}deg)`,
+              transformOrigin: 'center',
+              display: 'block'
+            }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div aria-label="Field isolation overlay" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gridTemplateRows: 'repeat(8, minmax(0, 1fr))', gap: 2, height: '100%', minHeight: 0 }}>
+      {cells.map((value, index) => {
+        const alpha = props.mode === 'magnitude' ? 0.2 + value * 0.72 : 0.12 + value * 0.44;
+        return (
+          <span key={index} style={{
+            minWidth: 0,
+            minHeight: 0,
+            background: props.report.fieldKind === 'motion' || props.report.fieldKind === 'flow_x' || props.report.fieldKind === 'flow_y'
+              ? `rgba(230,195,106,${alpha})`
+              : `rgba(143,184,218,${alpha})`,
+            border: value > 0.82 ? '1px solid rgba(255,255,255,0.28)' : '1px solid transparent'
+          }} />
+        );
+      })}
+    </div>
+  );
+}
+
+function FieldRuntimeInspector(props: {
+  reports: SpatialFieldRuntimeReport[];
+  selectedFieldId?: string;
+  overlayMode: FieldOverlayMode;
+  onSelectField: (fieldId: string) => void;
+  onOverlayModeChange: (mode: FieldOverlayMode) => void;
+}) {
+  const selected = props.reports.find((report) => report.fieldId === props.selectedFieldId) ?? props.reports[0];
+  const modes: FieldOverlayMode[] = ['isolate', 'magnitude', 'flow', 'histogram'];
+
+  if (!selected) {
+    return (
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: 0, color: muted }}>
+        No spatial fields.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 8, minHeight: 0, borderTop: `1px solid ${faintLine}`, padding: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', minWidth: 0 }}>
+        <div className="studio-scrollable" style={{ display: 'flex', gap: 6, overflow: 'auto', minWidth: 0 }}>
+          {props.reports.map((report) => (
+            <button
+              key={report.fieldId}
+              type="button"
+              onClick={() => props.onSelectField(report.fieldId)}
+              style={{
+                flex: '0 0 auto',
+                maxWidth: 150,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                border: `1px solid ${report.fieldId === selected.fieldId ? severityColor(report.profileFit === 'fits' ? 'healthy' : 'warning') : faintLine}`,
+                background: report.fieldId === selected.fieldId ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.2)',
+                color: ink,
+                cursor: 'pointer',
+                font: 'inherit',
+                fontSize: 11,
+                padding: '6px 8px'
+              }}
+            >
+              {report.fieldKind}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {modes.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => props.onOverlayModeChange(mode)}
+              style={{
+                border: `1px solid ${props.overlayMode === mode ? '#8fb8da' : faintLine}`,
+                background: props.overlayMode === mode ? 'rgba(143,184,218,0.18)' : 'rgba(0,0,0,0.22)',
+                color: ink,
+                cursor: 'pointer',
+                font: 'inherit',
+                fontSize: 11,
+                padding: '6px 7px',
+                textTransform: 'capitalize'
+              }}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(210px, 1fr) 210px', gap: 10, minHeight: 0, minWidth: 0 }}>
+        <FieldPreview report={selected} mode={props.overlayMode} />
+        <div style={{ display: 'grid', alignContent: 'start', gap: 7, minWidth: 0, fontSize: 12 }}>
+          {[
+            ['field', selected.fieldId],
+            ['generator', selected.generatorId ?? '-'],
+            ['size', `${selected.dimensions.width} x ${selected.dimensions.height}`],
+            ['storage', selected.storageMode],
+            ['frame', selected.previousFrameId ? 'current + previous' : 'current'],
+            ['fit', selected.profileFit]
+          ].map(([label, value]) => (
+            <div key={label} style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr)', gap: 8, minWidth: 0 }}>
+              <span style={{ color: muted }}>{label}</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailDrawer(props: { signal: ObservatorySignal }) {
   return (
     <div className="studio-scrollable" style={{ display: 'grid', alignContent: 'start', gap: 12, minHeight: 0, overflow: 'auto', padding: 12 }}>
@@ -313,6 +486,8 @@ export function ObservatorySpaceView() {
   const logs = useDiagnosticsStore((state) => state.logs);
   const jobs = useJobsStore((state) => state.jobs);
   const [selectedSignalId, setSelectedSignalId] = useState<string>();
+  const [selectedFieldId, setSelectedFieldId] = useState<string>();
+  const [fieldOverlayMode, setFieldOverlayMode] = useState<FieldOverlayMode>('magnitude');
   const snapshot = useMemo(
     () => deriveObservatorySnapshot({
       project,
@@ -387,6 +562,8 @@ export function ObservatorySpaceView() {
             <Metric label="memory" value={formatPercent(snapshot.telemetry.memory)} />
             <Metric label="routes" value={snapshot.telemetry.routeCount} />
             <Metric label="capture" value={snapshot.telemetry.captureEventCount} />
+            <Metric label="fields" value={snapshot.telemetry.spatialFieldCount} />
+            <Metric label="field diag" value={snapshot.telemetry.fieldRuntimeDiagnosticCount} tone={snapshot.telemetry.fieldRuntimeDiagnosticCount > 0 ? 'warning' : 'healthy'} />
           </div>
           <div className="studio-scrollable" style={{ display: 'grid', alignContent: 'start', gap: 12, minHeight: 0, overflow: 'auto' }}>
             {snapshot.lanes.filter((lane) => lane.id === 'world-state' || lane.id === 'trust').map((lane) => (
@@ -395,8 +572,15 @@ export function ObservatorySpaceView() {
           </div>
         </Section>
 
-        <Section title="Behaviour Map" bodyStyle={{ minHeight: 0 }}>
+        <Section title="Behaviour Map" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(260px, 1fr) 250px', minHeight: 0 }}>
           <SignalMap signals={snapshot.signals} selectedSignalId={selectedSignal.id} onSelect={setSelectedSignalId} />
+          <FieldRuntimeInspector
+            reports={snapshot.fieldRuntime.reports}
+            selectedFieldId={selectedFieldId}
+            overlayMode={fieldOverlayMode}
+            onSelectField={setSelectedFieldId}
+            onOverlayModeChange={setFieldOverlayMode}
+          />
         </Section>
 
         <Section title="Signal Detail" bodyStyle={{ minHeight: 0 }}>
