@@ -15,6 +15,13 @@ describe('@afterimage/schema-validators', () => {
     const parsed = parseProject({
       ...fixtureProject,
       composition: undefined,
+      filterStacks: fixtureProject.filterStacks.map((stack) => ({
+        ...stack,
+        filters: stack.filters.map((filter) => ({
+          ...filter,
+          fieldSamplers: undefined
+        }))
+      })),
       featureFlags: undefined,
       tags: undefined,
       exportSelections: undefined,
@@ -35,6 +42,8 @@ describe('@afterimage/schema-validators', () => {
     expect(parsed.composition.scenes[0].layerIds).toEqual(['layer-clip-intro']);
     expect(parsed.composition.layers[0].id).toBe('layer-clip-intro');
     expect(parsed.composition.spatialFields).toEqual([]);
+    expect(parsed.composition.fieldGenerators).toEqual([]);
+    expect(parsed.runtimeProfiles.map((profile) => profile.kind)).toEqual(['draft', 'live', 'render', 'studio']);
     expect(parsed.featureFlags.proxyGeneration).toBe(false);
     expect(parsed.exportSelections).toEqual([]);
     expect(parsed.captureSessions).toEqual([]);
@@ -86,6 +95,23 @@ describe('@afterimage/schema-validators', () => {
       storage: 'gpu-texture',
       access: 'read-write'
     });
+    expect(parsed.composition.spatialFields.find((field) => field.id === 'field-memory-scene')?.persistence).toMatchObject({
+      lifetime: 'composition',
+      previousFrameAccess: 'history-window',
+      storageIntent: 'replayable',
+      windowFrames: 4
+    });
+    expect(parsed.composition.fieldGenerators.map((generator) => generator.id)).toEqual([
+      'generator-clip-luma-alpha',
+      'generator-live-flights-flow',
+      'generator-seeded-noise-drift'
+    ]);
+    expect(parsed.filterStacks[0].filters[0].fieldSamplers?.[0]).toMatchObject({
+      id: 'sampler-bloom-heat-strength',
+      fieldId: 'field-heat-scene',
+      parameter: 'strength',
+      fallbackValue: 0.24
+    });
   });
 
   it('migrates a phase 1 project shape into the v3 canonical project', () => {
@@ -133,11 +159,19 @@ describe('@afterimage/schema-validators', () => {
     const migrated = validateProject({
       ...v3Fixture,
       version: 2,
+      filterStacks: fixtureProject.filterStacks.map((stack) => ({
+        ...stack,
+        filters: stack.filters.map((filter) => ({
+          ...filter,
+          fieldSamplers: undefined
+        }))
+      })),
       composition: {
         ...fixtureProject.composition,
         modulationRoutes: undefined,
         entropyStates: undefined,
-        spatialFields: undefined
+        spatialFields: undefined,
+        fieldGenerators: undefined
       }
     });
 
@@ -151,6 +185,7 @@ describe('@afterimage/schema-validators', () => {
     expect(migrated.value.composition.modulationRoutes).toEqual([]);
     expect(migrated.value.composition.entropyStates).toEqual([]);
     expect(migrated.value.composition.spatialFields).toEqual([]);
+    expect(migrated.value.composition.fieldGenerators).toEqual([]);
     expect(migrated.value.captureSessions).toEqual([]);
     expect(migrated.value.captureLogs).toEqual([]);
   });
@@ -498,6 +533,45 @@ describe('@afterimage/schema-validators', () => {
           keyword: 'enum',
           message: 'must be equal to one of the allowed values',
           path: '/composition/spatialFields/0/access',
+          source: 'schema'
+        }
+      ])
+    });
+
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        spatialFields: [
+          {
+            id: 'field-bad-persistence',
+            kind: 'memory',
+            resolution: {
+              kind: 'output-sized'
+            },
+            persistence: {
+              lifetime: 'composition',
+              previousFrameAccess: 'history-window',
+              accumulation: {
+                kind: 'decay',
+                decay: 1.5
+              },
+              replayIdentity: {
+                deterministic: true
+              },
+              storageIntent: 'replayable'
+            }
+          }
+        ]
+      }
+    })).toEqual({
+      ok: false,
+      code: 'schema-validation-failure',
+      errors: expect.arrayContaining([
+        {
+          keyword: 'maximum',
+          message: 'must be <= 1',
+          path: '/composition/spatialFields/0/persistence/accumulation/decay',
           source: 'schema'
         }
       ])

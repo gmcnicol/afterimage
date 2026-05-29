@@ -36,6 +36,9 @@ function toRequiredCapabilities(plan: RenderGraphPlan): PreviewCapability[] {
   const capabilities = new Map<string, PreviewCapability>();
 
   for (const requirement of plan.backendRequirements) {
+    if (!requirement.required) {
+      continue;
+    }
     for (const capability of requirement.capabilities) {
       const id = `capability:${requirement.backend}:${capability}`;
       const existing = capabilities.get(id);
@@ -127,6 +130,7 @@ export function buildPreviewCapabilityReport(
     target: {
       outputPath: plan.target.outputPath,
       profile: plan.target.profile,
+      runtimeProfile: plan.target.runtimeProfile,
       durationMs: plan.target.durationMs
     },
     backendRequirements,
