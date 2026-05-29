@@ -250,22 +250,24 @@ describe('@afterimage/project-model', () => {
     expect(plan.generators.map((generator) => generator.id)).toContain('generator-motion-frame-difference-runtime');
     expect(motionReport?.generatorId).toBe('generator-motion-frame-difference-runtime');
     expect(flowReport).toMatchObject({
-      dimensions: { width: 480, height: 270 },
+      dimensions: { width: 960, height: 540 },
       storageMode: 'cpu-fallback',
-      profileFit: 'cost-exceeded'
+      profileFit: 'memory-exceeded'
     });
     expect(memoryReport?.currentFrameId).toBe('composition-main:sequence-main:variant-main:12:500');
-    expect(memoryReport?.previousFrameId).toBe('composition-main:sequence-main:variant-main:11:458');
-    expect(memoryReport?.bufferCount).toBe(3);
+    expect(memoryReport?.previousFrameId).toBe('composition-main:sequence-main:variant-main:11:466');
+    expect(memoryReport?.bufferCount).toBe(5);
     expect(memoryReport?.persistencePlan).toMatchObject({
       kind: 'history-window',
-      windowFrames: 2,
-      bufferCount: 3
+      windowFrames: 4,
+      bufferCount: 5
     });
     expect(memoryReport?.frameSlots.map((slot) => [slot.role, slot.frame.frameId])).toEqual([
       ['current', 'composition-main:sequence-main:variant-main:12:500'],
-      ['previous', 'composition-main:sequence-main:variant-main:11:458'],
-      ['history', 'composition-main:sequence-main:variant-main:10:416']
+      ['previous', 'composition-main:sequence-main:variant-main:11:466'],
+      ['history', 'composition-main:sequence-main:variant-main:10:433'],
+      ['history', 'composition-main:sequence-main:variant-main:9:400'],
+      ['history', 'composition-main:sequence-main:variant-main:8:366']
     ]);
     expect(memoryReport?.updatePasses.map((pass) => pass.kind)).toEqual(['decay']);
     expect(flowReport?.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-high-quality-flow-unavailable');

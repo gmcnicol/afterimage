@@ -135,7 +135,7 @@ test('loads a project and can open Archive, World, Performance, Forge, and Obser
     await expect(window.getByText(/blockers/).first()).toBeVisible();
     await expect(window.getByText('Bloom MIDI').first()).toBeVisible();
     await expect(window.getByText('entropy-scene-pressure').first()).toBeVisible();
-    await expect(window.getByText('FFmpeg toolchain').first()).toBeVisible();
+    await expect(window.getByText('Backend details').first()).toBeVisible();
     await expect(window.getByLabel('Observatory activity strip')).toBeVisible();
     await expect(window.getByLabel('Async task status')).toBeVisible();
 

@@ -184,6 +184,7 @@ const costRank: Record<RuntimeCostClass, number> = {
 const scalePresetMultiplier: Record<RuntimeFieldScalePreset, number> = {
   source: 1,
   full: 1,
+  'three-quarter': 0.75,
   half: 0.5,
   quarter: 0.25,
   eighth: 0.125

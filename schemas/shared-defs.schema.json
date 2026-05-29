@@ -156,7 +156,7 @@
     },
     "runtimeFieldScalePreset": {
       "type": "string",
-      "enum": ["source", "full", "half", "quarter", "eighth"]
+      "enum": ["source", "full", "three-quarter", "half", "quarter", "eighth"]
     },
     "runtimeFallbackPreference": {
       "type": "string",

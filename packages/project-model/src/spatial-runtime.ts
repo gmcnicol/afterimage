@@ -38,6 +38,8 @@ export interface PlannedSpatialField {
   requestedStorage: SpatialFieldStoragePolicy;
   storage: SpatialFieldStoragePolicy;
   pingPong: boolean;
+  bufferCount: number;
+  historyWindowFrames: number;
   passCount: number;
   bytesPerBuffer: number;
   totalBytes: number;
@@ -98,8 +100,58 @@ export function resolveSpatialFieldDimensions(
   };
 }
 
-function shouldUsePingPong(field: SpatialFieldDefinition): boolean {
-  return (field.access ?? 'read-write') === 'read-write';
+interface SpatialRuntimeBufferPlan {
+  pingPong: boolean;
+  bufferCount: number;
+  historyWindowFrames: number;
+  passCount: number;
+}
+
+function resolveBufferPlan(
+  field: SpatialFieldDefinition,
+  profile: BehaviourRuntimeProfile,
+  diagnostics: SpatialRuntimeDiagnostic[]
+): SpatialRuntimeBufferPlan {
+  const access = field.access ?? 'read-write';
+  const persistence = field.persistence;
+
+  if (persistence?.previousFrameAccess === 'history-window') {
+    const requestedWindowFrames = Math.max(1, Math.trunc(persistence.windowFrames ?? 2));
+    const historyWindowFrames = Math.max(1, Math.min(requestedWindowFrames, profile.maxPassesPerFrame));
+
+    if (historyWindowFrames < requestedWindowFrames) {
+      diagnostics.push({
+        id: `spatial-field.${field.id}.history-window-clamped`,
+        severity: 'warning',
+        fieldId: field.id,
+        message: `Spatial field "${field.id}" requested ${requestedWindowFrames} history frames, but the ${profile.id} profile allows ${profile.maxPassesPerFrame}; using ${historyWindowFrames}.`
+      });
+    }
+
+    return {
+      pingPong: true,
+      bufferCount: 1 + historyWindowFrames,
+      historyWindowFrames,
+      passCount: historyWindowFrames
+    };
+  }
+
+  if (persistence?.previousFrameAccess === 'previous-frame') {
+    return {
+      pingPong: true,
+      bufferCount: 2,
+      historyWindowFrames: 1,
+      passCount: 2
+    };
+  }
+
+  const pingPong = access === 'read-write';
+  return {
+    pingPong,
+    bufferCount: pingPong ? 2 : 1,
+    historyWindowFrames: 0,
+    passCount: pingPong ? 2 : 1
+  };
 }
 
 function resolveStorage(
@@ -157,10 +209,9 @@ export function planSpatialRuntime(input: SpatialRuntimePlanningInput): SpatialR
   const fields = input.fields.map((field): PlannedSpatialField => {
     const dimensions = resolveSpatialFieldDimensions(field.resolution, input.sourceDimensions, input.outputDimensions, profile);
     const requestedStorage = field.storage ?? 'gpu-texture';
-    const pingPong = shouldUsePingPong(field);
-    const passCount = pingPong ? 2 : 1;
+    const bufferPlan = resolveBufferPlan(field, profile, diagnostics);
     const bytesPerBuffer = dimensions.width * dimensions.height * bytesPerTexel;
-    const totalBytes = bytesPerBuffer * (pingPong ? 2 : 1);
+    const totalBytes = bytesPerBuffer * bufferPlan.bufferCount;
     const storage = resolveStorage(field, dimensions, capabilities, diagnostics);
 
     return {
@@ -169,8 +220,10 @@ export function planSpatialRuntime(input: SpatialRuntimePlanningInput): SpatialR
       dimensions,
       requestedStorage,
       storage: storage.storage,
-      pingPong,
-      passCount,
+      pingPong: bufferPlan.pingPong,
+      bufferCount: bufferPlan.bufferCount,
+      historyWindowFrames: bufferPlan.historyWindowFrames,
+      passCount: bufferPlan.passCount,
       bytesPerBuffer,
       totalBytes,
       cpuFallback: storage.cpuFallback

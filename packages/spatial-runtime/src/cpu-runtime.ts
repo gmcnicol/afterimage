@@ -151,7 +151,7 @@ export function allocateSpatialRuntimeSession(input: AllocateSpatialRuntimeSessi
 
   for (const planned of plan.fields) {
     const definition = fieldsById.get(planned.fieldId);
-    const bufferCount = planned.pingPong ? 2 : 1;
+    const bufferCount = Math.max(1, planned.bufferCount);
     const buffers = Array.from({ length: bufferCount }, (_value, index): CpuSpatialRuntimeBuffer => ({
       id: `${planned.fieldId}:buffer-${index}`,
       fieldId: planned.fieldId,

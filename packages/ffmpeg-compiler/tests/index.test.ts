@@ -433,14 +433,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(plan.fieldRuntime?.runtimeProfileId).toBe('runtime-profile-draft');
     expect(plan.fieldRuntime?.reports.map((report) => report.fieldId)).toContain('field-motion-source');
     expect(memoryReport).toMatchObject({
-      bufferCount: 3,
+      bufferCount: 5,
       currentFrameId: 'composition-main:sequence-main:variant-main:0:0',
       previousFrameId: 'composition-main:sequence-main:variant-main:0:0'
     });
     expect(memoryReport?.persistencePlan).toMatchObject({
       kind: 'history-window',
-      windowFrames: 2,
-      bufferCount: 3
+      windowFrames: 4,
+      bufferCount: 5
     });
     expect(plan.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-high-quality-flow-unavailable');
   });
@@ -1334,8 +1334,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "5ea8785ef7e169eb1a5aed425914097d56383131dd9016aa5c7e6e15fb918cf8",
-            "id": "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
+            "cacheKey": "c4c20d9d49008c86bed20ef7eb37073397f2388506548260dfaf8b5bafaf37f6",
+            "id": "artifact:preview-output:06d5dbdfd090d816f2eed7fe2114de45cd3088e61a12a3545571b698876b4c36",
             "path": ".afterimage/preview/variant-main.mp4",
             "producedBy": "pass:ffmpeg-render",
             "role": "preview-output",
@@ -1359,7 +1359,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "binary": "<runtime-placeholder>",
             "capabilities": [
               "runtime-profile:draft",
-              "field-scale:quarter",
+              "field-scale:half",
               "cost-budget:moderate",
               "fallback:degrade-quality",
             ],
@@ -1407,7 +1407,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:field-sampler:sampler-bloom-heat-strength",
           },
         ],
-        "cacheKey": "6debe42f96a1df544e9b2f40d27a72d46ae7dde3d467e23a7b2f258d7ce61aab",
+        "cacheKey": "9df3fa833db6542f2c2c2f8be6978b5dca4b1d778baf049438e21dccedb15a65",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -1620,12 +1620,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:preview:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
+            "to": "artifact:preview-output:06d5dbdfd090d816f2eed7fe2114de45cd3088e61a12a3545571b698876b4c36",
           },
         ],
         "identity": {
           "mode": "preview",
-          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:6debe42f96a1df544e9b2f40d27a72d46ae7dde3d467e23a7b2f258d7ce61aab",
+          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:9df3fa833db6542f2c2c2f8be6978b5dca4b1d778baf049438e21dccedb15a65",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -1697,13 +1697,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
+            "id": "artifact:preview-output:06d5dbdfd090d816f2eed7fe2114de45cd3088e61a12a3545571b698876b4c36",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "ed42886ee62dbe6f05f6d7a43498317adea68803d06238a0052bb5ce2dbd5365",
+          "cacheKey": "a0952a27541fd098a1f216c612096b6de9649f5317b81b3900d5623e774bb3d4",
           "command": {
             "args": [
               "-y",
@@ -1749,7 +1749,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
           ],
           "nodeId": "operation:preview:variant-main",
           "outputArtifactIds": [
-            "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
+            "artifact:preview-output:06d5dbdfd090d816f2eed7fe2114de45cd3088e61a12a3545571b698876b4c36",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -1787,14 +1787,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
           },
           "runtimeProfile": {
             "fallbackPreference": "degrade-quality",
-            "fieldScalePreset": "quarter",
+            "fieldScalePreset": "half",
             "id": "runtime-profile-draft",
             "kind": "draft",
             "label": "Draft",
             "maxCostClass": "moderate",
-            "maxPasses": 2,
-            "memoryBudgetMb": 512,
-            "targetFps": 24,
+            "maxPasses": 4,
+            "memoryBudgetMb": 128,
+            "targetFps": 30,
           },
         },
       }
@@ -1811,8 +1811,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "4b1c6223062d5fecf14c4a797a5c65ec2c2838d6ebff3b16a01a94c716284693",
-            "id": "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
+            "cacheKey": "717ed4b4b73f21e02e0c1188ed080e60b1e498e53e49be3bc1487fec8a143b36",
+            "id": "artifact:export-output:e5224f5e3b3c2e62f400f5fb6c0e7041bb1b4d1fc50eb190aeb0e0b06c355af4",
             "path": "exports/studio-fixture.mov",
             "producedBy": "pass:ffmpeg-render",
             "role": "export-output",
@@ -1884,7 +1884,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:field-sampler:sampler-bloom-heat-strength",
           },
         ],
-        "cacheKey": "8104a62e6355fda4d86411773895218d41376798eab1847dd24f853cfd3c5a4d",
+        "cacheKey": "865985df737dcdf4860da1c2b207ada9673d40ed1f7fa835e7d051652a12a685",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -2090,12 +2090,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:export:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
+            "to": "artifact:export-output:e5224f5e3b3c2e62f400f5fb6c0e7041bb1b4d1fc50eb190aeb0e0b06c355af4",
           },
         ],
         "identity": {
           "mode": "export",
-          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:8104a62e6355fda4d86411773895218d41376798eab1847dd24f853cfd3c5a4d",
+          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:865985df737dcdf4860da1c2b207ada9673d40ed1f7fa835e7d051652a12a685",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -2167,13 +2167,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
+            "id": "artifact:export-output:e5224f5e3b3c2e62f400f5fb6c0e7041bb1b4d1fc50eb190aeb0e0b06c355af4",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "00dac8ee991b71a9bf595f96f764330306190b4b5c85d58f69ea79f9779b8b75",
+          "cacheKey": "32502430c53a7a94159977ee88d60d46d243ca845a5fb5518040c5d361617dae",
           "command": {
             "args": [
               "-y",
@@ -2223,7 +2223,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
           ],
           "nodeId": "operation:export:variant-main",
           "outputArtifactIds": [
-            "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
+            "artifact:export-output:e5224f5e3b3c2e62f400f5fb6c0e7041bb1b4d1fc50eb190aeb0e0b06c355af4",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -2270,8 +2270,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "render",
             "label": "Render",
             "maxCostClass": "dangerous",
-            "maxPasses": 12,
-            "memoryBudgetMb": 4096,
+            "maxPasses": 16,
+            "memoryBudgetMb": 1024,
             "targetFps": 24,
           },
         },

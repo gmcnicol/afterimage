@@ -94,6 +94,39 @@ describe('@afterimage/spatial-runtime', () => {
     expect(values(writeCpuSpatialField(session, 'memory'))).toEqual([1, 2]);
   });
 
+  it('allocates persistent history buffers from the spatial runtime plan', () => {
+    const session = allocateSpatialRuntimeSession({
+      fields: [
+        {
+          id: 'memory',
+          kind: 'memory',
+          resolution: { kind: 'fixed', width: 2, height: 1 },
+          storage: 'cpu-buffer',
+          access: 'read-write',
+          persistence: {
+            lifetime: 'clip',
+            previousFrameAccess: 'history-window',
+            accumulation: { kind: 'decay', decay: 0.8 },
+            windowFrames: 4,
+            replayIdentity: { deterministic: true, identityInputs: ['memory'] },
+            storageIntent: 'runtime-only'
+          }
+        }
+      ],
+      sourceDimensions: { width: 2, height: 1 },
+      outputDimensions: { width: 2, height: 1 },
+      profile: 'draft'
+    });
+
+    expect(session.fields.memory.planned).toMatchObject({
+      pingPong: true,
+      bufferCount: 5,
+      historyWindowFrames: 4,
+      passCount: 4
+    });
+    expect(session.fields.memory.buffers).toHaveLength(5);
+  });
+
   it('executes entropy and pressure accumulation passes deterministically', () => {
     const session = allocateSpatialRuntimeSession({
       fields: [

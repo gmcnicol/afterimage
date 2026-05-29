@@ -78,6 +78,7 @@ import {
   normalizeUnit,
   sortById
 } from './utils.js';
+import { createDefaultRuntimePerformanceProfiles } from './runtime-profiles.js';
 
 export function normalizeProjectPathRef(path: ProjectPathRef): ProjectPathRef {
   return {
@@ -86,52 +87,7 @@ export function normalizeProjectPathRef(path: ProjectPathRef): ProjectPathRef {
   };
 }
 
-export const DEFAULT_RUNTIME_PERFORMANCE_PROFILES: RuntimePerformanceProfile[] = [
-  {
-    id: 'runtime-profile-draft',
-    kind: 'draft',
-    label: 'Draft',
-    fieldScalePreset: 'quarter',
-    targetFps: 24,
-    memoryBudgetMb: 512,
-    maxPasses: 2,
-    fallbackPreference: 'degrade-quality',
-    maxCostClass: 'moderate'
-  },
-  {
-    id: 'runtime-profile-live',
-    kind: 'live',
-    label: 'Live',
-    fieldScalePreset: 'half',
-    targetFps: 60,
-    memoryBudgetMb: 1024,
-    maxPasses: 3,
-    fallbackPreference: 'disable-expensive',
-    maxCostClass: 'moderate'
-  },
-  {
-    id: 'runtime-profile-studio',
-    kind: 'studio',
-    label: 'Studio',
-    fieldScalePreset: 'full',
-    targetFps: 30,
-    memoryBudgetMb: 2048,
-    maxPasses: 6,
-    fallbackPreference: 'preserve-output',
-    maxCostClass: 'expensive'
-  },
-  {
-    id: 'runtime-profile-render',
-    kind: 'render',
-    label: 'Render',
-    fieldScalePreset: 'source',
-    targetFps: 24,
-    memoryBudgetMb: 4096,
-    maxPasses: 12,
-    fallbackPreference: 'fail-fast',
-    maxCostClass: 'dangerous'
-  }
-];
+export const DEFAULT_RUNTIME_PERFORMANCE_PROFILES: RuntimePerformanceProfile[] = createDefaultRuntimePerformanceProfiles();
 
 export function normalizeRuntimePerformanceProfile(profile: RuntimePerformanceProfile): RuntimePerformanceProfile {
   return {

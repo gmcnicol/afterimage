@@ -265,9 +265,9 @@ describe('observatory-space helpers', () => {
 
     expect(draft.fieldRuntime.runtimeProfileId).toBe('runtime-profile-draft');
     expect(studio.fieldRuntime.runtimeProfileId).toBe('runtime-profile-studio');
-    expect(draftMemory?.dimensions).toEqual({ width: 120, height: 67 });
+    expect(draftMemory?.dimensions).toEqual({ width: 240, height: 135 });
     expect(studioMemory?.dimensions).toEqual({ width: 480, height: 270 });
-    expect(draftMemory?.bufferCount).toBe(3);
+    expect(draftMemory?.bufferCount).toBe(5);
     expect(studioMemory?.bufferCount).toBe(5);
   });
 
