@@ -17,6 +17,8 @@ around a shared core.
 
 ## Product Documents
 
+- `../getting-started.md`: beginner path for using Studio, from a new Universe
+  to first output.
 - `universe-workspace.md`: Studio first-launch Universe setup, recent
   universes, and access to Archive, Media, and Catalogue surfaces.
 - `archive-space.md`: Studio Archive Space sidecar review and acceptance
