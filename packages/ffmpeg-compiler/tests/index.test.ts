@@ -433,9 +433,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(plan.fieldRuntime?.runtimeProfileId).toBe('runtime-profile-draft');
     expect(plan.fieldRuntime?.reports.map((report) => report.fieldId)).toContain('field-motion-source');
     expect(memoryReport).toMatchObject({
-      bufferCount: 2,
+      bufferCount: 3,
       currentFrameId: 'composition-main:sequence-main:variant-main:0:0',
       previousFrameId: 'composition-main:sequence-main:variant-main:0:0'
+    });
+    expect(memoryReport?.persistencePlan).toMatchObject({
+      kind: 'history-window',
+      windowFrames: 2,
+      bufferCount: 3
     });
     expect(plan.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-high-quality-flow-unavailable');
   });
@@ -457,6 +462,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(unavailable.runtimeDiagnostics.diagnostics).toContain('navigator.gpu is not available');
 
     const createdDescriptors: GPUTextureDescriptor[] = [];
+    const submittedCommandBuffers: unknown[][] = [];
+    const dispatched: Array<[number, number, number]> = [];
     const fakeDevice = {
       limits: { maxTextureDimension2D: 4096 },
       lost: new Promise<GPUDeviceLostInfo>(() => undefined),
@@ -465,6 +472,23 @@ describe('@afterimage/ffmpeg-compiler', () => {
       createTexture: (descriptor: GPUTextureDescriptor) => {
         createdDescriptors.push(descriptor);
         return { label: descriptor.label } as GPUTexture;
+      },
+      createShaderModule: (descriptor: GPUShaderModuleDescriptor) => ({ label: descriptor.label }),
+      createComputePipeline: (descriptor: GPUComputePipelineDescriptor) => ({ label: descriptor.label }),
+      createCommandEncoder: () => ({
+        beginComputePass: () => ({
+          setPipeline: () => undefined,
+          dispatchWorkgroups: (x: number, y = 1, z = 1) => {
+            dispatched.push([x, y, z]);
+          },
+          end: () => undefined
+        }),
+        finish: () => ({ command: 'field-runtime' })
+      }),
+      queue: {
+        submit: (commandBuffers: unknown[]) => {
+          submittedCommandBuffers.push(commandBuffers);
+        }
       }
     };
     const fakeAdapter = {
@@ -481,7 +505,14 @@ describe('@afterimage/ffmpeg-compiler', () => {
 
     expect(webgpu.mode).toBe('webgpu');
     expect(webgpu.descriptors.length).toBeGreaterThan(0);
+    expect(webgpu.descriptors.map((descriptor) => descriptor.slotId)).toContain('field-slot:field-memory-scene:previous:1');
     expect(webgpu.allocations.length).toBe(webgpu.descriptors.length);
+    const executablePassCount = plan.executionSessions
+      .filter((session) => session.storageMode === 'gpu-texture')
+      .reduce((sum, session) => sum + session.updatePasses.length, 0);
+    expect(webgpu.encodedPasses.length).toBe(executablePassCount);
+    expect(submittedCommandBuffers).toHaveLength(1);
+    expect(dispatched.length).toBe(executablePassCount);
     expect(createdDescriptors.map((descriptor) => descriptor.format)).toEqual(
       Array.from({ length: createdDescriptors.length }, () => 'rgba8unorm')
     );
@@ -503,6 +534,65 @@ describe('@afterimage/ffmpeg-compiler', () => {
     expect(lost.mode).toBe('cpu-fallback');
     expect(lost.deviceDiagnostics?.lost).toBe(true);
     expect(lost.runtimeDiagnostics.diagnostics?.join(' ')).toContain('device lost in test');
+  });
+
+  it('falls back with diagnostics when WebGPU field allocation or execution fails', async () => {
+    const plan = buildPreviewRenderGraphPlan(project, {
+      outputPath: '.afterimage/preview/variant-main.mp4'
+    }).fieldRuntime;
+
+    expect(plan).toBeDefined();
+    if (!plan) {
+      return;
+    }
+
+    const adapter = {
+      features: new Set<string>(),
+      limits: { maxTextureDimension2D: 1 },
+      requestDevice: async () => ({
+        limits: { maxTextureDimension2D: 1 },
+        lost: new Promise<GPUDeviceLostInfo>(() => undefined),
+        pushErrorScope: () => undefined,
+        popErrorScope: async () => null,
+        createTexture: (descriptor: GPUTextureDescriptor) => ({ label: descriptor.label } as GPUTexture),
+        createShaderModule: (descriptor: GPUShaderModuleDescriptor) => ({ label: descriptor.label }),
+        createComputePipeline: (descriptor: GPUComputePipelineDescriptor) => ({ label: descriptor.label }),
+        createCommandEncoder: () => ({
+          beginComputePass: () => ({
+            setPipeline: () => undefined,
+            dispatchWorkgroups: () => undefined,
+            end: () => undefined
+          }),
+          finish: () => ({ command: 'field-runtime' })
+        }),
+        queue: { submit: () => undefined }
+      })
+    };
+    const limitExceeded = await negotiateWebGpuFieldRuntime(plan, {
+      gpu: { requestAdapter: async () => adapter } as unknown as GPU
+    });
+
+    expect(limitExceeded.mode).toBe('cpu-fallback');
+    expect(limitExceeded.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-webgpu-limit-exceeded');
+
+    const executionUnavailable = await negotiateWebGpuFieldRuntime(plan, {
+      gpu: {
+        requestAdapter: async () => ({
+          features: new Set<string>(),
+          limits: { maxTextureDimension2D: 4096 },
+          requestDevice: async () => ({
+            limits: { maxTextureDimension2D: 4096 },
+            lost: new Promise<GPUDeviceLostInfo>(() => undefined),
+            pushErrorScope: () => undefined,
+            popErrorScope: async () => null,
+            createTexture: (descriptor: GPUTextureDescriptor) => ({ label: descriptor.label } as GPUTexture)
+          })
+        })
+      } as unknown as GPU
+    });
+
+    expect(executionUnavailable.mode).toBe('cpu-fallback');
+    expect(executionUnavailable.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-webgpu-execution-unavailable');
   });
 
   it('builds a supported FFmpeg preview capability report from a preview render graph plan', () => {
@@ -1244,8 +1334,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "d329d8876664e70c38c662fa5390f656349a0485f7bce28b021bc5e90e58e7dd",
-            "id": "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
+            "cacheKey": "5ea8785ef7e169eb1a5aed425914097d56383131dd9016aa5c7e6e15fb918cf8",
+            "id": "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
             "path": ".afterimage/preview/variant-main.mp4",
             "producedBy": "pass:ffmpeg-render",
             "role": "preview-output",
@@ -1317,7 +1407,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:field-sampler:sampler-bloom-heat-strength",
           },
         ],
-        "cacheKey": "d7be4283a4dc21eb543f6f62246c1932008fc2c4fb6e650b08a039c8d2ab2cfd",
+        "cacheKey": "6debe42f96a1df544e9b2f40d27a72d46ae7dde3d467e23a7b2f258d7ce61aab",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -1338,6 +1428,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "nodeId": "field-generator:generator-motion-frame-difference-runtime",
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-history-window",
+            "nodeId": "field-generator:generator-seeded-noise-drift",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-seeded-noise-drift",
             "severity": "info",
           },
           {
@@ -1523,12 +1620,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:preview:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
+            "to": "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
           },
         ],
         "identity": {
           "mode": "preview",
-          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:d7be4283a4dc21eb543f6f62246c1932008fc2c4fb6e650b08a039c8d2ab2cfd",
+          "planId": "render-graph:preview:project-core-engine-fixture:sequence-main:variant-main:6debe42f96a1df544e9b2f40d27a72d46ae7dde3d467e23a7b2f258d7ce61aab",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -1600,13 +1697,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
+            "id": "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "53075f77a70c2008b4be37cf0286709df9578f94e2e8afbedcf3ea3634038f77",
+          "cacheKey": "ed42886ee62dbe6f05f6d7a43498317adea68803d06238a0052bb5ce2dbd5365",
           "command": {
             "args": [
               "-y",
@@ -1652,7 +1749,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
           ],
           "nodeId": "operation:preview:variant-main",
           "outputArtifactIds": [
-            "artifact:preview-output:99321c6d157d3683fe3e68e381fb744f9cb54740f3d6fb5fb1572142cda92a92",
+            "artifact:preview-output:28f09684a0aff46f81b3f6d2462fa25de24a96a0d3b046300a025f679cbff8d5",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
@@ -1714,8 +1811,8 @@ describe('@afterimage/ffmpeg-compiler', () => {
       {
         "artifacts": [
           {
-            "cacheKey": "508158a917165ef26e342cf9aa83b84d8c001ac00ed695755a6a0cd39eeec986",
-            "id": "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
+            "cacheKey": "4b1c6223062d5fecf14c4a797a5c65ec2c2838d6ebff3b16a01a94c716284693",
+            "id": "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
             "path": "exports/studio-fixture.mov",
             "producedBy": "pass:ffmpeg-render",
             "role": "export-output",
@@ -1787,7 +1884,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "id": "requirement:field-sampler:sampler-bloom-heat-strength",
           },
         ],
-        "cacheKey": "b6529156d088575d00400b69abdd6e58fccc3eb5caafd7352dcb6feb341021de",
+        "cacheKey": "8104a62e6355fda4d86411773895218d41376798eab1847dd24f853cfd3c5a4d",
         "diagnostics": [
           {
             "code": "FFMPEG_PASS_COMPATIBILITY",
@@ -1808,6 +1905,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "nodeId": "field-generator:generator-motion-frame-difference-runtime",
             "passId": "pass:ffmpeg-render",
             "requirementId": "requirement:field-generator:generator-motion-frame-difference-runtime",
+            "severity": "info",
+          },
+          {
+            "code": "field-runtime-history-window",
+            "nodeId": "field-generator:generator-seeded-noise-drift",
+            "passId": "pass:ffmpeg-render",
+            "requirementId": "requirement:field-generator:generator-seeded-noise-drift",
             "severity": "info",
           },
           {
@@ -1986,12 +2090,12 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "from": "operation:export:variant-main",
             "kind": "artifact-output",
             "metadata": undefined,
-            "to": "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
+            "to": "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
           },
         ],
         "identity": {
           "mode": "export",
-          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:b6529156d088575d00400b69abdd6e58fccc3eb5caafd7352dcb6feb341021de",
+          "planId": "render-graph:export:project-core-engine-fixture:sequence-main:variant-main:8104a62e6355fda4d86411773895218d41376798eab1847dd24f853cfd3c5a4d",
           "projectId": "project-core-engine-fixture",
           "schemaVersion": 1,
           "sequenceId": "sequence-main",
@@ -2063,13 +2167,13 @@ describe('@afterimage/ffmpeg-compiler', () => {
             "kind": "operation",
           },
           {
-            "id": "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
+            "id": "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
             "kind": "artifact",
           },
         ],
         "pass": {
           "backend": "ffmpeg",
-          "cacheKey": "f26f2fd46d40d5631d94df2ac7c80581ca239721241bb26fad668e853b41f8d6",
+          "cacheKey": "00dac8ee991b71a9bf595f96f764330306190b4b5c85d58f69ea79f9779b8b75",
           "command": {
             "args": [
               "-y",
@@ -2119,7 +2223,7 @@ describe('@afterimage/ffmpeg-compiler', () => {
           ],
           "nodeId": "operation:export:variant-main",
           "outputArtifactIds": [
-            "artifact:export-output:be54644c56416ed640348cb357cd7315f9a36376d6496b2e48d8e94608cae31a",
+            "artifact:export-output:f3033200612d0424ac7c1ada45d3647f1ca119da024a016708b54135fa1e6704",
           ],
           "semantics": {
             "chunkedExportRecommended": false,
