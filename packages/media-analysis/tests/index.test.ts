@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { fixtureAnalysis, fixtureFfprobeOutput, fixtureSceneDetectionLog } from '../../test-fixtures/src';
 import {
   deriveSyncEventsFromAudioChangeTrack,
+  generateMotionFields,
+  normalizeMotionField,
   generateCutCandidatesFromAnalysis,
   parseAudioChangeAnalysis,
   parseFfprobeOutput,
@@ -251,5 +253,73 @@ describe('@afterimage/media-analysis', () => {
       ],
       id: 'asset-music-audio-change-sync'
     });
+  });
+
+  it('generates deterministic motion magnitude, directional flow, and turbulence fields', () => {
+    const previousFrame = {
+      width: 3,
+      height: 3,
+      channels: 1 as const,
+      data: [
+        0, 0, 0,
+        0, 0, 0,
+        0, 0, 0
+      ]
+    };
+    const currentFrame = {
+      width: 3,
+      height: 3,
+      channels: 1 as const,
+      data: [
+        0, 0, 0,
+        0, 255, 255,
+        0, 0, 0
+      ]
+    };
+
+    const result = generateMotionFields({ previousFrame, currentFrame });
+
+    expect(result.mode).toBe('frame-difference');
+    expect(result.diagnostics).toEqual([]);
+    expect(result.fields.magnitude.kind).toBe('motion-magnitude');
+    expect(Array.from(result.fields.magnitude.values)).toEqual([
+      0, 0, 0,
+      0, 1, 1,
+      0, 0, 0
+    ]);
+    expect(Array.from(result.fields.flowX.values)).toEqual([
+      0, 0, 0,
+      1, 1, -1,
+      0, 0, 0
+    ]);
+    expect(Array.from(result.fields.flowY.values)).toEqual([
+      0, 1, 1,
+      0, 0, 0,
+      0, -1, -1
+    ]);
+    expect(Array.from(result.fields.edgeTurbulence.values).map((value) => Number(value.toFixed(3)))).toEqual([
+      0, 0.333, 0.333,
+      0.333, 1, 1,
+      0, 0.333, 0.333
+    ]);
+  });
+
+  it('normalizes signed fields and reports explicit optical-flow fallback diagnostics', () => {
+    expect(Array.from(normalizeMotionField([-2, 0, 1], true))).toEqual([-1, 0, 0.5]);
+
+    const result = generateMotionFields({
+      mode: 'optical-flow',
+      previousFrame: { width: 1, height: 1, channels: 1, data: [0] },
+      currentFrame: { width: 1, height: 1, channels: 1, data: [255] }
+    });
+
+    expect(result.mode).toBe('frame-difference');
+    expect(result.diagnostics).toEqual([
+      {
+        id: 'motion-field.optical-flow-fallback',
+        severity: 'warning',
+        message: 'Optical flow generation is not bundled in this runtime; deterministic frame-difference fields were generated instead.'
+      }
+    ]);
   });
 });

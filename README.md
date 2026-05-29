@@ -24,6 +24,9 @@ Afterimage is a shared-core, multi-runtime system:
 
 ## Getting Started
 
+For a beginner app walkthrough, start with
+`docs/getting-started.md`.
+
 Prerequisites:
 
 - Node.js

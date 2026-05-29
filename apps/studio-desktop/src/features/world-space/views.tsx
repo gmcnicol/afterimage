@@ -3,9 +3,11 @@ import type { CSSProperties, ReactNode } from 'react';
 import type {
   NormalizedSceneDefinition,
   NormalizedSceneLayerDefinition,
+  SceneClimate,
   SceneLayerRenderPassKind,
   Sequence
 } from '@afterimage/project-model';
+import { CapabilityBadge, CaptureTrustChip, PrimitiveScalarControl, WarningChip } from '@afterimage/ui';
 import { ToolbarButton } from '../../app/components/ToolbarButton';
 import { muted } from '../../app/styles';
 import { useDiagnosticsStore } from '../../stores/diagnostics-store';
@@ -22,6 +24,10 @@ const ink = '#f6f7f9';
 
 function formatPercent(value: number | undefined): string {
   return value === undefined ? '-' : `${Math.round(value * 100)}%`;
+}
+
+function clampUnit(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
 function getVariantsForSequence(projectSequences: Sequence[], sequenceId?: string): string[] {
@@ -66,6 +72,22 @@ function Metric(props: { label: string; value: ReactNode }) {
       <span>{props.value}</span>
     </span>
   );
+}
+
+function getArchiveAffinity(scene: NormalizedSceneDefinition | undefined): number {
+  if (!scene) {
+    return 0;
+  }
+
+  return clampUnit(scene.archiveReferenceIds.length / 4);
+}
+
+function getCaptureTrustState(previewReady: boolean, exportReady: boolean): 'trusted' | 'watch' | 'blocked' {
+  if (!previewReady && !exportReady) {
+    return 'blocked';
+  }
+
+  return exportReady ? 'trusted' : 'watch';
 }
 
 function Section(props: { title: string; children: ReactNode; style?: CSSProperties }) {
@@ -323,6 +345,11 @@ export function WorldSpaceView() {
   const moveForce = (force: NormalizedSceneLayerDefinition, direction: -1 | 1) => {
     updateCompositionLayer(force.id, { orderIndex: Math.max(0, force.orderIndex + direction) });
   };
+  const updateRegionClimate = (climate: Partial<SceneClimate>) => {
+    if (selectedRegion) {
+      updateCompositionScene(selectedRegion.id, { climate });
+    }
+  };
 
   return (
     <div
@@ -352,7 +379,7 @@ export function WorldSpaceView() {
             <Metric label="regions" value={snapshot.scenes.length} />
             <Metric label="forces" value={snapshot.scenes.reduce((count, scene) => count + scene.layers.length, 0)} />
             <Metric label="memory" value={project.composition.acceptedArchiveReferences.length} />
-            <Metric label="capture" value={snapshot.readiness.exportReady ? 'ready' : 'blocked'} />
+            <Metric label="capture" value={<CaptureTrustChip state={getCaptureTrustState(snapshot.readiness.previewReady, snapshot.readiness.exportReady)} label={snapshot.readiness.exportReady ? 'ready' : 'blocked'} />} />
             <Metric label="state" value={dirty ? 'dirty' : 'saved'} />
           </div>
         </div>
@@ -445,32 +472,38 @@ export function WorldSpaceView() {
                   />
                 </Label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                  <Label label="Pressure">
-                    <input
-                      type="number"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={selectedRegion.climate.pressure ?? 0}
-                      onChange={(event) => updateCompositionScene(selectedRegion.id, { climate: { pressure: Number(event.target.value) } })}
-                      style={fieldInputStyle()}
-                    />
-                  </Label>
-                  <Label label="Entropy">
-                    <input
-                      type="number"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={selectedRegion.climate.entropyBias ?? 0}
-                      onChange={(event) => updateCompositionScene(selectedRegion.id, { climate: { entropyBias: Number(event.target.value) } })}
-                      style={fieldInputStyle()}
-                    />
-                  </Label>
+                  <PrimitiveScalarControl
+                    valueKind="pressure"
+                    value={selectedRegion.climate.pressure ?? 0}
+                    onChange={(value) => updateRegionClimate({ pressure: value })}
+                  />
+                  <PrimitiveScalarControl
+                    valueKind="entropy"
+                    value={selectedRegion.climate.entropyBias ?? 0}
+                    onChange={(value) => updateRegionClimate({ entropyBias: value })}
+                  />
+                  <PrimitiveScalarControl
+                    valueKind="cohesion"
+                    value={selectedRegion.climate.cohesion ?? 1}
+                    onChange={(value) => updateRegionClimate({ cohesion: value })}
+                  />
+                  <PrimitiveScalarControl
+                    valueKind="memory"
+                    value={selectedRegion.climate.memory ?? 0}
+                    onChange={(value) => updateRegionClimate({ memory: value })}
+                  />
+                  <PrimitiveScalarControl
+                    valueKind="emergence"
+                    value={selectedRegion.climate.transitionTendency ?? 0}
+                    onChange={(value) => updateRegionClimate({ transitionTendency: value })}
+                  />
+                  <PrimitiveScalarControl
+                    valueKind="archive-affinity"
+                    value={getArchiveAffinity(selectedRegion)}
+                    disabled
+                  />
                 </div>
                 <ValueList items={[
-                  ['cohesion', formatPercent(selectedRegion.climate.cohesion)],
-                  ['memory', formatPercent(selectedRegion.climate.memory)],
                   ['volatility', formatPercent(selectedRegion.climate.volatility)],
                   ['activation', selectedRegion.activation.map((activation) => activation.kind).join(', ') || '-']
                 ]} />
@@ -543,13 +576,13 @@ export function WorldSpaceView() {
               <ValueList items={[
                 ['routes', snapshot.selectedScene?.routes.length ?? 0],
                 ['entropy', snapshot.selectedScene?.entropyStates.length ?? 0],
-                ['preview', snapshot.readiness.previewReady ? 'ready' : 'blocked'],
-                ['render', snapshot.readiness.exportReady ? 'ready' : 'blocked'],
+                ['preview', <CapabilityBadge available={snapshot.readiness.previewReady}>{snapshot.readiness.previewReady ? 'ready' : 'blocked'}</CapabilityBadge>],
+                ['render', <CapabilityBadge available={snapshot.readiness.exportReady}>{snapshot.readiness.exportReady ? 'ready' : 'blocked'}</CapabilityBadge>],
                 ['faults', (snapshot.selectedScene?.diagnostics.length ?? 0) + snapshot.selectedLayerDiagnostics.length]
               ]} />
               {snapshot.readiness.reasons.length > 0 ? (
-                <div style={{ display: 'grid', gap: 3, color: muted }}>
-                  {snapshot.readiness.reasons.slice(0, 4).map((reason) => <span key={reason}>{reason}</span>)}
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                  {snapshot.readiness.reasons.slice(0, 4).map((reason) => <WarningChip key={reason} blocking={!snapshot.readiness.exportReady}>{reason}</WarningChip>)}
                 </div>
               ) : null}
             </div>
