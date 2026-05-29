@@ -58,6 +58,52 @@ function getNextBuildSeed(variant: ReturnType<typeof getVariantById>): number {
     : 1;
 }
 
+function createUniqueClipId(baseId: string, occupiedIds: Set<string>, reservedIds: Set<string> = occupiedIds): string {
+  let candidate = baseId;
+  let suffix = 2;
+
+  while (occupiedIds.has(candidate) || reservedIds.has(candidate)) {
+    candidate = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+
+  occupiedIds.add(candidate);
+  return candidate;
+}
+
+export function repairDuplicateVariantClipIds(project: NormalizedProjectFile): NormalizedProjectFile {
+  let repaired = false;
+
+  const variants = project.variants.map((variant) => {
+    const reservedIds = new Set(variant.clips.map((clip) => clip.id));
+    const occupiedIds = new Set<string>();
+    let variantRepaired = false;
+    const clips = variant.clips.map((clip) => {
+      if (!occupiedIds.has(clip.id)) {
+        occupiedIds.add(clip.id);
+        return clip;
+      }
+
+      repaired = true;
+      variantRepaired = true;
+      return {
+        ...clip,
+        id: createUniqueClipId(clip.id, occupiedIds, reservedIds)
+      };
+    });
+
+    return variantRepaired ? {
+      ...variant,
+      clips
+    } : variant;
+  });
+
+  return repaired ? normalizeProject({
+    ...project,
+    variants
+  }) : project;
+}
+
 function createMulberry32(seed: number) {
   let value = seed >>> 0;
 
@@ -144,8 +190,9 @@ export function addCutToSequence(
     return project;
   }
 
+  const occupiedClipIds = new Set(variant.clips.map((clip) => clip.id));
   const nextClip: SequenceClip = {
-    id: `clip-${cut.id}`,
+    id: createUniqueClipId(`clip-${cut.id}`, occupiedClipIds),
     assetId: cut.assetId,
     cutId: cut.id,
     timelineStartMs: variant.clips.reduce((max, clip) => Math.max(max, clip.timelineStartMs + clip.durationMs), 0),
