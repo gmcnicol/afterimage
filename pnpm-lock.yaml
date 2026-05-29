@@ -220,6 +220,12 @@ importers:
         specifier: ^8.18.0
         version: 8.18.0
 
+  packages/spatial-runtime:
+    dependencies:
+      '@afterimage/project-model':
+        specifier: workspace:*
+        version: link:../project-model
+
   packages/studio-bus:
     dependencies:
       '@afterimage/studio-contracts':
