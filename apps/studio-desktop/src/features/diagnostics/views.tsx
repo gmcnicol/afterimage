@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import type { SpatialFieldRuntimeReport } from '@afterimage/project-model';
+import type {
+  NormalizedProjectFile,
+  RuntimePerformanceProfile,
+  RuntimePerformanceProfileKind,
+  SpatialFieldRuntimeReport
+} from '@afterimage/project-model';
 import { muted, pillStyle } from '../../app/styles';
 import { useDiagnosticsStore } from '../../stores/diagnostics-store';
 import { useJobsStore } from '../../stores/jobs-store';
@@ -23,6 +28,49 @@ import {
 const ink = '#f6f7f9';
 const line = 'rgba(255,255,255,0.1)';
 const faintLine = 'rgba(255,255,255,0.06)';
+const runtimeProfileKinds: RuntimePerformanceProfileKind[] = ['draft', 'live', 'studio', 'render'];
+
+const runtimeProfileQualityCopy: Record<RuntimePerformanceProfileKind, {
+  label: string;
+  stability: string;
+  persistence: string;
+  detail: string;
+  depth: string;
+  resolution: string;
+}> = {
+  draft: {
+    label: 'Draft',
+    stability: 'fast check',
+    persistence: 'short memory',
+    detail: 'light',
+    depth: 'shallow',
+    resolution: 'reduced'
+  },
+  live: {
+    label: 'Live',
+    stability: 'responsive',
+    persistence: 'active memory',
+    detail: 'medium',
+    depth: 'rehearsal',
+    resolution: 'balanced'
+  },
+  studio: {
+    label: 'Studio',
+    stability: 'steady',
+    persistence: 'held memory',
+    detail: 'rich',
+    depth: 'layered',
+    resolution: 'full'
+  },
+  render: {
+    label: 'Render',
+    stability: 'locked',
+    persistence: 'complete memory',
+    detail: 'maximum',
+    depth: 'deep',
+    resolution: 'source'
+  }
+};
 
 function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
@@ -43,6 +91,55 @@ function severityColor(severity: ObservatorySignalSeverity): string {
     case 'info':
       return '#8fb8da';
   }
+}
+
+function resolveRuntimeProfile(project: NormalizedProjectFile, kind: RuntimePerformanceProfileKind): RuntimePerformanceProfile | undefined {
+  return project.runtimeProfiles.find((profile) => profile.kind === kind)
+    ?? project.runtimeProfiles.find((profile) => profile.kind === 'studio')
+    ?? project.runtimeProfiles[0];
+}
+
+function ProfileSelector(props: {
+  selectedKind: RuntimePerformanceProfileKind;
+  profiles: RuntimePerformanceProfile[];
+  onChange: (kind: RuntimePerformanceProfileKind) => void;
+}) {
+  const availableKinds = props.profiles.length > 0
+    ? new Set(props.profiles.map((profile) => profile.kind))
+    : new Set(runtimeProfileKinds);
+
+  return (
+    <div style={{ display: 'grid', gap: 5, minWidth: 0 }}>
+      <span style={{ color: muted, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0 }}>Profile</span>
+      <div role="group" aria-label="Observatory runtime profile" style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {runtimeProfileKinds.map((kind) => {
+          const selected = props.selectedKind === kind;
+          const disabled = !availableKinds.has(kind);
+          return (
+            <button
+              key={kind}
+              type="button"
+              disabled={disabled}
+              aria-pressed={selected}
+              onClick={() => props.onChange(kind)}
+              style={{
+                border: `1px solid ${selected ? '#8fb8da' : faintLine}`,
+                background: selected ? 'rgba(143,184,218,0.18)' : 'rgba(0,0,0,0.22)',
+                color: disabled ? 'rgba(246,247,249,0.38)' : ink,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                font: 'inherit',
+                fontSize: 11,
+                minHeight: 28,
+                padding: '6px 8px'
+              }}
+            >
+              {runtimeProfileQualityCopy[kind].label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function Section(props: { title: string; children: ReactNode; style?: CSSProperties; bodyStyle?: CSSProperties }) {
@@ -154,7 +251,7 @@ function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: stri
   const selected = props.signals.find((signal) => signal.id === props.selectedSignalId);
   const visible = [
     ...(selected ? [selected] : []),
-    ...props.signals.filter((signal) => signal.id !== selected?.id).slice(0, 11)
+    ...props.signals.filter((signal) => signal.id !== selected?.id).slice(0, 8)
   ];
   const center = visible.find((signal) => signal.id === props.selectedSignalId) ?? visible[0];
   const satellites = visible.filter((signal) => signal.id !== center?.id);
@@ -183,8 +280,8 @@ function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: stri
             left: '50%',
             top: '45%',
             transform: 'translate(-50%, -50%)',
-            width: 'min(360px, 58%)',
-            minHeight: 118,
+            width: 'min(320px, 48%)',
+            minHeight: 104,
             display: 'grid',
             gap: 8,
             alignContent: 'center',
@@ -198,16 +295,16 @@ function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: stri
           }}
         >
           <span style={{ color: severityColor(center.severity), fontSize: 10, textTransform: 'uppercase', letterSpacing: 0 }}>{center.laneId.replace('-', ' ')}</span>
-          <h2 style={{ margin: 0, fontSize: 28, lineHeight: 1.04, fontWeight: 500, overflowWrap: 'anywhere' }}>{center.label}</h2>
+          <h2 style={{ margin: 0, fontSize: 24, lineHeight: 1.04, fontWeight: 500, overflowWrap: 'anywhere' }}>{center.label}</h2>
           <span style={{ color: muted, lineHeight: 1.35 }}>{center.summary}</span>
         </button>
       ) : null}
       {satellites.map((signal, index) => {
         const angle = (Math.PI * 2 * index) / Math.max(satellites.length, 1) - Math.PI / 2;
-        const radiusX = satellites.length <= 8 ? 33 : 39;
-        const radiusY = satellites.length <= 8 ? 27 : 34;
-        const left = 50 + Math.cos(angle) * radiusX;
-        const top = 45 + Math.sin(angle) * radiusY;
+        const radiusX = 38;
+        const radiusY = 32;
+        const left = Math.max(18, Math.min(82, 50 + Math.cos(angle) * radiusX));
+        const top = Math.max(18, Math.min(82, 45 + Math.sin(angle) * radiusY));
 
         return (
           <button
@@ -334,6 +431,7 @@ function FieldPreview(props: { report: SpatialFieldRuntimeReport; mode: Behaviou
 function FieldRuntimeInspector(props: {
   reports: SpatialFieldRuntimeReport[];
   fieldLanguage: Record<string, BehaviouralFieldCopy>;
+  runtimeProfile?: RuntimePerformanceProfile;
   selectedFieldId?: string;
   overlayMode: BehaviouralFieldOverlayMode;
   onSelectField: (fieldId: string) => void;
@@ -342,6 +440,8 @@ function FieldRuntimeInspector(props: {
   const selected = props.reports.find((report) => report.fieldId === props.selectedFieldId) ?? props.reports[0];
   const selectedCopy = selected ? props.fieldLanguage[selected.fieldId] : undefined;
   const selectedModeCopy = behaviouralFieldOverlayCopy[props.overlayMode];
+  const profileKind = props.runtimeProfile?.kind ?? 'studio';
+  const profileCopy = runtimeProfileQualityCopy[profileKind];
 
   if (!selected) {
     return (
@@ -408,27 +508,46 @@ function FieldRuntimeInspector(props: {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(170px, 1fr) minmax(150px, 220px)', gap: 10, minHeight: 0, minWidth: 0 }}>
         <FieldPreview report={selected} mode={props.overlayMode} />
-        <div style={{ display: 'grid', alignContent: 'start', gap: 7, minWidth: 0, fontSize: 12 }}>
+        <div style={{ display: 'grid', alignContent: 'start', gap: 8, minWidth: 0, fontSize: 12 }}>
           <div style={{ display: 'grid', gap: 4, minWidth: 0, paddingBottom: 3 }}>
             <strong style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedCopy?.label ?? selected.fieldKind}</strong>
             <span style={{ color: muted, lineHeight: 1.3 }}>{selectedModeCopy.help}</span>
           </div>
           {[
-            ['behaviour', selectedCopy?.term.toLowerCase() ?? selected.fieldKind],
-            ['context', selectedCopy?.context ?? '-'],
-            ['field id', selected.fieldId],
-            ['generator id', selected.generatorId ?? '-'],
-            ['size', `${selected.dimensions.width} x ${selected.dimensions.height}`],
-            ['storage mode', selected.storageMode],
-            ['frame id', selected.currentFrameId],
-            ['previous frame', selected.previousFrameId ?? '-'],
-            ['profile fit', selected.profileFit]
+            ['profile', props.runtimeProfile?.label ?? profileCopy.label],
+            ['stability', profileCopy.stability],
+            ['persistence', `${profileCopy.persistence} / ${selected.persistencePlan.windowFrames} frame${selected.persistencePlan.windowFrames === 1 ? '' : 's'}`],
+            ['detail', profileCopy.detail],
+            ['depth', profileCopy.depth],
+            ['resolution', `${profileCopy.resolution} / ${selected.dimensions.width} x ${selected.dimensions.height}`]
           ].map(([label, value]) => (
-            <div key={label} style={{ display: 'grid', gridTemplateColumns: '74px minmax(0, 1fr)', gap: 8, minWidth: 0 }}>
+            <div key={label} style={{ display: 'grid', gridTemplateColumns: '78px minmax(0, 1fr)', gap: 8, minWidth: 0 }}>
               <span style={{ color: muted }}>{label}</span>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
             </div>
           ))}
+          <details style={{ marginTop: 2 }}>
+            <summary style={{ color: muted, cursor: 'pointer' }}>Runtime details</summary>
+            <div style={{ display: 'grid', gap: 6, minWidth: 0, paddingTop: 8 }}>
+              {[
+                ['behaviour', selectedCopy?.term.toLowerCase() ?? selected.fieldKind],
+                ['context', selectedCopy?.context ?? '-'],
+                ['field id', selected.fieldId],
+                ['generator id', selected.generatorId ?? '-'],
+                ['storage mode', selected.storageMode],
+                ['frame id', selected.currentFrameId],
+                ['previous frame', selected.previousFrameId ?? '-'],
+                ['profile fit', selected.profileFit],
+                ['passes', String(selected.updatePasses.length)],
+                ['diagnostics', String(selected.diagnostics.length)]
+              ].map(([label, value]) => (
+                <div key={label} style={{ display: 'grid', gridTemplateColumns: '86px minmax(0, 1fr)', gap: 8, minWidth: 0 }}>
+                  <span style={{ color: muted }}>{label}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -518,6 +637,8 @@ export function ObservatorySpaceView() {
   const [selectedSignalId, setSelectedSignalId] = useState<string>();
   const [selectedFieldId, setSelectedFieldId] = useState<string>();
   const [fieldOverlayModeOverride, setFieldOverlayModeOverride] = useState<BehaviouralFieldOverlayMode>();
+  const [runtimeProfileKind, setRuntimeProfileKind] = useState<RuntimePerformanceProfileKind>('studio');
+  const runtimeProfile = useMemo(() => resolveRuntimeProfile(project, runtimeProfileKind), [project, runtimeProfileKind]);
   const snapshot = useMemo(
     () => deriveObservatorySnapshot({
       project,
@@ -525,9 +646,10 @@ export function ObservatorySpaceView() {
       diagnostics: report,
       logs,
       jobs,
-      selectedSignalId
+      selectedSignalId,
+      runtimeProfileKind
     }),
-    [project, dirty, report, logs, jobs, selectedSignalId]
+    [project, dirty, report, logs, jobs, selectedSignalId, runtimeProfileKind]
   );
   const selectedSignal = snapshot.selectedSignal;
   const availableFieldIds = snapshot.fieldRuntime.reports.map((report) => report.fieldId);
@@ -578,7 +700,7 @@ export function ObservatorySpaceView() {
     >
       <header style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
         gap: 16,
         alignItems: 'end',
         padding: '14px 16px 12px',
@@ -594,6 +716,11 @@ export function ObservatorySpaceView() {
             <span>{snapshot.resolverOk ? 'composition resolved' : 'resolver fallback'}</span>
           </div>
         </div>
+        <ProfileSelector
+          selectedKind={runtimeProfileKind}
+          profiles={project.runtimeProfiles}
+          onChange={setRuntimeProfileKind}
+        />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <span style={pillStyle(snapshot.trust.state === 'trusted' ? 'success' : 'warn')}>{snapshot.trust.state}</span>
           <span style={pillStyle(snapshot.trust.blockerCount > 0 ? 'warn' : 'default')}>{snapshot.trust.blockerCount} blockers</span>
@@ -603,12 +730,13 @@ export function ObservatorySpaceView() {
 
       <main style={{
         display: 'grid',
-        gridTemplateColumns: 'minmax(250px, 300px) minmax(360px, 1fr) minmax(260px, 340px)',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+        gridAutoRows: 'minmax(420px, 1fr)',
         gap: 10,
         minHeight: 0,
         minWidth: 0,
         padding: 10,
-        overflow: 'hidden'
+        overflow: 'auto'
       }}>
         <Section title="Telemetry and Trust" bodyStyle={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 10, padding: 10 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
@@ -633,6 +761,7 @@ export function ObservatorySpaceView() {
           <FieldRuntimeInspector
             reports={snapshot.fieldRuntime.reports}
             fieldLanguage={snapshot.fieldLanguage}
+            runtimeProfile={runtimeProfile}
             selectedFieldId={effectiveSelectedFieldId}
             overlayMode={fieldOverlayMode}
             onSelectField={handleSelectField}

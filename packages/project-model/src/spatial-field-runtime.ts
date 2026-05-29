@@ -24,7 +24,11 @@ export type SpatialFieldRuntimeDiagnosticCode =
   | 'field-runtime-cost-budget'
   | 'field-runtime-memory-budget'
   | 'field-runtime-persistent-ping-pong'
+  | 'field-runtime-history-window'
   | 'field-runtime-high-quality-flow-unavailable';
+export type SpatialFieldRuntimeBufferSlotRole = 'current' | 'previous' | 'history';
+export type SpatialFieldRuntimePersistencePlanKind = 'single-frame' | 'ping-pong' | 'history-window';
+export type SpatialFieldRuntimeUpdatePassKind = 'replace' | 'accumulate' | 'decay' | 'diffuse' | 'smear';
 
 export interface SpatialFieldRuntimeDiagnostic {
   id: string;
@@ -33,6 +37,52 @@ export interface SpatialFieldRuntimeDiagnostic {
   severity: SpatialFieldRuntimeDiagnosticSeverity;
   code: SpatialFieldRuntimeDiagnosticCode | string;
   message: string;
+}
+
+export interface SpatialFieldRuntimeFrameSlot {
+  id: string;
+  fieldId: string;
+  role: SpatialFieldRuntimeBufferSlotRole;
+  bufferIndex: number;
+  frame: SpatialFieldFrameIdentity;
+  historyIndex?: number;
+  estimatedBytes: number;
+}
+
+export interface SpatialFieldRuntimePersistencePlan {
+  kind: SpatialFieldRuntimePersistencePlanKind;
+  lifetime?: SpatialFieldPersistencePolicy['lifetime'];
+  storageIntent?: SpatialFieldPersistencePolicy['storageIntent'];
+  accumulation: SpatialFieldPersistencePolicy['accumulation'];
+  windowFrames: number;
+  bufferCount: number;
+  slots: SpatialFieldRuntimeFrameSlot[];
+}
+
+export interface SpatialFieldRuntimeUpdatePassDescriptor {
+  id: string;
+  fieldId: string;
+  kind: SpatialFieldRuntimeUpdatePassKind;
+  sourceSlotIds: string[];
+  targetSlotId: string;
+  iterationCount: number;
+  workgroupSize: [number, number, number];
+  dimensions: SpatialFieldDimensions;
+  deterministicFrameId: string;
+  decay?: number;
+  clamp?: boolean;
+}
+
+export interface SpatialFieldRuntimeExecutionSession {
+  id: string;
+  fieldId: string;
+  profileId?: string;
+  dimensions: SpatialFieldDimensions;
+  storageMode: SpatialFieldRuntimeStorageMode;
+  persistencePlan: SpatialFieldRuntimePersistencePlan;
+  updatePasses: SpatialFieldRuntimeUpdatePassDescriptor[];
+  estimatedBytes: number;
+  deterministicIdentity: string;
 }
 
 export interface SpatialFieldRuntimeReport {
@@ -49,6 +99,9 @@ export interface SpatialFieldRuntimeReport {
   profileFit: SpatialFieldRuntimeProfileFit;
   estimatedBytes: number;
   bufferCount: number;
+  frameSlots: SpatialFieldRuntimeFrameSlot[];
+  persistencePlan: SpatialFieldRuntimePersistencePlan;
+  updatePasses: SpatialFieldRuntimeUpdatePassDescriptor[];
   diagnostics: SpatialFieldRuntimeDiagnostic[];
   runtimeState: SpatialFieldRuntimeState;
 }
@@ -62,6 +115,8 @@ export interface SpatialFieldRuntimePlan {
   generators: FieldGeneratorManifest[];
   totalEstimatedBytes: number;
   memoryBudgetBytes?: number;
+  executionSessions: SpatialFieldRuntimeExecutionSession[];
+  updatePasses: SpatialFieldRuntimeUpdatePassDescriptor[];
   reports: SpatialFieldRuntimeReport[];
   diagnostics: SpatialFieldRuntimeDiagnostic[];
 }
@@ -254,8 +309,145 @@ function createRuntimeMotionGenerators(
   })];
 }
 
-function persistenceBufferCount(field: SpatialFieldDefinition): number {
-  return field.persistence?.previousFrameAccess === 'none' || !field.persistence ? 1 : 2;
+function boundedHistoryWindowFrames(
+  field: SpatialFieldDefinition,
+  profile: RuntimePerformanceProfile | undefined
+): number {
+  const access = field.persistence?.previousFrameAccess;
+  if (!field.persistence || access === 'none') {
+    return 0;
+  }
+  if (access === 'previous-frame') {
+    return 1;
+  }
+
+  const requestedWindow = Math.max(1, Math.trunc(field.persistence.windowFrames ?? 2));
+  const profileLimit = profile ? Math.max(1, Math.trunc(profile.maxPasses)) : requestedWindow;
+
+  return Math.min(requestedWindow, profileLimit);
+}
+
+function persistenceBufferCount(
+  field: SpatialFieldDefinition,
+  profile: RuntimePerformanceProfile | undefined
+): number {
+  return 1 + boundedHistoryWindowFrames(field, profile);
+}
+
+function previousFrameIdentities(input: {
+  project: NormalizedProjectFile;
+  current: SpatialFieldFrameIdentity;
+  profile: RuntimePerformanceProfile | undefined;
+  count: number;
+}): SpatialFieldFrameIdentity[] {
+  return Array.from({ length: input.count }, (_, index) => {
+    const offset = index + 1;
+    return createFrameIdentity({
+      project: input.project,
+      frameIndex: Math.max(0, input.current.frameIndex - offset),
+      timeMs: Math.max(0, Math.trunc(input.current.timeMs - frameDurationMs(input.profile) * offset))
+    });
+  });
+}
+
+function slotId(fieldId: string, role: SpatialFieldRuntimeBufferSlotRole, index: number): string {
+  return `field-slot:${fieldId}:${role}:${index}`;
+}
+
+function createPersistencePlan(input: {
+  field: SpatialFieldDefinition;
+  dimensions: SpatialFieldDimensions;
+  frame: SpatialFieldFrameIdentity;
+  historyFrames: SpatialFieldFrameIdentity[];
+  profile: RuntimePerformanceProfile | undefined;
+}): SpatialFieldRuntimePersistencePlan {
+  const slotBytes = input.dimensions.width * input.dimensions.height * BYTES_PER_FIELD_TEXEL;
+  const currentSlot: SpatialFieldRuntimeFrameSlot = {
+    id: slotId(input.field.id, 'current', 0),
+    fieldId: input.field.id,
+    role: 'current',
+    bufferIndex: 0,
+    frame: input.frame,
+    estimatedBytes: slotBytes
+  };
+  const historySlots: SpatialFieldRuntimeFrameSlot[] = input.historyFrames.map((historyFrame, index) => ({
+    id: slotId(input.field.id, index === 0 ? 'previous' : 'history', index + 1),
+    fieldId: input.field.id,
+    role: index === 0 ? 'previous' : 'history',
+    bufferIndex: index + 1,
+    frame: historyFrame,
+    historyIndex: index + 1,
+    estimatedBytes: slotBytes
+  }));
+  const access = input.field.persistence?.previousFrameAccess;
+  const kind: SpatialFieldRuntimePersistencePlanKind = !input.field.persistence || access === 'none'
+    ? 'single-frame'
+    : access === 'previous-frame'
+      ? 'ping-pong'
+      : 'history-window';
+
+  return {
+    kind,
+    lifetime: input.field.persistence?.lifetime,
+    storageIntent: input.field.persistence?.storageIntent,
+    accumulation: input.field.persistence?.accumulation ?? { kind: 'replace' },
+    windowFrames: input.historyFrames.length,
+    bufferCount: 1 + input.historyFrames.length,
+    slots: [currentSlot, ...historySlots]
+  };
+}
+
+function updatePassKind(policy: SpatialFieldPersistencePolicy['accumulation']): SpatialFieldRuntimeUpdatePassKind {
+  switch (policy.kind) {
+    case 'replace':
+      return 'replace';
+    case 'accumulate':
+      return 'accumulate';
+    case 'decay':
+      return 'decay';
+  }
+}
+
+function createUpdatePasses(input: {
+  field: SpatialFieldDefinition;
+  dimensions: SpatialFieldDimensions;
+  frame: SpatialFieldFrameIdentity;
+  persistencePlan: SpatialFieldRuntimePersistencePlan;
+  profile: RuntimePerformanceProfile | undefined;
+}): SpatialFieldRuntimeUpdatePassDescriptor[] {
+  const targetSlot = input.persistencePlan.slots.find((slot) => slot.role === 'current') ?? input.persistencePlan.slots[0];
+  const historySlotIds = input.persistencePlan.slots
+    .filter((slot) => slot.role === 'previous' || slot.role === 'history')
+    .map((slot) => slot.id);
+  const accumulation = input.persistencePlan.accumulation;
+  const basePass: SpatialFieldRuntimeUpdatePassDescriptor = {
+    id: `field-pass:${input.field.id}:${input.frame.frameIndex}:update`,
+    fieldId: input.field.id,
+    kind: updatePassKind(accumulation),
+    sourceSlotIds: historySlotIds,
+    targetSlotId: targetSlot.id,
+    iterationCount: 1,
+    workgroupSize: [8, 8, 1],
+    dimensions: input.dimensions,
+    deterministicFrameId: input.frame.frameId,
+    decay: accumulation.decay,
+    clamp: accumulation.clamp
+  };
+
+  if (input.field.kind !== 'viscosity' && input.field.kind !== 'flow_x' && input.field.kind !== 'flow_y') {
+    return [basePass];
+  }
+
+  const boundedIterations = Math.max(1, Math.min(input.profile?.maxPasses ?? 1, input.persistencePlan.windowFrames + 1));
+  return [
+    basePass,
+    {
+      ...basePass,
+      id: `field-pass:${input.field.id}:${input.frame.frameIndex}:spread`,
+      kind: input.field.kind === 'viscosity' ? 'diffuse' : 'smear',
+      iterationCount: boundedIterations
+    }
+  ];
 }
 
 function diagnosticId(parts: Array<string | undefined>): string {
@@ -284,23 +476,25 @@ function createRuntimeState(input: {
   field: SpatialFieldDefinition;
   generatorId?: string;
   frame: SpatialFieldFrameIdentity;
-  previousFrame?: SpatialFieldFrameIdentity;
+  historyFrames: SpatialFieldFrameIdentity[];
   dimensions: SpatialFieldDimensions;
   storage: SpatialFieldStoragePolicy;
   generation: number;
 }): SpatialFieldRuntimeState {
+  const previousFrame = input.historyFrames[0];
+
   return {
     fieldId: input.field.id,
     kind: input.field.kind,
     sourceClass: input.field.sourceClass ?? 'behavioural-state',
     currentFrame: input.frame,
-    previousFrame: input.previousFrame,
+    previousFrame,
     frame: input.frame,
     dimensions: input.dimensions,
     storage: input.storage,
     access: input.field.access ?? 'read-write',
     persistence: input.field.persistence,
-    persistenceWindow: input.previousFrame ? [input.previousFrame, input.frame] : undefined,
+    persistenceWindow: input.historyFrames.length > 0 ? [...input.historyFrames, input.frame] : undefined,
     generation: input.generation,
     provenance: {
       seedId: input.field.seedId ?? input.field.persistence?.replayIdentity.seedId,
@@ -334,13 +528,32 @@ export function buildSpatialFieldRuntimePlan(input: BuildSpatialFieldRuntimePlan
       outputDimensions: input.outputDimensions,
       runtimeProfile
     });
-    const bufferCount = persistenceBufferCount(field);
-    const estimatedBytes = dimensions.width * dimensions.height * BYTES_PER_FIELD_TEXEL * bufferCount;
+    const historyFrameCount = boundedHistoryWindowFrames(field, runtimeProfile);
+    const historyFrames = previousFrameIdentities({
+      project,
+      current: frame,
+      profile: runtimeProfile,
+      count: historyFrameCount
+    });
+    const persistencePlan = createPersistencePlan({
+      field,
+      dimensions,
+      frame,
+      historyFrames,
+      profile: runtimeProfile
+    });
+    const updatePasses = createUpdatePasses({
+      field,
+      dimensions,
+      frame,
+      persistencePlan,
+      profile: runtimeProfile
+    });
+    const bufferCount = persistencePlan.bufferCount;
+    const estimatedBytes = persistencePlan.slots.reduce((sum, slot) => sum + slot.estimatedBytes, 0);
     const requestedStorage = field.storage ?? 'gpu-texture';
     const diagnostics: SpatialFieldRuntimeDiagnostic[] = [];
-    const previousFrame = field.persistence && field.persistence.previousFrameAccess !== 'none'
-      ? previousFrameIdentity(project, frame, runtimeProfile)
-      : undefined;
+    const previousFrame = historyFrames[0];
     const costExceeded = exceedsRuntimeBudget(field.costClass ?? 'moderate', runtimeProfile);
     const memoryExceeded = memoryBudgetBytes !== undefined && runningBytes + estimatedBytes > memoryBudgetBytes;
     const webgpuUnavailable = requestedStorage === 'gpu-texture' && input.webgpuAvailable === false;
@@ -384,6 +597,15 @@ export function buildSpatialFieldRuntimePlan(input: BuildSpatialFieldRuntimePlan
         generatorId
       ));
     }
+    if (persistencePlan.kind === 'history-window') {
+      diagnostics.push(fieldRuntimeDiagnostic(
+        'field-runtime-history-window',
+        field,
+        'info',
+        `Spatial field "${field.id}" keeps ${persistencePlan.windowFrames} deterministic history frame${persistencePlan.windowFrames === 1 ? '' : 's'} for bounded persistence.`,
+        generatorId
+      ));
+    }
     if (flowNeedsDegradation) {
       diagnostics.push(fieldRuntimeDiagnostic(
         'field-runtime-high-quality-flow-unavailable',
@@ -416,7 +638,7 @@ export function buildSpatialFieldRuntimePlan(input: BuildSpatialFieldRuntimePlan
       field,
       generatorId,
       frame,
-      previousFrame,
+      historyFrames,
       dimensions,
       storage: storageMode === 'cpu-fallback' ? 'cpu-buffer' : storageMode,
       generation: input.generation ?? 0
@@ -436,6 +658,9 @@ export function buildSpatialFieldRuntimePlan(input: BuildSpatialFieldRuntimePlan
       profileFit,
       estimatedBytes,
       bufferCount,
+      frameSlots: persistencePlan.slots,
+      persistencePlan,
+      updatePasses,
       diagnostics,
       runtimeState
     };
@@ -452,6 +677,26 @@ export function buildSpatialFieldRuntimePlan(input: BuildSpatialFieldRuntimePlan
     generators,
     totalEstimatedBytes: reports.reduce((sum, report) => sum + report.estimatedBytes, 0),
     memoryBudgetBytes,
+    executionSessions: reports.map((report): SpatialFieldRuntimeExecutionSession => ({
+      id: `field-session:${report.fieldId}:${frame.frameIndex}:${runtimeProfile?.id ?? 'default'}`,
+      fieldId: report.fieldId,
+      profileId: runtimeProfile?.id,
+      dimensions: report.dimensions,
+      storageMode: report.storageMode,
+      persistencePlan: report.persistencePlan,
+      updatePasses: report.updatePasses,
+      estimatedBytes: report.estimatedBytes,
+      deterministicIdentity: [
+        report.fieldId,
+        runtimeProfile?.id ?? 'default',
+        report.currentFrameId,
+        report.previousFrameId ?? 'none',
+        report.persistencePlan.kind,
+        report.persistencePlan.windowFrames,
+        report.bufferCount
+      ].join(':')
+    })),
+    updatePasses: reports.flatMap((report) => report.updatePasses),
     reports,
     diagnostics
   };

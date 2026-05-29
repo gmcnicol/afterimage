@@ -212,8 +212,13 @@ describe('observatory-space helpers', () => {
     expect(snapshot.telemetry.fieldRuntimeDiagnosticCount).toBeGreaterThanOrEqual(1);
     expect(fieldSignals.map((signal) => signal.id)).toContain('spatial-field:field-motion-source');
     expect(memoryReport).toMatchObject({
-      bufferCount: 2,
+      bufferCount: 5,
       previousFrameId: 'composition-main:sequence-main:variant-main:0:0'
+    });
+    expect(memoryReport?.persistencePlan).toMatchObject({
+      kind: 'history-window',
+      windowFrames: 4,
+      bufferCount: 5
     });
   });
 
@@ -242,6 +247,28 @@ describe('observatory-space helpers', () => {
       ['storage mode', 'gpu-texture'],
       ['profile fit', 'fits']
     ]));
+  });
+
+  it('uses the selected Observatory runtime profile when deriving field reports', () => {
+    const draft = deriveObservatorySnapshot({
+      project: projectCopy(),
+      diagnostics: diagnostics(),
+      runtimeProfileKind: 'draft'
+    });
+    const studio = deriveObservatorySnapshot({
+      project: projectCopy(),
+      diagnostics: diagnostics(),
+      runtimeProfileKind: 'studio'
+    });
+    const draftMemory = draft.fieldRuntime.reports.find((report) => report.fieldId === 'field-memory-scene');
+    const studioMemory = studio.fieldRuntime.reports.find((report) => report.fieldId === 'field-memory-scene');
+
+    expect(draft.fieldRuntime.runtimeProfileId).toBe('runtime-profile-draft');
+    expect(studio.fieldRuntime.runtimeProfileId).toBe('runtime-profile-studio');
+    expect(draftMemory?.dimensions).toEqual({ width: 120, height: 67 });
+    expect(studioMemory?.dimensions).toEqual({ width: 480, height: 270 });
+    expect(draftMemory?.bufferCount).toBe(3);
+    expect(studioMemory?.bufferCount).toBe(5);
   });
 
   it('maps overlay modes to artist-facing control labels without changing runtime values', () => {

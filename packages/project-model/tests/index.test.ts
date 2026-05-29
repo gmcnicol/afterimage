@@ -256,12 +256,24 @@ describe('@afterimage/project-model', () => {
     });
     expect(memoryReport?.currentFrameId).toBe('composition-main:sequence-main:variant-main:12:500');
     expect(memoryReport?.previousFrameId).toBe('composition-main:sequence-main:variant-main:11:458');
-    expect(memoryReport?.bufferCount).toBe(2);
+    expect(memoryReport?.bufferCount).toBe(3);
+    expect(memoryReport?.persistencePlan).toMatchObject({
+      kind: 'history-window',
+      windowFrames: 2,
+      bufferCount: 3
+    });
+    expect(memoryReport?.frameSlots.map((slot) => [slot.role, slot.frame.frameId])).toEqual([
+      ['current', 'composition-main:sequence-main:variant-main:12:500'],
+      ['previous', 'composition-main:sequence-main:variant-main:11:458'],
+      ['history', 'composition-main:sequence-main:variant-main:10:416']
+    ]);
+    expect(memoryReport?.updatePasses.map((pass) => pass.kind)).toEqual(['decay']);
     expect(flowReport?.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-high-quality-flow-unavailable');
     expect(plan.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining([
       'field-runtime-webgpu-unavailable',
       'field-runtime-memory-budget',
-      'field-runtime-persistent-ping-pong'
+      'field-runtime-persistent-ping-pong',
+      'field-runtime-history-window'
     ]));
   });
 

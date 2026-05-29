@@ -361,14 +361,44 @@ export function buildRenderGraphPlan(
     `profile:${hashIdentity(graphProfile)}`,
     `runtime-profile:${runtimeProfile ? hashIdentity(runtimeProfile) : 'none'}`,
     `spatial-fields:${hashIdentity(normalizedProject.composition.spatialFields)}`,
-    `field-runtime:${hashIdentity(fieldRuntime.reports.map((report) => ({
-      fieldId: report.fieldId,
-      dimensions: report.dimensions,
-      storageMode: report.storageMode,
-      profileFit: report.profileFit,
-      currentFrameId: report.currentFrameId,
-      previousFrameId: report.previousFrameId
-    })))}`,
+    `field-runtime:${hashIdentity({
+      sessions: fieldRuntime.executionSessions.map((session) => ({
+        id: session.id,
+        fieldId: session.fieldId,
+        dimensions: session.dimensions,
+        storageMode: session.storageMode,
+        persistence: {
+          kind: session.persistencePlan.kind,
+          windowFrames: session.persistencePlan.windowFrames,
+          bufferCount: session.persistencePlan.bufferCount,
+          slots: session.persistencePlan.slots.map((slot) => ({
+            id: slot.id,
+            role: slot.role,
+            bufferIndex: slot.bufferIndex,
+            frameId: slot.frame.frameId
+          }))
+        },
+        updatePasses: session.updatePasses.map((pass) => ({
+          id: pass.id,
+          kind: pass.kind,
+          sourceSlotIds: pass.sourceSlotIds,
+          targetSlotId: pass.targetSlotId,
+          iterationCount: pass.iterationCount,
+          deterministicFrameId: pass.deterministicFrameId
+        })),
+        deterministicIdentity: session.deterministicIdentity
+      })),
+      reports: fieldRuntime.reports.map((report) => ({
+        fieldId: report.fieldId,
+        dimensions: report.dimensions,
+        storageMode: report.storageMode,
+        profileFit: report.profileFit,
+        bufferCount: report.bufferCount,
+        estimatedBytes: report.estimatedBytes,
+        currentFrameId: report.currentFrameId,
+        previousFrameId: report.previousFrameId
+      }))
+    })}`,
     `field-generators:${hashIdentity(fieldGenerators)}`,
     `field-samplers:${hashIdentity(fieldSamplers)}`,
     `toolchain:${hashIdentity(toolchain)}`,

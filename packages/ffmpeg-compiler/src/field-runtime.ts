@@ -1,14 +1,20 @@
 import type {
+  SpatialFieldRuntimeExecutionSession,
   SpatialFieldRuntimeDiagnostic,
   SpatialFieldRuntimePlan,
-  SpatialFieldRuntimeReport
+  SpatialFieldRuntimeReport,
+  SpatialFieldRuntimeUpdatePassDescriptor
 } from '@afterimage/project-model';
 import type { PreviewDeviceDiagnostics, PreviewRuntimeDiagnostics } from './types.js';
 
 export interface FieldTextureDescriptor {
   fieldId: string;
+  slotId: string;
+  sessionId: string;
+  role: 'current' | 'previous' | 'history';
   currentFrameId: string;
   previousFrameId?: string;
+  frameId: string;
   descriptor: FieldGpuTextureDescriptor;
   estimatedBytes: number;
   bufferIndex: number;
@@ -19,11 +25,22 @@ export interface FieldTextureAllocation {
   texture?: FieldGpuTexture;
 }
 
+export interface FieldRuntimeEncodedPass {
+  passId: string;
+  fieldId: string;
+  kind: SpatialFieldRuntimeUpdatePassDescriptor['kind'];
+  dispatch: [number, number, number];
+  sourceSlotIds: string[];
+  targetSlotId: string;
+}
+
 export interface WebGpuFieldRuntimeResult {
   mode: 'webgpu' | 'cpu-fallback';
   reports: SpatialFieldRuntimeReport[];
+  sessions: SpatialFieldRuntimeExecutionSession[];
   descriptors: FieldTextureDescriptor[];
   allocations: FieldTextureAllocation[];
+  encodedPasses: FieldRuntimeEncodedPass[];
   diagnostics: SpatialFieldRuntimeDiagnostic[];
   runtimeDiagnostics: PreviewRuntimeDiagnostics;
   deviceDiagnostics?: PreviewDeviceDiagnostics;
@@ -37,6 +54,7 @@ export interface NegotiateWebGpuFieldRuntimeOptions {
   usage?: number;
   observeDeviceLostTimeoutMs?: number;
   allocateTextures?: boolean;
+  executePasses?: boolean;
 }
 
 export interface FieldGpuTextureSize {
@@ -55,6 +73,29 @@ export interface FieldGpuTextureDescriptor {
 export interface FieldGpuTexture {
   label?: string;
   destroy?: () => void;
+}
+
+export interface FieldGpuShaderModule {
+  label?: string;
+}
+
+export interface FieldGpuComputePipeline {
+  label?: string;
+}
+
+export interface FieldGpuComputePassEncoder {
+  setPipeline: (pipeline: FieldGpuComputePipeline) => void;
+  dispatchWorkgroups: (workgroupCountX: number, workgroupCountY?: number, workgroupCountZ?: number) => void;
+  end: () => void;
+}
+
+export interface FieldGpuCommandEncoder {
+  beginComputePass: (descriptor?: { label?: string }) => FieldGpuComputePassEncoder;
+  finish: (descriptor?: { label?: string }) => unknown;
+}
+
+export interface FieldGpuQueue {
+  submit: (commandBuffers: unknown[]) => void;
 }
 
 export interface FieldGpuLostInfo {
@@ -79,6 +120,14 @@ export interface FieldGpuDevice {
   pushErrorScope: (filter: 'out-of-memory' | 'validation') => void;
   popErrorScope: () => Promise<FieldGpuError | null>;
   createTexture: (descriptor: FieldGpuTextureDescriptor) => FieldGpuTexture;
+  createShaderModule?: (descriptor: { label?: string; code: string }) => FieldGpuShaderModule;
+  createComputePipeline?: (descriptor: {
+    label?: string;
+    layout: 'auto';
+    compute: { module: FieldGpuShaderModule; entryPoint: string };
+  }) => FieldGpuComputePipeline;
+  createCommandEncoder?: (descriptor?: { label?: string }) => FieldGpuCommandEncoder;
+  queue?: FieldGpuQueue;
 }
 
 export interface FieldGpu {
@@ -86,6 +135,12 @@ export interface FieldGpu {
 }
 
 const DEFAULT_TEXTURE_USAGE = 1 | 2 | 4 | 8;
+
+const FIELD_RUNTIME_WGSL = `
+@compute @workgroup_size(8, 8, 1)
+fn update(@builtin(global_invocation_id) _id : vec3<u32>) {
+}
+`;
 
 function runtimeDiagnostic(
   code: string,
@@ -164,26 +219,34 @@ export function createFieldTextureDescriptors(
 ): FieldTextureDescriptor[] {
   const textureFormat = options.textureFormat ?? 'rgba8unorm';
   const usage = options.usage ?? DEFAULT_TEXTURE_USAGE;
+  const reportsByFieldId = new Map(plan.reports.map((report) => [report.fieldId, report]));
 
-  return plan.reports
-    .filter((report) => report.storageMode === 'gpu-texture')
-    .flatMap((report) => Array.from({ length: report.bufferCount }, (_, bufferIndex): FieldTextureDescriptor => ({
-      fieldId: report.fieldId,
-      currentFrameId: report.currentFrameId,
-      previousFrameId: report.previousFrameId,
-      estimatedBytes: Math.ceil(report.estimatedBytes / report.bufferCount),
-      bufferIndex,
-      descriptor: {
-        label: `afterimage:${report.fieldId}:${bufferIndex}`,
-        size: {
-          width: report.dimensions.width,
-          height: report.dimensions.height,
-          depthOrArrayLayers: 1
-        },
-        format: textureFormat,
-        usage
-      }
-    })));
+  return plan.executionSessions
+    .filter((session) => session.storageMode === 'gpu-texture')
+    .flatMap((session) => {
+      const report = reportsByFieldId.get(session.fieldId);
+      return session.persistencePlan.slots.map((slot): FieldTextureDescriptor => ({
+        fieldId: session.fieldId,
+        slotId: slot.id,
+        sessionId: session.id,
+        role: slot.role,
+        currentFrameId: report?.currentFrameId ?? slot.frame.frameId,
+        previousFrameId: report?.previousFrameId,
+        frameId: slot.frame.frameId,
+        estimatedBytes: slot.estimatedBytes,
+        bufferIndex: slot.bufferIndex,
+        descriptor: {
+          label: `afterimage:${session.fieldId}:${slot.role}:${slot.bufferIndex}`,
+          size: {
+            width: session.dimensions.width,
+            height: session.dimensions.height,
+            depthOrArrayLayers: 1
+          },
+          format: textureFormat,
+          usage
+        }
+      }));
+    });
 }
 
 function textureExceedsDeviceLimits(descriptor: FieldTextureDescriptor, limits: Record<string, number>): boolean {
@@ -240,6 +303,112 @@ async function allocateFieldTexture(
   };
 }
 
+export function releaseWebGpuFieldRuntime(result: Pick<WebGpuFieldRuntimeResult, 'allocations'>): void {
+  releaseAllocations(result.allocations);
+}
+
+function releaseAllocations(allocations: FieldTextureAllocation[]): void {
+  for (const allocation of allocations) {
+    allocation.texture?.destroy?.();
+  }
+}
+
+function popErrorScopeSafe(device: FieldGpuDevice): Promise<FieldGpuError | null> {
+  return device.popErrorScope().catch((error) => ({
+    message: error instanceof Error ? error.message : String(error)
+  }));
+}
+
+function createEncodedPass(pass: SpatialFieldRuntimeUpdatePassDescriptor): FieldRuntimeEncodedPass {
+  return {
+    passId: pass.id,
+    fieldId: pass.fieldId,
+    kind: pass.kind,
+    dispatch: [
+      Math.max(1, Math.ceil(pass.dimensions.width / pass.workgroupSize[0])),
+      Math.max(1, Math.ceil(pass.dimensions.height / pass.workgroupSize[1])),
+      Math.max(1, pass.workgroupSize[2] > 0 ? 1 : pass.workgroupSize[2])
+    ],
+    sourceSlotIds: pass.sourceSlotIds,
+    targetSlotId: pass.targetSlotId
+  };
+}
+
+async function executeFieldUpdatePasses(input: {
+  device: FieldGpuDevice;
+  sessions: SpatialFieldRuntimeExecutionSession[];
+}): Promise<{ encodedPasses: FieldRuntimeEncodedPass[]; diagnostics: SpatialFieldRuntimeDiagnostic[] }> {
+  const diagnostics: SpatialFieldRuntimeDiagnostic[] = [];
+  const encodedPasses: FieldRuntimeEncodedPass[] = [];
+
+  if (!input.device.createShaderModule || !input.device.createComputePipeline || !input.device.createCommandEncoder || !input.device.queue) {
+    diagnostics.push(runtimeDiagnostic(
+      'field-runtime-webgpu-execution-unavailable',
+      'error',
+      'WebGPU device does not expose the compute execution methods required for field updates.'
+    ));
+    return { encodedPasses, diagnostics };
+  }
+
+  input.device.pushErrorScope('out-of-memory');
+  input.device.pushErrorScope('validation');
+
+  try {
+    const module = input.device.createShaderModule({
+      label: 'afterimage-field-runtime-update',
+      code: FIELD_RUNTIME_WGSL
+    });
+    const pipeline = input.device.createComputePipeline({
+      label: 'afterimage-field-runtime-update',
+      layout: 'auto',
+      compute: {
+        module,
+        entryPoint: 'update'
+      }
+    });
+    const encoder = input.device.createCommandEncoder({ label: 'afterimage-field-runtime' });
+
+    for (const session of input.sessions.filter((session) => session.storageMode === 'gpu-texture')) {
+      for (const pass of session.updatePasses) {
+        const encodedPass = createEncodedPass(pass);
+        const computePass = encoder.beginComputePass({ label: pass.id });
+        computePass.setPipeline(pipeline);
+        computePass.dispatchWorkgroups(...encodedPass.dispatch);
+        computePass.end();
+        encodedPasses.push(encodedPass);
+      }
+    }
+
+    input.device.queue.submit([encoder.finish({ label: 'afterimage-field-runtime-command-buffer' })]);
+  } catch (error) {
+    diagnostics.push(runtimeDiagnostic(
+      'field-runtime-webgpu-execution-failed',
+      'error',
+      error instanceof Error ? error.message : String(error)
+    ));
+  }
+
+  const validationError = await popErrorScopeSafe(input.device);
+  const memoryError = await popErrorScopeSafe(input.device);
+
+  if (validationError) {
+    diagnostics.push(runtimeDiagnostic(
+      'field-runtime-webgpu-validation-error',
+      'error',
+      validationError.message
+    ));
+  }
+  if (memoryError) {
+    diagnostics.push(runtimeDiagnostic(
+      'field-runtime-webgpu-out-of-memory',
+      'error',
+      memoryError.message
+    ));
+  }
+
+  return { encodedPasses, diagnostics };
+}
+
 export async function negotiateWebGpuFieldRuntime(
   plan: SpatialFieldRuntimePlan,
   options: NegotiateWebGpuFieldRuntimeOptions = {}
@@ -251,8 +420,10 @@ export async function negotiateWebGpuFieldRuntime(
     return {
       mode: 'cpu-fallback',
       reports: plan.reports,
+      sessions: plan.executionSessions,
       descriptors: [],
       allocations: [],
+      encodedPasses: [],
       diagnostics: [
         ...baseDiagnostics,
         runtimeDiagnostic(
@@ -275,8 +446,10 @@ export async function negotiateWebGpuFieldRuntime(
     return {
       mode: 'cpu-fallback',
       reports: plan.reports,
+      sessions: plan.executionSessions,
       descriptors: [],
       allocations: [],
+      encodedPasses: [],
       diagnostics: [
         ...baseDiagnostics,
         runtimeDiagnostic(
@@ -305,8 +478,10 @@ export async function negotiateWebGpuFieldRuntime(
     return {
       mode: 'cpu-fallback',
       reports: plan.reports,
+      sessions: plan.executionSessions,
       descriptors: [],
       allocations: [],
+      encodedPasses: [],
       diagnostics: [
         ...baseDiagnostics,
         runtimeDiagnostic(
@@ -361,19 +536,33 @@ export async function negotiateWebGpuFieldRuntime(
   }
 
   const failedAllocation = allocationDiagnostics.some((diagnostic) => diagnostic.severity === 'error');
+  const execution = failedAllocation || deviceDiagnostics.lost || options.executePasses === false
+    ? { encodedPasses: [] as FieldRuntimeEncodedPass[], diagnostics: [] as SpatialFieldRuntimeDiagnostic[] }
+    : await executeFieldUpdatePasses({
+      device,
+      sessions: plan.executionSessions
+    });
+  const failedExecution = execution.diagnostics.some((diagnostic) => diagnostic.severity === 'error');
+
+  if (failedAllocation || failedExecution || deviceDiagnostics.lost) {
+    releaseAllocations(allocations);
+  }
 
   return {
-    mode: failedAllocation || deviceDiagnostics.lost ? 'cpu-fallback' : 'webgpu',
+    mode: failedAllocation || failedExecution || deviceDiagnostics.lost ? 'cpu-fallback' : 'webgpu',
     reports: plan.reports,
+    sessions: plan.executionSessions,
     descriptors,
     allocations,
-    diagnostics: [...baseDiagnostics, ...allocationDiagnostics],
+    encodedPasses: execution.encodedPasses,
+    diagnostics: [...baseDiagnostics, ...allocationDiagnostics, ...execution.diagnostics],
     runtimeDiagnostics: {
       environment: typeof window === 'undefined' ? 'node' : 'browser',
       renderer: 'webgpu',
-      available: !failedAllocation && !deviceDiagnostics.lost,
+      available: !failedAllocation && !failedExecution && !deviceDiagnostics.lost,
       diagnostics: [
         ...(failedAllocation ? ['One or more field textures failed WebGPU allocation'] : []),
+        ...(failedExecution ? ['One or more field update passes failed WebGPU execution'] : []),
         ...(deviceDiagnostics.diagnostics ?? [])
       ]
     },

@@ -3,6 +3,7 @@ import { exportProfiles } from '@afterimage/export-profiles';
 import {
   buildSpatialFieldRuntimePlan,
   collectProjectIntegrityIssues,
+  DEFAULT_RUNTIME_PERFORMANCE_PROFILES,
   getDefaultSequence,
   getDefaultVariant,
   getSequenceById,
@@ -17,6 +18,8 @@ import {
   type NormalizedSceneDefinition,
   type NormalizedSceneLayerDefinition,
   type ProjectIntegrityIssue,
+  type RuntimePerformanceProfile,
+  type RuntimePerformanceProfileKind,
   type Sequence,
   type SpatialFieldRuntimePlan,
   type SpatialFieldRuntimeReport,
@@ -142,6 +145,8 @@ export interface DeriveObservatorySnapshotInput {
   diagnostics?: DiagnosticsSnapshot;
   logs?: LogEntry[];
   selectedSignalId?: string;
+  runtimeProfileKind?: RuntimePerformanceProfileKind;
+  runtimeProfileId?: string;
 }
 
 const laneOrder: ObservatoryLaneId[] = ['world-state', 'trust', 'render-graph', 'backend', 'activity'];
@@ -537,7 +542,15 @@ function fieldReportSeverity(report: SpatialFieldRuntimeReport): ObservatorySign
   return 'healthy';
 }
 
-function buildFieldRuntimeSignals(fieldRuntime: SpatialFieldRuntimePlan, fieldLanguage: Record<string, BehaviouralFieldCopy>): ObservatorySignal[] {
+function runtimeProfileDisplay(profile: RuntimePerformanceProfile | undefined): string {
+  return profile?.label ?? profile?.kind ?? 'Studio';
+}
+
+function buildFieldRuntimeSignals(
+  fieldRuntime: SpatialFieldRuntimePlan,
+  fieldLanguage: Record<string, BehaviouralFieldCopy>,
+  runtimeProfile: RuntimePerformanceProfile | undefined
+): ObservatorySignal[] {
   return fieldRuntime.reports.map((report) => {
     const copy = fieldLanguage[report.fieldId] ?? resolveBehaviouralFieldCopy(report);
 
@@ -554,7 +567,7 @@ function buildFieldRuntimeSignals(fieldRuntime: SpatialFieldRuntimePlan, fieldLa
         report.previousFrameId ? 'previous frame' : 'current frame only'
       ],
       detail: {
-        semantic: `${copy.label} describes ${copy.term.toLowerCase()} across ${copy.context}. Runtime identifiers remain available for diagnostics.`,
+        semantic: `${copy.label} describes ${copy.term.toLowerCase()} across ${copy.context}. ${runtimeProfileDisplay(runtimeProfile)} sets the stability, persistence, detail, depth, and resolution budget for this view.`,
         backend: JSON.stringify({
           fieldId: report.fieldId,
           generatorId: report.generatorId,
@@ -562,6 +575,8 @@ function buildFieldRuntimeSignals(fieldRuntime: SpatialFieldRuntimePlan, fieldLa
           storageMode: report.storageMode,
           currentFrameId: report.currentFrameId,
           previousFrameId: report.previousFrameId,
+          persistencePlan: report.persistencePlan,
+          updatePasses: report.updatePasses,
           costClass: report.costClass,
           profileFit: report.profileFit,
           diagnostics: report.diagnostics
@@ -829,8 +844,13 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
   const failedJobs = jobs.filter((job) => (job.type === 'preview' || job.type === 'export') && job.status === 'failed');
   const logs = input.logs ?? input.diagnostics?.logs ?? [];
   const renderDiagnostics = collectRenderDiagnostics(jobs);
-  const runtimeProfiles = input.project.runtimeProfiles ?? [];
-  const runtimeProfile = runtimeProfiles.find((profile) => profile.kind === 'studio')
+  const runtimeProfiles = input.project.runtimeProfiles && input.project.runtimeProfiles.length > 0
+    ? input.project.runtimeProfiles
+    : DEFAULT_RUNTIME_PERFORMANCE_PROFILES;
+  const runtimeProfile = (input.runtimeProfileId
+    ? runtimeProfiles.find((profile) => profile.id === input.runtimeProfileId)
+    : undefined)
+    ?? runtimeProfiles.find((profile) => profile.kind === (input.runtimeProfileKind ?? 'studio'))
     ?? runtimeProfiles[0];
   const enabledProfileId = input.project.composition.exportProfileIds[0] ?? input.project.exportSelections.find((selection) => selection.enabled)?.profileId;
   const outputProfile = exportProfiles.find((profile) => profile.id === enabledProfileId) ?? exportProfiles[0];
@@ -908,7 +928,7 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
   });
   const renderSignals = [
     ...buildRenderSignals(renderDiagnostics),
-    ...buildFieldRuntimeSignals(fieldRuntime, fieldLanguage)
+    ...buildFieldRuntimeSignals(fieldRuntime, fieldLanguage, runtimeProfile)
   ];
   const backendSignals = buildBackendSignals(input.diagnostics);
   const activitySignals = buildActivitySignals(jobs, logs);
