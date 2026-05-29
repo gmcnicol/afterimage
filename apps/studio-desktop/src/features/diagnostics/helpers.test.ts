@@ -186,8 +186,28 @@ describe('observatory-space helpers', () => {
       'FFMPEG_PASS_COMPATIBILITY',
       'CAPTURE_REPLAY_MISSING_REFERENCE'
     ]);
-    expect(snapshot.lanes.find((lane) => lane.id === 'render-graph')?.signals.map((signal) => signal.severity)).toEqual(['warning', 'blocked']);
+    expect(snapshot.lanes.find((lane) => lane.id === 'render-graph')?.signals
+      .filter((signal) => signal.kind === 'render-diagnostic')
+      .map((signal) => signal.severity)).toEqual(['warning', 'blocked']);
     expect(snapshot.telemetry.renderDiagnosticCount).toBe(2);
+  });
+
+  it('adds field runtime reports and signals for spatial inspection', () => {
+    const snapshot = deriveObservatorySnapshot({
+      project: projectCopy(),
+      diagnostics: diagnostics()
+    });
+    const fieldSignals = snapshot.lanes.find((lane) => lane.id === 'render-graph')?.signals
+      .filter((signal) => signal.kind === 'spatial-field') ?? [];
+    const memoryReport = snapshot.fieldRuntime.reports.find((report) => report.fieldId === 'field-memory-scene');
+
+    expect(snapshot.telemetry.spatialFieldCount).toBe(8);
+    expect(snapshot.telemetry.fieldRuntimeDiagnosticCount).toBeGreaterThanOrEqual(1);
+    expect(fieldSignals.map((signal) => signal.id)).toContain('spatial-field:field-motion-source');
+    expect(memoryReport).toMatchObject({
+      bufferCount: 2,
+      previousFrameId: 'composition-main:sequence-main:variant-main:0:0'
+    });
   });
 
   it('summarizes modulation routes, entropy states, archive references, and capture memory', () => {

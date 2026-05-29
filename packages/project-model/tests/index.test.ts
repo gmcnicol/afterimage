@@ -4,6 +4,9 @@ import {
   collectArchiveIntegrityIssues,
   collectProjectIntegrityIssues,
   createEmptyProject,
+  buildSpatialFieldRuntimePlan,
+  createMotionFrameDifferenceManifest,
+  generateFrameDifferenceMotionFields,
   getAssetById,
   getDefaultVariant,
   normalizeArchiveMetadataFile,
@@ -219,6 +222,106 @@ describe('@afterimage/project-model', () => {
       assetId: 'asset-alpha',
       clipId: 'clip-intro'
     });
+  });
+
+  it('reports spatial field runtime fallback, profile fit, memory pressure, and persistent frame identities', () => {
+    const project = normalizeProject(fixtureProject);
+    const draftProfile = project.runtimeProfiles.find((profile) => profile.kind === 'draft');
+    const tightProfile = draftProfile ? {
+      ...draftProfile,
+      id: 'runtime-profile-tight',
+      memoryBudgetMb: 1,
+      maxCostClass: 'cheap' as const
+    } : undefined;
+    const plan = buildSpatialFieldRuntimePlan({
+      project,
+      runtimeProfile: tightProfile,
+      outputDimensions: { width: 1920, height: 1080 },
+      sourceDimensions: { width: 1920, height: 1080 },
+      frameIndex: 12,
+      timeMs: 500,
+      webgpuAvailable: false,
+      highQualityOpticalFlowAvailable: false
+    });
+    const memoryReport = plan.reports.find((report) => report.fieldId === 'field-memory-scene');
+    const flowReport = plan.reports.find((report) => report.fieldId === 'field-flow-x-scene');
+    const motionReport = plan.reports.find((report) => report.fieldId === 'field-motion-source');
+
+    expect(plan.generators.map((generator) => generator.id)).toContain('generator-motion-frame-difference-runtime');
+    expect(motionReport?.generatorId).toBe('generator-motion-frame-difference-runtime');
+    expect(flowReport).toMatchObject({
+      dimensions: { width: 480, height: 270 },
+      storageMode: 'cpu-fallback',
+      profileFit: 'cost-exceeded'
+    });
+    expect(memoryReport?.currentFrameId).toBe('composition-main:sequence-main:variant-main:12:500');
+    expect(memoryReport?.previousFrameId).toBe('composition-main:sequence-main:variant-main:11:458');
+    expect(memoryReport?.bufferCount).toBe(2);
+    expect(flowReport?.diagnostics.map((diagnostic) => diagnostic.code)).toContain('field-runtime-high-quality-flow-unavailable');
+    expect(plan.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining([
+      'field-runtime-webgpu-unavailable',
+      'field-runtime-memory-budget',
+      'field-runtime-persistent-ping-pong'
+    ]));
+  });
+
+  it('generates deterministic lightweight motion and flow fields', () => {
+    const previous = {
+      width: 2,
+      height: 2,
+      channels: 1 as const,
+      data: [0, 0, 0, 0]
+    };
+    const current = {
+      width: 2,
+      height: 2,
+      channels: 1 as const,
+      data: [0, 128, 64, 255]
+    };
+    const first = generateFrameDifferenceMotionFields({
+      previous,
+      current,
+      cacheIdentityInputs: ['frame:1']
+    });
+    const second = generateFrameDifferenceMotionFields({
+      previous,
+      current,
+      cacheIdentityInputs: ['frame:1']
+    });
+
+    expect(first.dimensions).toEqual({ width: 2, height: 2 });
+    expect(Array.from(first.outputs[0].values)).toEqual(Array.from(second.outputs[0].values));
+    expect(first.outputs.map((output) => output.kind)).toEqual(['motion', 'flow_x', 'flow_y']);
+    expect(first.outputs[0].stats.max).toBeCloseTo(1);
+    expect(first.cacheIdentityInputs).toEqual(second.cacheIdentityInputs);
+  });
+
+  it('creates a manifest-compatible frame difference motion generator', () => {
+    const manifest = createMotionFrameDifferenceManifest({
+      assetId: 'asset-alpha',
+      motionFieldId: 'field-motion-source',
+      flowXFieldId: 'field-flow-x-scene',
+      flowYFieldId: 'field-flow-y-scene',
+      cacheIdentityInputs: ['runtime-profile-draft']
+    });
+
+    expect(manifest).toMatchObject({
+      kind: 'motion-frame-difference',
+      determinismMode: 'deterministic',
+      requiredCapabilities: ['field-generator:motion-frame-difference']
+    });
+    expect(manifest.outputs.map((output) => output.fieldId)).toEqual([
+      'field-motion-source',
+      'field-flow-x-scene',
+      'field-flow-y-scene'
+    ]);
+    expect(manifest.cacheIdentity.inputs).toEqual([
+      'asset-alpha',
+      'field-flow-x-scene',
+      'field-flow-y-scene',
+      'field-motion-source',
+      'runtime-profile-draft'
+    ]);
   });
 
   it('defaults scene and layer identity for older authored composition objects', () => {

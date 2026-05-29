@@ -578,6 +578,63 @@ describe('@afterimage/schema-validators', () => {
     });
   });
 
+  it('accepts motion frame difference field generator manifests', () => {
+    expect(validateProject({
+      ...fixtureProject,
+      composition: {
+        ...fixtureProject.composition,
+        fieldGenerators: [
+          ...(fixtureProject.composition?.fieldGenerators ?? []),
+          {
+            id: 'generator-motion-frame-difference-runtime',
+            kind: 'motion-frame-difference',
+            name: 'Frame Difference Motion',
+            inputs: [
+              {
+                id: 'input-source-frames',
+                kind: 'asset',
+                refId: 'asset-alpha'
+              }
+            ],
+            outputs: [
+              {
+                id: 'output-motion',
+                kind: 'spatial-field',
+                fieldId: 'field-motion-source',
+                channels: ['magnitude']
+              },
+              {
+                id: 'output-flow-x',
+                kind: 'spatial-field',
+                fieldId: 'field-flow-x-scene',
+                channels: ['r']
+              },
+              {
+                id: 'output-flow-y',
+                kind: 'spatial-field',
+                fieldId: 'field-flow-y-scene',
+                channels: ['g']
+              }
+            ],
+            scope: {
+              compositionId: 'composition-main',
+              layerId: 'layer-clip-intro',
+              clipId: 'clip-intro'
+            },
+            costClass: 'cheap',
+            determinismMode: 'deterministic',
+            capturePolicy: 'ignore',
+            requiredCapabilities: ['field-generator:motion-frame-difference'],
+            cacheIdentity: {
+              version: 'motion-frame-difference@1',
+              inputs: ['asset-alpha', 'runtime-profile-draft']
+            }
+          }
+        ]
+      }
+    }).ok).toBe(true);
+  });
+
   it('rejects capture event integrity failures separately from schema failures', () => {
     const captureEvent = fixtureProject.captureLogs?.[0]?.events[0];
     expect(captureEvent).toBeDefined();

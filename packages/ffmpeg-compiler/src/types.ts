@@ -1,5 +1,5 @@
 import type { ExportProfileDefinition } from '@afterimage/export-profiles';
-import type { RuntimePerformanceProfile } from '@afterimage/project-model';
+import type { RuntimePerformanceProfile, SpatialFieldRuntimePlan } from '@afterimage/project-model';
 
 type ResolutionSource = 'env' | 'path';
 
@@ -517,6 +517,7 @@ export interface RenderGraphPlan {
   artifacts: RenderGraphArtifact[];
   backendRequirements: RenderGraphBackendRequirement[];
   diagnostics: RenderGraphCapabilityDiagnostic[];
+  fieldRuntime?: SpatialFieldRuntimePlan;
   cacheIdentity: RenderGraphCacheIdentity;
 }
 
