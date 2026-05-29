@@ -24,6 +24,10 @@ import {
 } from '@afterimage/project-model';
 import type { StudioRenderDiagnostic } from '@afterimage/studio-contracts';
 import type { DesktopJob, DiagnosticsSnapshot, LogEntry } from '../lib/studio-client';
+import {
+  resolveBehaviouralFieldCopy,
+  type BehaviouralFieldCopy
+} from './observatory-field-language';
 
 export type ObservatoryLaneId = 'world-state' | 'trust' | 'render-graph' | 'backend' | 'activity';
 export type ObservatorySignalSeverity = 'healthy' | 'info' | 'warning' | 'blocked';
@@ -124,6 +128,7 @@ export interface ObservatorySnapshot {
   latestCaptureEvents: CaptureEvent[];
   renderDiagnostics: ObservatoryRenderDiagnosticSnapshot[];
   fieldRuntime: SpatialFieldRuntimePlan;
+  fieldLanguage: Record<string, BehaviouralFieldCopy>;
   trust: ObservatoryTrustSummary;
   lanes: ObservatoryLane[];
   signals: ObservatorySignal[];
@@ -532,42 +537,43 @@ function fieldReportSeverity(report: SpatialFieldRuntimeReport): ObservatorySign
   return 'healthy';
 }
 
-function buildFieldRuntimeSignals(fieldRuntime: SpatialFieldRuntimePlan): ObservatorySignal[] {
-  return fieldRuntime.reports.map((report) => signal({
-    id: `spatial-field:${report.fieldId}`,
-    laneId: 'render-graph' as const,
-    kind: 'spatial-field' as const,
-    severity: fieldReportSeverity(report),
-    label: report.fieldId,
-    summary: `${report.fieldKind} ${report.dimensions.width} x ${report.dimensions.height}, ${report.storageMode}, ${report.profileFit}.`,
-    metadata: [
-      report.generatorId ?? 'no generator',
-      `${report.bufferCount} buffer${report.bufferCount === 1 ? '' : 's'}`,
-      report.previousFrameId ? 'previous frame' : 'current frame only'
-    ],
-    detail: {
-      semantic: `This runtime report shows how spatial field "${report.fieldId}" is planned for inspection and preview diagnostics.`,
-      backend: JSON.stringify({
-        fieldId: report.fieldId,
-        generatorId: report.generatorId,
-        dimensions: report.dimensions,
-        storageMode: report.storageMode,
-        currentFrameId: report.currentFrameId,
-        previousFrameId: report.previousFrameId,
-        costClass: report.costClass,
-        profileFit: report.profileFit,
-        diagnostics: report.diagnostics
-      }),
-      properties: [
-        ['generator', report.generatorId ?? '-'],
-        ['dimensions', `${report.dimensions.width} x ${report.dimensions.height}`],
-        ['storage', report.storageMode],
-        ['cost', report.costClass],
-        ['current', report.currentFrameId],
-        ['previous', report.previousFrameId ?? '-']
-      ]
-    }
-  }));
+function buildFieldRuntimeSignals(fieldRuntime: SpatialFieldRuntimePlan, fieldLanguage: Record<string, BehaviouralFieldCopy>): ObservatorySignal[] {
+  return fieldRuntime.reports.map((report) => {
+    const copy = fieldLanguage[report.fieldId] ?? resolveBehaviouralFieldCopy(report);
+
+    return signal({
+      id: `spatial-field:${report.fieldId}`,
+      laneId: 'render-graph' as const,
+      kind: 'spatial-field' as const,
+      severity: fieldReportSeverity(report),
+      label: copy.label,
+      summary: `${copy.description} Current fit is ${copy.status}.`,
+      metadata: [
+        copy.term.toLowerCase(),
+        `${report.bufferCount} buffer${report.bufferCount === 1 ? '' : 's'}`,
+        report.previousFrameId ? 'previous frame' : 'current frame only'
+      ],
+      detail: {
+        semantic: `${copy.label} describes ${copy.term.toLowerCase()} across ${copy.context}. Runtime identifiers remain available for diagnostics.`,
+        backend: JSON.stringify({
+          fieldId: report.fieldId,
+          generatorId: report.generatorId,
+          dimensions: report.dimensions,
+          storageMode: report.storageMode,
+          currentFrameId: report.currentFrameId,
+          previousFrameId: report.previousFrameId,
+          costClass: report.costClass,
+          profileFit: report.profileFit,
+          diagnostics: report.diagnostics
+        }),
+        properties: [
+          ...copy.detailRows,
+          ['dimensions', `${report.dimensions.width} x ${report.dimensions.height}`],
+          ['cost class', report.costClass]
+        ]
+      }
+    });
+  });
 }
 
 function buildBackendSignals(diagnostics: DiagnosticsSnapshot | undefined): ObservatorySignal[] {
@@ -717,12 +723,12 @@ function buildLanes(signals: ObservatorySignal[], trust: ObservatoryTrustSummary
       case 'render-graph':
         return {
           id: laneId,
-          title: 'Render Graph',
+          title: 'Runtime',
           summary: telemetry.fieldRuntimeDiagnosticCount > 0
-            ? `${telemetry.spatialFieldCount} fields, ${telemetry.fieldRuntimeDiagnosticCount} field runtime diagnostics.`
+            ? `${telemetry.spatialFieldCount} fields, ${telemetry.fieldRuntimeDiagnosticCount} field diagnostic notes.`
             : telemetry.renderDiagnosticCount > 0
-              ? `${telemetry.renderDiagnosticCount} render graph diagnostics found.`
-              : `${telemetry.spatialFieldCount} field runtime reports available.`,
+              ? `${telemetry.renderDiagnosticCount} runtime diagnostics found.`
+              : `${telemetry.spatialFieldCount} fields available for inspection.`,
           severity,
           signals: laneSignals
         };
@@ -843,6 +849,10 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     timeMs: 0,
     highQualityOpticalFlowAvailable: false
   });
+  const fieldLanguage = Object.fromEntries(fieldRuntime.reports.map((report) => [
+    report.fieldId,
+    resolveBehaviouralFieldCopy(report, input.project)
+  ]));
   const archiveReferenceIds = collectArchiveReferenceIds(input.project);
   const telemetry: ObservatoryTelemetry = {
     sceneCount: scenes.length,
@@ -898,7 +908,7 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
   });
   const renderSignals = [
     ...buildRenderSignals(renderDiagnostics),
-    ...buildFieldRuntimeSignals(fieldRuntime)
+    ...buildFieldRuntimeSignals(fieldRuntime, fieldLanguage)
   ];
   const backendSignals = buildBackendSignals(input.diagnostics);
   const activitySignals = buildActivitySignals(jobs, logs);
@@ -927,6 +937,7 @@ export function deriveObservatorySnapshot(input: DeriveObservatorySnapshotInput)
     latestCaptureEvents,
     renderDiagnostics,
     fieldRuntime,
+    fieldLanguage,
     trust,
     lanes,
     signals,

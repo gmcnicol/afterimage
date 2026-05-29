@@ -5,7 +5,20 @@ import { muted, pillStyle } from '../../app/styles';
 import { useDiagnosticsStore } from '../../stores/diagnostics-store';
 import { useJobsStore } from '../../stores/jobs-store';
 import { useProjectSessionStore } from '../../stores/project-session-store';
-import { deriveObservatorySnapshot, type ObservatoryLane, type ObservatorySignal, type ObservatorySignalSeverity } from './helpers';
+import {
+  behaviouralFieldOverlayCopy,
+  behaviouralFieldOverlayModes,
+  fieldIdFromSpatialSignalId,
+  resolveFieldOverlayMode,
+  resolveNextFieldSelectionFromSignal,
+  resolveNextSignalSelectionFromField,
+  deriveObservatorySnapshot,
+  type BehaviouralFieldCopy,
+  type BehaviouralFieldOverlayMode,
+  type ObservatoryLane,
+  type ObservatorySignal,
+  type ObservatorySignalSeverity
+} from './helpers';
 
 const ink = '#f6f7f9';
 const line = 'rgba(255,255,255,0.1)';
@@ -138,7 +151,11 @@ function LaneSummary(props: { lane: ObservatoryLane; selectedSignalId: string; o
 }
 
 function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: string; onSelect: (signalId: string) => void }) {
-  const visible = props.signals.slice(0, 18);
+  const selected = props.signals.find((signal) => signal.id === props.selectedSignalId);
+  const visible = [
+    ...(selected ? [selected] : []),
+    ...props.signals.filter((signal) => signal.id !== selected?.id).slice(0, 11)
+  ];
   const center = visible.find((signal) => signal.id === props.selectedSignalId) ?? visible[0];
   const satellites = visible.filter((signal) => signal.id !== center?.id);
 
@@ -202,16 +219,17 @@ function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: stri
               left: `${left}%`,
               top: `${top}%`,
               transform: 'translate(-50%, -50%)',
-              width: 154,
-              minHeight: 48,
+              width: 'clamp(88px, 10vw, 136px)',
+              minHeight: 42,
               border: `1px solid ${signal.id === props.selectedSignalId ? severityColor(signal.severity) : 'rgba(255,255,255,0.12)'}`,
               borderTop: `2px solid ${severityColor(signal.severity)}`,
               background: 'rgba(0,0,0,0.32)',
               color: ink,
               cursor: 'pointer',
               font: 'inherit',
+              fontSize: 11,
               textAlign: 'left',
-              padding: '7px 8px'
+              padding: '6px 7px'
             }}
           >
             <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{signal.label}</span>
@@ -232,8 +250,6 @@ function SignalMap(props: { signals: ObservatorySignal[]; selectedSignalId: stri
     </div>
   );
 }
-
-type FieldOverlayMode = 'isolate' | 'magnitude' | 'flow' | 'histogram';
 
 function hashFieldValue(value: string, index: number): number {
   let hash = 2166136261;
@@ -256,13 +272,13 @@ function buildFieldHistogram(report: SpatialFieldRuntimeReport): number[] {
   });
 }
 
-function FieldPreview(props: { report: SpatialFieldRuntimeReport; mode: FieldOverlayMode }) {
+function FieldPreview(props: { report: SpatialFieldRuntimeReport; mode: BehaviouralFieldOverlayMode }) {
   const cells = useMemo(() => Array.from({ length: 96 }, (_, index) => hashFieldValue(props.report.fieldId, index)), [props.report.fieldId]);
   const histogram = useMemo(() => buildFieldHistogram(props.report), [props.report]);
 
   if (props.mode === 'histogram') {
     return (
-      <div aria-label="Field histogram summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: 5, alignItems: 'end', height: '100%', minHeight: 0 }}>
+      <div aria-label="Field balance summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: 5, alignItems: 'end', height: '100%', minHeight: 0 }}>
         {histogram.map((value, index) => (
           <div key={index} style={{ display: 'grid', alignItems: 'end', height: '100%', minHeight: 0 }}>
             <div style={{
@@ -279,7 +295,7 @@ function FieldPreview(props: { report: SpatialFieldRuntimeReport; mode: FieldOve
 
   if (props.mode === 'flow') {
     return (
-      <div aria-label="Flow vector visualization" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gridTemplateRows: 'repeat(8, minmax(0, 1fr))', gap: 4, height: '100%', minHeight: 0 }}>
+      <div aria-label="Field drift visualization" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gridTemplateRows: 'repeat(8, minmax(0, 1fr))', gap: 4, height: '100%', minHeight: 0 }}>
         {cells.map((value, index) => (
           <div key={index} style={{ display: 'grid', placeItems: 'center', minWidth: 0, minHeight: 0, background: 'rgba(255,255,255,0.025)' }}>
             <span style={{
@@ -317,13 +333,15 @@ function FieldPreview(props: { report: SpatialFieldRuntimeReport; mode: FieldOve
 
 function FieldRuntimeInspector(props: {
   reports: SpatialFieldRuntimeReport[];
+  fieldLanguage: Record<string, BehaviouralFieldCopy>;
   selectedFieldId?: string;
-  overlayMode: FieldOverlayMode;
+  overlayMode: BehaviouralFieldOverlayMode;
   onSelectField: (fieldId: string) => void;
-  onOverlayModeChange: (mode: FieldOverlayMode) => void;
+  onOverlayModeChange: (mode: BehaviouralFieldOverlayMode) => void;
 }) {
   const selected = props.reports.find((report) => report.fieldId === props.selectedFieldId) ?? props.reports[0];
-  const modes: FieldOverlayMode[] = ['isolate', 'magnitude', 'flow', 'histogram'];
+  const selectedCopy = selected ? props.fieldLanguage[selected.fieldId] : undefined;
+  const selectedModeCopy = behaviouralFieldOverlayCopy[props.overlayMode];
 
   if (!selected) {
     return (
@@ -337,35 +355,41 @@ function FieldRuntimeInspector(props: {
     <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 8, minHeight: 0, borderTop: `1px solid ${faintLine}`, padding: 10 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center', minWidth: 0 }}>
         <div className="studio-scrollable" style={{ display: 'flex', gap: 6, overflow: 'auto', minWidth: 0 }}>
-          {props.reports.map((report) => (
-            <button
-              key={report.fieldId}
-              type="button"
-              onClick={() => props.onSelectField(report.fieldId)}
-              style={{
-                flex: '0 0 auto',
-                maxWidth: 150,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                border: `1px solid ${report.fieldId === selected.fieldId ? severityColor(report.profileFit === 'fits' ? 'healthy' : 'warning') : faintLine}`,
-                background: report.fieldId === selected.fieldId ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.2)',
-                color: ink,
-                cursor: 'pointer',
-                font: 'inherit',
-                fontSize: 11,
-                padding: '6px 8px'
-              }}
-            >
-              {report.fieldKind}
-            </button>
-          ))}
+          {props.reports.map((report) => {
+            const copy = props.fieldLanguage[report.fieldId];
+
+            return (
+              <button
+                key={report.fieldId}
+                type="button"
+                aria-label={`Select ${copy?.label ?? report.fieldKind}`}
+                onClick={() => props.onSelectField(report.fieldId)}
+                style={{
+                  flex: '0 0 auto',
+                  maxWidth: 178,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  border: `1px solid ${report.fieldId === selected.fieldId ? severityColor(report.profileFit === 'fits' ? 'healthy' : 'warning') : faintLine}`,
+                  background: report.fieldId === selected.fieldId ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.2)',
+                  color: ink,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontSize: 11,
+                  padding: '6px 8px'
+                }}
+              >
+                {copy?.label ?? report.fieldKind}
+              </button>
+            );
+          })}
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {modes.map((mode) => (
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {behaviouralFieldOverlayModes.map((mode) => (
             <button
               key={mode}
               type="button"
+              title={behaviouralFieldOverlayCopy[mode].help}
               onClick={() => props.onOverlayModeChange(mode)}
               style={{
                 border: `1px solid ${props.overlayMode === mode ? '#8fb8da' : faintLine}`,
@@ -374,27 +398,33 @@ function FieldRuntimeInspector(props: {
                 cursor: 'pointer',
                 font: 'inherit',
                 fontSize: 11,
-                padding: '6px 7px',
-                textTransform: 'capitalize'
+                padding: '6px 7px'
               }}
             >
-              {mode}
+              {behaviouralFieldOverlayCopy[mode].label}
             </button>
           ))}
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(210px, 1fr) 210px', gap: 10, minHeight: 0, minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(170px, 1fr) minmax(150px, 220px)', gap: 10, minHeight: 0, minWidth: 0 }}>
         <FieldPreview report={selected} mode={props.overlayMode} />
         <div style={{ display: 'grid', alignContent: 'start', gap: 7, minWidth: 0, fontSize: 12 }}>
+          <div style={{ display: 'grid', gap: 4, minWidth: 0, paddingBottom: 3 }}>
+            <strong style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedCopy?.label ?? selected.fieldKind}</strong>
+            <span style={{ color: muted, lineHeight: 1.3 }}>{selectedModeCopy.help}</span>
+          </div>
           {[
-            ['field', selected.fieldId],
-            ['generator', selected.generatorId ?? '-'],
+            ['behaviour', selectedCopy?.term.toLowerCase() ?? selected.fieldKind],
+            ['context', selectedCopy?.context ?? '-'],
+            ['field id', selected.fieldId],
+            ['generator id', selected.generatorId ?? '-'],
             ['size', `${selected.dimensions.width} x ${selected.dimensions.height}`],
-            ['storage', selected.storageMode],
-            ['frame', selected.previousFrameId ? 'current + previous' : 'current'],
-            ['fit', selected.profileFit]
+            ['storage mode', selected.storageMode],
+            ['frame id', selected.currentFrameId],
+            ['previous frame', selected.previousFrameId ?? '-'],
+            ['profile fit', selected.profileFit]
           ].map(([label, value]) => (
-            <div key={label} style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr)', gap: 8, minWidth: 0 }}>
+            <div key={label} style={{ display: 'grid', gridTemplateColumns: '74px minmax(0, 1fr)', gap: 8, minWidth: 0 }}>
               <span style={{ color: muted }}>{label}</span>
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
             </div>
@@ -487,7 +517,7 @@ export function ObservatorySpaceView() {
   const jobs = useJobsStore((state) => state.jobs);
   const [selectedSignalId, setSelectedSignalId] = useState<string>();
   const [selectedFieldId, setSelectedFieldId] = useState<string>();
-  const [fieldOverlayMode, setFieldOverlayMode] = useState<FieldOverlayMode>('magnitude');
+  const [fieldOverlayModeOverride, setFieldOverlayModeOverride] = useState<BehaviouralFieldOverlayMode>();
   const snapshot = useMemo(
     () => deriveObservatorySnapshot({
       project,
@@ -500,6 +530,32 @@ export function ObservatorySpaceView() {
     [project, dirty, report, logs, jobs, selectedSignalId]
   );
   const selectedSignal = snapshot.selectedSignal;
+  const availableFieldIds = snapshot.fieldRuntime.reports.map((report) => report.fieldId);
+  const availableSignalIds = snapshot.signals.map((signal) => signal.id);
+  const selectedSignalFieldId = fieldIdFromSpatialSignalId(selectedSignal.id);
+  const effectiveSelectedFieldId = selectedFieldId && availableFieldIds.includes(selectedFieldId)
+    ? selectedFieldId
+    : selectedSignalFieldId && availableFieldIds.includes(selectedSignalFieldId)
+      ? selectedSignalFieldId
+      : availableFieldIds[0];
+  const selectedField = snapshot.fieldRuntime.reports.find((report) => report.fieldId === effectiveSelectedFieldId);
+  const fieldOverlayMode = resolveFieldOverlayMode({
+    explicitMode: fieldOverlayModeOverride,
+    selectedField,
+    fieldCopy: effectiveSelectedFieldId ? snapshot.fieldLanguage[effectiveSelectedFieldId] : undefined
+  });
+  const handleSelectSignal = (signalId: string) => {
+    setSelectedSignalId(signalId);
+    setSelectedFieldId((currentFieldId) => resolveNextFieldSelectionFromSignal(signalId, currentFieldId, availableFieldIds));
+  };
+  const handleSelectField = (fieldId: string) => {
+    setSelectedFieldId(fieldId);
+
+    const nextSignalId = resolveNextSignalSelectionFromField(fieldId, availableSignalIds);
+    if (nextSignalId) {
+      setSelectedSignalId(nextSignalId);
+    }
+  };
   const activitySignals = snapshot.signals.filter((signal) =>
     signal.laneId === 'activity'
     || signal.laneId === 'render-graph'
@@ -547,7 +603,7 @@ export function ObservatorySpaceView() {
 
       <main style={{
         display: 'grid',
-        gridTemplateColumns: '300px minmax(440px, 1fr) 340px',
+        gridTemplateColumns: 'minmax(250px, 300px) minmax(360px, 1fr) minmax(260px, 340px)',
         gap: 10,
         minHeight: 0,
         minWidth: 0,
@@ -567,19 +623,20 @@ export function ObservatorySpaceView() {
           </div>
           <div className="studio-scrollable" style={{ display: 'grid', alignContent: 'start', gap: 12, minHeight: 0, overflow: 'auto' }}>
             {snapshot.lanes.filter((lane) => lane.id === 'world-state' || lane.id === 'trust').map((lane) => (
-              <LaneSummary key={lane.id} lane={lane} selectedSignalId={selectedSignal.id} onSelect={setSelectedSignalId} />
+              <LaneSummary key={lane.id} lane={lane} selectedSignalId={selectedSignal.id} onSelect={handleSelectSignal} />
             ))}
           </div>
         </Section>
 
         <Section title="Behaviour Map" bodyStyle={{ display: 'grid', gridTemplateRows: 'minmax(260px, 1fr) 250px', minHeight: 0 }}>
-          <SignalMap signals={snapshot.signals} selectedSignalId={selectedSignal.id} onSelect={setSelectedSignalId} />
+          <SignalMap signals={snapshot.signals} selectedSignalId={selectedSignal.id} onSelect={handleSelectSignal} />
           <FieldRuntimeInspector
             reports={snapshot.fieldRuntime.reports}
-            selectedFieldId={selectedFieldId}
+            fieldLanguage={snapshot.fieldLanguage}
+            selectedFieldId={effectiveSelectedFieldId}
             overlayMode={fieldOverlayMode}
-            onSelectField={setSelectedFieldId}
-            onOverlayModeChange={setFieldOverlayMode}
+            onSelectField={handleSelectField}
+            onOverlayModeChange={setFieldOverlayModeOverride}
           />
         </Section>
 
@@ -589,7 +646,7 @@ export function ObservatorySpaceView() {
       </main>
 
       <footer style={{ minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', borderTop: `1px solid ${line}` }}>
-        <EventStrip signals={activitySignals} selectedSignalId={selectedSignal.id} onSelect={setSelectedSignalId} />
+        <EventStrip signals={activitySignals} selectedSignalId={selectedSignal.id} onSelect={handleSelectSignal} />
         <div style={{ minWidth: 0, borderLeft: `1px solid ${faintLine}`, padding: 10, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
             <strong>Raw logs</strong>

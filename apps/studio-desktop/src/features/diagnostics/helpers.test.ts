@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { NormalizedProjectFile } from '@afterimage/project-model';
 import { fixtureProject } from '../../../../../packages/test-fixtures/src';
 import type { DesktopJob, DiagnosticsSnapshot } from '../../lib/studio-client';
-import { deriveObservatorySnapshot } from './helpers';
+import {
+  behaviouralFieldOverlayCopy,
+  resolveFieldOverlayMode,
+  resolveNextFieldSelectionFromSignal,
+  resolveNextSignalSelectionFromField,
+  spatialSignalIdForField,
+  deriveObservatorySnapshot
+} from './helpers';
 
 function projectCopy(): NormalizedProjectFile {
   return JSON.parse(JSON.stringify(fixtureProject)) as NormalizedProjectFile;
@@ -208,6 +215,96 @@ describe('observatory-space helpers', () => {
       bufferCount: 2,
       previousFrameId: 'composition-main:sequence-main:variant-main:0:0'
     });
+  });
+
+  it('exposes behavioural field labels while preserving runtime metadata in details', () => {
+    const snapshot = deriveObservatorySnapshot({
+      project: projectCopy(),
+      diagnostics: diagnostics()
+    });
+    const fieldSignals = snapshot.lanes.find((lane) => lane.id === 'render-graph')?.signals
+      .filter((signal) => signal.kind === 'spatial-field') ?? [];
+    const pressureSignal = fieldSignals.find((signal) => signal.id === 'spatial-field:field-pressure-scene');
+    const driftSignal = fieldSignals.find((signal) => signal.id === 'spatial-field:field-flow-x-scene');
+
+    expect(pressureSignal?.label).toBe('Main Scene Pressure');
+    expect(pressureSignal?.label).not.toBe('field-pressure-scene');
+    expect(pressureSignal?.summary).toBe('Shows where the scene is being pushed or held. Current fit is stable.');
+    expect(driftSignal?.label).toBe('Main Scene Drift X');
+    expect(snapshot.fieldLanguage['field-memory-scene']).toMatchObject({
+      label: 'Main Scene Memory',
+      term: 'Memory',
+      preferredOverlayMode: undefined
+    });
+    expect(pressureSignal?.detail.properties).toEqual(expect.arrayContaining([
+      ['field id', 'field-pressure-scene'],
+      ['generator id', 'generator-live-flights-flow'],
+      ['storage mode', 'gpu-texture'],
+      ['profile fit', 'fits']
+    ]));
+  });
+
+  it('maps overlay modes to artist-facing control labels without changing runtime values', () => {
+    expect(Object.values(behaviouralFieldOverlayCopy).map((copy) => [copy.mode, copy.label])).toEqual([
+      ['isolate', 'Field'],
+      ['magnitude', 'Motion'],
+      ['flow', 'Drift'],
+      ['histogram', 'Balance']
+    ]);
+  });
+
+  it('keeps spatial-field signal and inspector field selection in sync', () => {
+    const availableFieldIds = ['field-pressure-scene', 'field-flow-x-scene'];
+    const availableSignalIds = [
+      'scene:scene-main',
+      spatialSignalIdForField('field-pressure-scene'),
+      spatialSignalIdForField('field-flow-x-scene')
+    ];
+
+    expect(resolveNextFieldSelectionFromSignal('spatial-field:field-flow-x-scene', 'field-pressure-scene', availableFieldIds))
+      .toBe('field-flow-x-scene');
+    expect(resolveNextFieldSelectionFromSignal('scene:scene-main', 'field-pressure-scene', availableFieldIds))
+      .toBe('field-pressure-scene');
+    expect(resolveNextSignalSelectionFromField('field-pressure-scene', availableSignalIds))
+      .toBe('spatial-field:field-pressure-scene');
+  });
+
+  it('defaults flow-oriented fields to Drift until an overlay mode is explicitly chosen', () => {
+    const snapshot = deriveObservatorySnapshot({
+      project: projectCopy(),
+      diagnostics: diagnostics()
+    });
+    const flowReport = snapshot.fieldRuntime.reports.find((field) => field.fieldId === 'field-flow-x-scene');
+    const pressureReport = snapshot.fieldRuntime.reports.find((field) => field.fieldId === 'field-pressure-scene');
+
+    expect(resolveFieldOverlayMode({
+      selectedField: flowReport,
+      fieldCopy: snapshot.fieldLanguage['field-flow-x-scene']
+    })).toBe('flow');
+    expect(resolveFieldOverlayMode({
+      selectedField: pressureReport,
+      fieldCopy: snapshot.fieldLanguage['field-pressure-scene']
+    })).toBe('magnitude');
+    expect(resolveFieldOverlayMode({
+      explicitMode: 'histogram',
+      selectedField: flowReport,
+      fieldCopy: snapshot.fieldLanguage['field-flow-x-scene']
+    })).toBe('histogram');
+  });
+
+  it('keeps prohibited implementation terms out of primary field copy', () => {
+    const snapshot = deriveObservatorySnapshot({
+      project: projectCopy(),
+      diagnostics: diagnostics()
+    });
+    const primaryFieldCopy = snapshot.signals
+      .filter((signal) => signal.kind === 'spatial-field')
+      .flatMap((signal) => [signal.label, signal.summary, signal.detail.semantic]);
+    const overlayCopy = Object.values(behaviouralFieldOverlayCopy)
+      .flatMap((copy) => [copy.label, copy.help]);
+    const primaryText = [...primaryFieldCopy, ...overlayCopy].join(' ').toLowerCase();
+
+    expect(primaryText).not.toMatch(/\b(tensor|simulation|node-graph|shader)\b/);
   });
 
   it('summarizes modulation routes, entropy states, archive references, and capture memory', () => {
