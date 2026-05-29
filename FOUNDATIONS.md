@@ -59,6 +59,16 @@ No architectural entropy.
 
 The system should evolve carefully toward a behavioural audiovisual instrument.
 
+## Process Maxim
+
+Do not recreate the old CVS habit of treating history as the design.
+
+Use the repository like Git: keep the foundations solid, branch from the current
+truth, reconcile deliberately, and let better structure replace earlier
+scaffolding. When an old workflow, screen, or implementation pattern conflicts
+with the foundations, do the opposite of preserving it by inertia. Migrate it
+into the current architecture or leave it behind.
+
 ---
 
 # What Afterimage Is
