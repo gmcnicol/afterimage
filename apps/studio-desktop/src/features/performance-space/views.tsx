@@ -8,6 +8,7 @@ import { useJobsStore } from '../../stores/jobs-store';
 import { useProjectSessionStore } from '../../stores/project-session-store';
 import { useUiStore } from '../../stores/ui-store';
 import { getStudioClient } from '../../lib/studio-client';
+import { getAtmosphereSelectOptions, getAtmosphereValue } from '../../shared/atmosphere-options';
 import { derivePerformanceSnapshot, type PerformanceSceneSnapshot } from './helpers';
 
 const passKinds: SceneLayerRenderPassKind[] = ['source', 'mask', 'overlay', 'behaviour', 'diagnostic'];
@@ -507,11 +508,15 @@ export function PerformanceSpaceView() {
                   />
                 </Label>
                 <Label label="Atmosphere">
-                  <input
-                    value={selectedScene.climate.atmosphere ?? ''}
+                  <select
+                    value={getAtmosphereValue(selectedScene.climate.atmosphere)}
                     onChange={(event) => updateCompositionScene(selectedScene.id, { climate: { atmosphere: event.target.value } })}
                     style={fieldStyle()}
-                  />
+                  >
+                    {getAtmosphereSelectOptions(selectedScene.climate.atmosphere).map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
                 </Label>
               </div>
             ) : null}
