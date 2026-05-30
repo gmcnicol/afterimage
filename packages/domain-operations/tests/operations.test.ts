@@ -25,6 +25,7 @@ import {
   resolveCaptureReplayRenderState,
   resolveCompositionIntent,
   setActiveCompositionSequenceVariant,
+  updateCutStatus,
   updateCompositionLayer,
   updateCompositionScene
 } from '../src';
@@ -1157,6 +1158,82 @@ describe('@afterimage/domain-operations', () => {
     expect(nextProject.variants[0].clips[0].id).toBe('clip-cut-alpha');
     expect(duplicated.variants.map((variant) => variant.id)).toContain('variant-main-copy');
     expect(duplicated.variants.find((variant) => variant.id === 'variant-main-copy')?.name).toBe('Sequence 002');
+  });
+
+  it('keeps clip ids unique when the same cut is added repeatedly', () => {
+    const project = mergeImportedAssets(makeProject(), [
+      {
+        id: 'asset-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video',
+        path: {
+          absolutePath: '/media/alpha.mp4'
+        },
+        hasAudio: true
+      }
+    ]);
+    const source = {
+      ...project,
+      cutCandidates: [
+        {
+          id: 'cut-alpha',
+          assetId: 'asset-alpha',
+          startMs: 0,
+          endMs: 1200,
+          durationMs: 1200
+        }
+      ]
+    };
+    const firstAdd = addCutToSequence(source, 'cut-alpha');
+    const secondAdd = addCutToSequence(firstAdd, 'cut-alpha');
+
+    expect(secondAdd.variants[0].clips.map((clip) => clip.id)).toEqual(['clip-cut-alpha', 'clip-cut-alpha-2']);
+    expect(validateProject(secondAdd).ok).toBe(true);
+  });
+
+  it('repairs duplicate clip ids when a cut review changes', () => {
+    const project = mergeImportedAssets(makeProject(), [
+      {
+        id: 'asset-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video',
+        path: {
+          absolutePath: '/media/alpha.mp4'
+        },
+        hasAudio: true
+      }
+    ]);
+    const sequenced = addCutToSequence({
+      ...project,
+      cutCandidates: [
+        {
+          id: 'cut-alpha',
+          assetId: 'asset-alpha',
+          startMs: 0,
+          endMs: 1200,
+          durationMs: 1200,
+          status: 'kept',
+          favorite: false
+        }
+      ]
+    }, 'cut-alpha');
+    const duplicateClip = {
+      ...sequenced.variants[0].clips[0],
+      timelineStartMs: 1200
+    };
+    const invalidProject = normalizeProject({
+      ...sequenced,
+      variants: sequenced.variants.map((variant) => variant.id === 'variant-main' ? {
+        ...variant,
+        clips: [...variant.clips, duplicateClip]
+      } : variant)
+    });
+    const repaired = updateCutStatus(invalidProject, 'cut-alpha', 'rejected');
+
+    expect(validateProject(invalidProject).ok).toBe(false);
+    expect(repaired.cutCandidates.find((cut) => cut.id === 'cut-alpha')?.status).toBe('rejected');
+    expect(repaired.variants[0].clips.map((clip) => clip.id)).toEqual(['clip-cut-alpha', 'clip-cut-alpha-2']);
+    expect(validateProject(repaired).ok).toBe(true);
   });
 
   it('authors mask transitions with mask and overlay assets', () => {

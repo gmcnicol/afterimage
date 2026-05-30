@@ -1,7 +1,12 @@
 import { normalizeProject, type NormalizedProjectFile } from '@afterimage/project-model';
+import { repairDuplicateVariantClipIds } from './sequence-ops.js';
+
+function finalizeCutOperation(project: NormalizedProjectFile): NormalizedProjectFile {
+  return repairDuplicateVariantClipIds(normalizeProject(project));
+}
 
 export function updateCutStatus(project: NormalizedProjectFile, cutId: string, status: 'new' | 'kept' | 'rejected' | 'favorite'): NormalizedProjectFile {
-  return normalizeProject({
+  return finalizeCutOperation({
     ...project,
     cutCandidates: project.cutCandidates.map((cut) => cut.id === cutId ? {
       ...cut,
@@ -12,7 +17,7 @@ export function updateCutStatus(project: NormalizedProjectFile, cutId: string, s
 }
 
 export function toggleCutFavorite(project: NormalizedProjectFile, cutId: string): NormalizedProjectFile {
-  return normalizeProject({
+  return finalizeCutOperation({
     ...project,
     cutCandidates: project.cutCandidates.map((cut) => cut.id === cutId ? {
       ...cut,
@@ -23,7 +28,7 @@ export function toggleCutFavorite(project: NormalizedProjectFile, cutId: string)
 }
 
 export function trimCut(project: NormalizedProjectFile, cutId: string, startMs: number, endMs: number): NormalizedProjectFile {
-  return normalizeProject({
+  return finalizeCutOperation({
     ...project,
     cutCandidates: project.cutCandidates.map((cut) => cut.id === cutId ? {
       ...cut,
@@ -35,7 +40,7 @@ export function trimCut(project: NormalizedProjectFile, cutId: string, startMs: 
 }
 
 export function addCutToBin(project: NormalizedProjectFile, cutId: string, binId: string): NormalizedProjectFile {
-  return normalizeProject({
+  return finalizeCutOperation({
     ...project,
     bins: project.bins.map((bin) => bin.id === binId ? {
       ...bin,
