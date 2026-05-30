@@ -20,6 +20,7 @@ import {
   type NormalizedSceneLayerDefinition,
   type ProjectIntegrityIssue,
   type SceneClimate,
+  type SceneDefinition,
   type SceneLayerRenderIntent,
   type Sequence,
   type Variant
@@ -70,10 +71,17 @@ export interface UpdateCompositionSceneInput {
   climate?: Partial<SceneClimate>;
 }
 
+export interface AddCompositionSceneInput {
+  sceneId?: string;
+  name?: string;
+  climate?: Partial<SceneClimate>;
+}
+
 export interface UpdateCompositionLayerInput {
   name?: string;
   orderIndex?: number;
   mix?: number;
+  sceneId?: string;
   renderIntent?: Partial<SceneLayerRenderIntent>;
 }
 
@@ -88,6 +96,19 @@ function clampUnit(value: number): number {
 function uniqueSorted(values: Array<string | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => value !== undefined))]
     .sort(compareStrings);
+}
+
+function createUniqueSceneId(project: NormalizedProjectFile, preferredId: string): string {
+  const sceneIds = new Set(project.composition.scenes.map((scene) => scene.id));
+  let candidate = preferredId;
+  let suffix = 2;
+
+  while (sceneIds.has(candidate)) {
+    candidate = `${preferredId}-${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
 }
 
 export function setActiveCompositionSequenceVariant(
@@ -142,14 +163,122 @@ export function updateCompositionScene(
   });
 }
 
+export function addCompositionScene(
+  project: NormalizedProjectFile,
+  input: AddCompositionSceneInput = {}
+): NormalizedProjectFile {
+  const nextOrdinal = project.composition.scenes.length + 1;
+  const sceneId = createUniqueSceneId(project, input.sceneId ?? `scene-region-${nextOrdinal}`);
+  const scene: SceneDefinition = {
+    id: sceneId,
+    name: input.name ?? `Region ${nextOrdinal}`,
+    climate: {
+      atmosphere: 'default',
+      pressure: 0.25,
+      entropyBias: 0,
+      cohesion: 0.5,
+      memory: 0,
+      volatility: 0,
+      ...(input.climate ?? {})
+    },
+    activation: [
+      {
+        id: `activation-${sceneId}`,
+        kind: 'timeline'
+      }
+    ],
+    transitions: [],
+    layerIds: [],
+    archiveReferenceIds: []
+  };
+
+  return normalizeProject({
+    ...project,
+    composition: {
+      ...project.composition,
+      scenes: [...project.composition.scenes, scene]
+    }
+  });
+}
+
+export function removeCompositionScene(
+  project: NormalizedProjectFile,
+  sceneId: string
+): NormalizedProjectFile {
+  if (project.composition.scenes.length <= 1 || !project.composition.scenes.some((scene) => scene.id === sceneId)) {
+    return project;
+  }
+
+  const removedLayerIds = new Set(
+    project.composition.layers
+      .filter((layer) => layer.sceneId === sceneId)
+      .map((layer) => layer.id)
+  );
+
+  return normalizeProject({
+    ...project,
+    composition: {
+      ...project.composition,
+      acceptedArchiveReferences: project.composition.acceptedArchiveReferences.filter((reference) =>
+        reference.scope.sceneId !== sceneId
+        && (!reference.scope.layerId || !removedLayerIds.has(reference.scope.layerId))
+        && !reference.targetIds.includes(sceneId)
+        && !reference.targetIds.some((targetId) => removedLayerIds.has(targetId))
+      ),
+      rejectedArchiveReferences: project.composition.rejectedArchiveReferences.filter((reference) =>
+        reference.scope.sceneId !== sceneId
+        && (!reference.scope.layerId || !removedLayerIds.has(reference.scope.layerId))
+        && !reference.targetIds.includes(sceneId)
+        && !reference.targetIds.some((targetId) => removedLayerIds.has(targetId))
+      ),
+      spatialFields: project.composition.spatialFields.filter((field) =>
+        field.scope?.sceneId !== sceneId
+        && (!field.scope?.layerId || !removedLayerIds.has(field.scope.layerId))
+      ),
+      fieldGenerators: project.composition.fieldGenerators.filter((generator) =>
+        generator.scope.sceneId !== sceneId
+        && (!generator.scope.layerId || !removedLayerIds.has(generator.scope.layerId))
+      ),
+      scenes: project.composition.scenes
+        .filter((scene) => scene.id !== sceneId)
+        .map((scene) => ({
+          ...scene,
+          layerIds: scene.layerIds.filter((layerId) => !removedLayerIds.has(layerId)),
+          transitions: scene.transitions.filter((transition) => transition.toSceneId !== sceneId)
+        })),
+      layers: project.composition.layers.filter((layer) => layer.sceneId !== sceneId),
+      modulationRoutes: project.composition.modulationRoutes.filter((route) =>
+        route.scope.sceneId !== sceneId
+        && route.source.id !== sceneId
+        && route.target.id !== sceneId
+        && (!route.scope.layerId || !removedLayerIds.has(route.scope.layerId))
+        && !removedLayerIds.has(route.source.id)
+        && !removedLayerIds.has(route.target.id)
+      ),
+      entropyStates: project.composition.entropyStates.filter((state) =>
+        state.scope.sceneId !== sceneId
+        && state.source.id !== sceneId
+        && state.target.id !== sceneId
+        && (!state.scope.layerId || !removedLayerIds.has(state.scope.layerId))
+        && !removedLayerIds.has(state.source.id)
+        && !removedLayerIds.has(state.target.id)
+      )
+    }
+  });
+}
+
 export function updateCompositionLayer(
   project: NormalizedProjectFile,
   layerId: string,
   input: UpdateCompositionLayerInput
 ): NormalizedProjectFile {
-  if (!project.composition.layers.some((layer) => layer.id === layerId)) {
+  const existingLayer = project.composition.layers.find((layer) => layer.id === layerId);
+  if (!existingLayer || (input.sceneId && !project.composition.scenes.some((scene) => scene.id === input.sceneId))) {
     return project;
   }
+
+  const targetSceneId = input.sceneId ?? existingLayer.sceneId;
+  const sceneChanged = targetSceneId !== existingLayer.sceneId;
 
   return normalizeProject({
     ...project,
@@ -158,13 +287,27 @@ export function updateCompositionLayer(
       layers: project.composition.layers.map((layer) => layer.id === layerId ? {
         ...layer,
         name: input.name ?? layer.name,
+        sceneId: targetSceneId,
         orderIndex: input.orderIndex ?? layer.orderIndex,
         mix: input.mix === undefined ? layer.mix : clampUnit(input.mix),
         renderIntent: {
           ...layer.renderIntent,
           ...(input.renderIntent ?? {})
         }
-      } : layer)
+      } : layer),
+      scenes: sceneChanged
+        ? project.composition.scenes.map((scene) => {
+          const withoutLayer = scene.layerIds.filter((candidateLayerId) => candidateLayerId !== layerId);
+
+          return scene.id === targetSceneId ? {
+            ...scene,
+            layerIds: [...withoutLayer, layerId]
+          } : {
+            ...scene,
+            layerIds: withoutLayer
+          };
+        })
+        : project.composition.scenes
     }
   });
 }

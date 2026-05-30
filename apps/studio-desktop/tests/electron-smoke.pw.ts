@@ -101,8 +101,9 @@ test('loads a project and can open Archive, World, Performance, Forge, and Obser
     await expect(window.getByLabel('World workspace')).toBeVisible();
     await expect(window.getByLabel('World creation surface')).toBeVisible();
     await expect(window.getByRole('heading', { name: 'Studio Fixture' })).toBeVisible();
-    await expect(window.getByRole('heading', { name: 'Atlas' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Regions' })).toBeVisible();
     await expect(window.getByRole('heading', { name: 'Main Scene field' })).toBeVisible();
+    await expect(window.getByRole('heading', { name: 'Shape' })).toBeVisible();
     await expect(window.getByText('Intro Source').first()).toBeVisible();
 
     await spaces.getByRole('button', { name: 'Performance' }).click();

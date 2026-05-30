@@ -13,6 +13,7 @@ export interface WorkflowMetrics {
   cutCount: number;
   keptCutCount: number;
   sequenceClipCount: number;
+  worldForceCount: number;
   variantCount: number;
   filterCount: number;
   automationLaneCount: number;

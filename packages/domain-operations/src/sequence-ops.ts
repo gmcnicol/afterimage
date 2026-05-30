@@ -177,6 +177,27 @@ const MAX_BUILD_CLIP_DURATION_MS: Partial<Record<SequenceBuildMode, number>> = {
   tight: 1600
 };
 
+const CUE_SPLICE_DURATION_MS: Record<SequenceBuildMode, number> = {
+  tight: 520,
+  balanced: 700,
+  longer: 900
+};
+
+const CUE_SPLICE_MIN_SPACING_MS: Record<SequenceBuildMode, number> = {
+  tight: 1200,
+  balanced: 1800,
+  longer: 2800
+};
+
+const CUE_SPLICE_MAX_COUNT: Record<SequenceBuildMode, number> = {
+  tight: 10,
+  balanced: 8,
+  longer: 5
+};
+
+const MIN_SPLICEABLE_CUT_MS = 900;
+const MIN_PRIMARY_FRAGMENT_MS = 360;
+
 export function addCutToSequence(
   project: NormalizedProjectFile,
   cutId: string,
@@ -219,6 +240,37 @@ function getMusicDurationMs(project: NormalizedProjectFile, variant: ReturnType<
 
   const durationMs = project.assets.find((asset) => asset.id === musicAssetId)?.durationMs;
   return typeof durationMs === 'number' && durationMs > 0 ? durationMs : undefined;
+}
+
+function getBuildCueTimes(variant: ReturnType<typeof getVariantById>, targetDurationMs: number | undefined, mode: SequenceBuildMode): number[] {
+  if (!variant || !targetDurationMs || targetDurationMs <= 0) {
+    return [];
+  }
+
+  const cueTimes = [
+    ...(variant.musicAlignment?.chapterPoints ?? []),
+    ...(variant.musicAlignment?.beatMarkers ?? []).map((marker) => marker.timeMs),
+    ...(variant.markers ?? []).map((marker) => marker.timeMs)
+  ]
+    .filter((timeMs) => Number.isFinite(timeMs) && timeMs > MIN_PRIMARY_FRAGMENT_MS && timeMs < targetDurationMs - MIN_PRIMARY_FRAGMENT_MS)
+    .sort((left, right) => left - right);
+  const uniqueCueTimes = [...new Set(cueTimes.map((timeMs) => Math.round(timeMs)))];
+  const selectedCueTimes: number[] = [];
+  const minSpacingMs = CUE_SPLICE_MIN_SPACING_MS[mode];
+
+  for (const cueTime of uniqueCueTimes) {
+    const previousCueTime = selectedCueTimes.at(-1);
+    if (previousCueTime !== undefined && cueTime - previousCueTime < minSpacingMs) {
+      continue;
+    }
+
+    selectedCueTimes.push(cueTime);
+    if (selectedCueTimes.length >= CUE_SPLICE_MAX_COUNT[mode]) {
+      break;
+    }
+  }
+
+  return selectedCueTimes;
 }
 
 function createBuildCut(cut: ReviewedCutCandidate, sourceStartMs: number, durationMs: number, sliceIndex = 0): BuildCut {
@@ -482,6 +534,155 @@ function expandCutsForDuration(cuts: ReturnType<typeof getReviewedCuts>, targetD
   return expandedCuts;
 }
 
+function createBuildCutFragment(cut: BuildCut, sourceStartMs: number, durationMs: number, suffix: string): BuildCut {
+  return {
+    ...cut,
+    buildId: `${cut.buildId}#${suffix}`,
+    sourceStartMs,
+    durationMs
+  };
+}
+
+function createCueSplice(cut: BuildCut, cueIndex: number, durationMs: number, random: () => number): BuildCut {
+  const boundedDurationMs = Math.min(cut.durationMs, durationMs);
+  const sourceWindowMs = Math.max(0, cut.durationMs - boundedDurationMs);
+  const sourceOffsetMs = sourceWindowMs > 0 ? Math.round(random() * sourceWindowMs) : 0;
+
+  return createBuildCutFragment(cut, cut.sourceStartMs + sourceOffsetMs, boundedDurationMs, `cue-${cueIndex + 1}`);
+}
+
+function createCueSplices(cuts: BuildCut[], cueTimes: number[], mode: SequenceBuildMode, buildSeed: number): BuildCut[] {
+  if (cuts.length === 0 || cueTimes.length === 0) {
+    return [];
+  }
+
+  const spliceableCuts = cuts.filter((cut) => cut.durationMs >= MIN_SPLICEABLE_CUT_MS);
+  if (spliceableCuts.length === 0) {
+    return [];
+  }
+
+  const rankedFavorites = rankItemsByBlueNoise(spliceableCuts.filter((cut) => isFavoriteCut(cut)), buildSeed * 67 + 19);
+  const rankedSupporting = rankItemsByBlueNoise(spliceableCuts.filter((cut) => !isFavoriteCut(cut)), buildSeed * 71 + 23);
+  const pool = rankedFavorites.length > 0 ? rankedFavorites : rankedSupporting;
+  const random = createMulberry32(buildSeed * 79 + 29);
+  const targetDurationMs = CUE_SPLICE_DURATION_MS[mode];
+
+  return cueTimes.map((_cueTime, index) => createCueSplice(pool[index % pool.length], index, targetDurationMs, random));
+}
+
+function fillPrimaryCutsToTime(input: {
+  targetTimeMs: number;
+  timelineStartMs: number;
+  primaryCuts: BuildCut[];
+  primaryIndex: number;
+  primaryOffsetMs: number;
+  fragmentIndex: number;
+  outputCuts: BuildCut[];
+}) {
+  let timelineStartMs = input.timelineStartMs;
+  let primaryIndex = input.primaryIndex;
+  let primaryOffsetMs = input.primaryOffsetMs;
+  let fragmentIndex = input.fragmentIndex;
+
+  while (timelineStartMs < input.targetTimeMs && input.primaryCuts.length > 0) {
+    const cut = input.primaryCuts[primaryIndex % input.primaryCuts.length];
+    const remainingCutMs = cut.durationMs - primaryOffsetMs;
+    if (remainingCutMs <= 0) {
+      primaryIndex += 1;
+      primaryOffsetMs = 0;
+      continue;
+    }
+
+    const remainingTargetMs = input.targetTimeMs - timelineStartMs;
+    const takeMs = Math.min(remainingCutMs, remainingTargetMs);
+
+    if (takeMs < MIN_PRIMARY_FRAGMENT_MS && remainingTargetMs < remainingCutMs) {
+      break;
+    }
+
+    input.outputCuts.push(createBuildCutFragment(
+      cut,
+      cut.sourceStartMs + primaryOffsetMs,
+      takeMs,
+      `part-${fragmentIndex + 1}`
+    ));
+    timelineStartMs += takeMs;
+    primaryOffsetMs += takeMs;
+    fragmentIndex += 1;
+
+    if (primaryOffsetMs >= cut.durationMs) {
+      primaryIndex += 1;
+      primaryOffsetMs = 0;
+    }
+  }
+
+  return {
+    timelineStartMs,
+    primaryIndex,
+    primaryOffsetMs,
+    fragmentIndex
+  };
+}
+
+function spliceCutsOnCues(input: {
+  primaryCuts: BuildCut[];
+  cueSplices: BuildCut[];
+  cueTimes: number[];
+  targetDurationMs: number | undefined;
+}): BuildCut[] {
+  if (!input.targetDurationMs || input.targetDurationMs <= 0 || input.primaryCuts.length === 0 || input.cueSplices.length === 0) {
+    return input.primaryCuts;
+  }
+
+  const outputCuts: BuildCut[] = [];
+  let timelineStartMs = 0;
+  let primaryIndex = 0;
+  let primaryOffsetMs = 0;
+  let fragmentIndex = 0;
+
+  for (let index = 0; index < input.cueTimes.length; index += 1) {
+    const cueTime = input.cueTimes[index];
+    const splice = input.cueSplices[index];
+
+    if (!splice || cueTime <= timelineStartMs || cueTime >= input.targetDurationMs) {
+      continue;
+    }
+
+    const filled = fillPrimaryCutsToTime({
+      targetTimeMs: cueTime,
+      timelineStartMs,
+      primaryCuts: input.primaryCuts,
+      primaryIndex,
+      primaryOffsetMs,
+      fragmentIndex,
+      outputCuts
+    });
+    timelineStartMs = filled.timelineStartMs;
+    primaryIndex = filled.primaryIndex;
+    primaryOffsetMs = filled.primaryOffsetMs;
+    fragmentIndex = filled.fragmentIndex;
+
+    if (Math.abs(timelineStartMs - cueTime) > 1 || timelineStartMs + splice.durationMs > input.targetDurationMs) {
+      continue;
+    }
+
+    outputCuts.push(splice);
+    timelineStartMs += splice.durationMs;
+  }
+
+  fillPrimaryCutsToTime({
+    targetTimeMs: input.targetDurationMs,
+    timelineStartMs,
+    primaryCuts: input.primaryCuts,
+    primaryIndex,
+    primaryOffsetMs,
+    fragmentIndex,
+    outputCuts
+  });
+
+  return outputCuts.length > 0 ? outputCuts : input.primaryCuts;
+}
+
 function assignCutReuseIndices(cuts: ReturnType<typeof getReviewedCuts>) {
   const reuseCounts = new Map<string, number>();
 
@@ -625,9 +826,18 @@ function extendClipsToMusicDuration(
 function buildClipsFromReviewedCuts(project: NormalizedProjectFile, variant: ReturnType<typeof getVariantById>, mode: SequenceBuildMode) {
   const reviewedCuts = selectReviewedCutsForBuild(project, variant, mode);
   const musicDurationMs = getMusicDurationMs(project, variant);
+  const cueTargetDurationMs = musicDurationMs ?? getBuildTargets(project, variant, mode).targetDurationMs;
   const buildSeed = getNextBuildSeed(variant);
   const durationExpandedCuts = expandCutsForDuration(reviewedCuts, musicDurationMs, buildSeed);
-  const assignedCuts = assignCutReuseIndices(durationExpandedCuts);
+  const cueTimes = getBuildCueTimes(variant, cueTargetDurationMs, mode);
+  const cueSplices = createCueSplices(durationExpandedCuts, cueTimes, mode, buildSeed);
+  const splicedCuts = spliceCutsOnCues({
+    primaryCuts: durationExpandedCuts,
+    cueSplices,
+    cueTimes,
+    targetDurationMs: cueTargetDurationMs
+  });
+  const assignedCuts = assignCutReuseIndices(splicedCuts);
   let timelineStartMs = 0;
   const clips = assignedCuts.map(({ cut, reuseIndex }) => {
     const clip: SequenceClip = {
