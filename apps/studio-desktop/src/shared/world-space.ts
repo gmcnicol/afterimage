@@ -97,6 +97,14 @@ function entropyTargetsLayer(state: EntropyState, layerId: string): boolean {
   return state.scope.layerId === layerId || state.source.id === layerId || state.target.id === layerId;
 }
 
+function getRejectedCutIds(project: NormalizedProjectFile): Set<string> {
+  return new Set(
+    project.cutCandidates
+      .filter((cut) => cut.status === 'rejected')
+      .map((cut) => cut.id)
+  );
+}
+
 function deriveReadiness(input: {
   variant?: Variant;
   exportTargets: ExportSelection[];
@@ -155,8 +163,13 @@ export function deriveWorldSnapshot(input: DeriveWorldSnapshotInput): WorldSnaps
       ? getVariantById(input.project, input.project.composition.variantId) ?? getDefaultVariant(input.project, sequence.id)
       : undefined;
   const layersBySceneId = new Map<string, NormalizedSceneLayerDefinition[]>();
+  const rejectedCutIds = getRejectedCutIds(input.project);
 
   for (const layer of input.project.composition.layers) {
+    if (layer.cutId && rejectedCutIds.has(layer.cutId)) {
+      continue;
+    }
+
     const sceneLayers = layersBySceneId.get(layer.sceneId) ?? [];
     sceneLayers.push(layer);
     layersBySceneId.set(layer.sceneId, sceneLayers);

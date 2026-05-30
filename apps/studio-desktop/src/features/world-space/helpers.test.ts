@@ -46,6 +46,25 @@ describe('world-space helpers', () => {
     expect(snapshot.selectedLayer?.id).toBe('layer-clip-intro');
   });
 
+  it('keeps rejected cuts out of the active region surface', () => {
+    const baseProject = fixtureProject as NormalizedProjectFile;
+    const project = {
+      ...baseProject,
+      cutCandidates: baseProject.cutCandidates.map((cut) => cut.id === 'cut-intro' ? {
+        ...cut,
+        status: 'rejected',
+        favorite: false
+      } : cut)
+    } as NormalizedProjectFile;
+    const snapshot = deriveWorldSnapshot({
+      project,
+      selectedLayerId: 'layer-clip-intro'
+    });
+
+    expect(snapshot.selectedScene?.layers.map((layer) => layer.id)).not.toContain('layer-clip-intro');
+    expect(snapshot.selectedLayer?.id).not.toBe('layer-clip-intro');
+  });
+
   it('filters scene and layer integrity diagnostics to the selected scope', () => {
     const baseProject = fixtureProject as NormalizedProjectFile;
     const project = {

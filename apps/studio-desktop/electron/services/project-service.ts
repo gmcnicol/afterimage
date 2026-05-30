@@ -402,6 +402,14 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
         return domainOps.deleteVariant(project, operation.variantId);
       case 'setActiveCompositionSequenceVariant':
         return domainOps.setActiveCompositionSequenceVariant(project, operation.sequenceId, operation.variantId);
+      case 'addCompositionScene':
+        return domainOps.addCompositionScene(project, {
+          sceneId: operation.sceneId,
+          name: operation.name,
+          climate: operation.climate
+        });
+      case 'removeCompositionScene':
+        return domainOps.removeCompositionScene(project, operation.sceneId);
       case 'updateCompositionScene':
         return domainOps.updateCompositionScene(project, operation.sceneId, {
           name: operation.name,
@@ -412,6 +420,7 @@ export function createProjectService({ dialog, shell, logger, recentProjectsPath
           name: operation.name,
           orderIndex: operation.orderIndex,
           mix: operation.mix,
+          sceneId: operation.sceneId,
           renderIntent: operation.renderIntent
         });
       case 'addMarker':

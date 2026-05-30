@@ -83,6 +83,62 @@
     background: transparent;
   }
 
+  .studio-fader {
+    --studio-fader-focus: rgba(198, 181, 255, 0.62);
+    width: 100%;
+    min-width: 0;
+    height: 28px;
+    margin: 0;
+    background: transparent;
+    accent-color: auto;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+
+  .studio-fader:disabled {
+    cursor: not-allowed;
+  }
+
+  .studio-fader::-webkit-slider-runnable-track {
+    height: 2px;
+    background: rgba(246, 247, 249, 0.28);
+    border: 0;
+  }
+
+  .studio-fader::-webkit-slider-thumb {
+    width: 9px;
+    height: 20px;
+    margin-top: -9px;
+    background: linear-gradient(180deg, rgba(246, 247, 249, 0.96), rgba(164, 173, 190, 0.96));
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .studio-fader:focus-visible {
+    outline: 1px solid var(--studio-fader-focus);
+    outline-offset: 2px;
+  }
+
+  .studio-fader::-moz-range-track {
+    height: 2px;
+    background: rgba(246, 247, 249, 0.28);
+    border: 0;
+  }
+
+  .studio-fader::-moz-range-progress {
+    height: 2px;
+    background: rgba(246, 247, 249, 0.28);
+  }
+
+  .studio-fader::-moz-range-thumb {
+    width: 9px;
+    height: 20px;
+    background: linear-gradient(180deg, rgba(246, 247, 249, 0.96), rgba(164, 173, 190, 0.96));
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+
   .studio-surface {
     border: 1px solid rgba(255, 255, 255, 0.08);
     background: linear-gradient(180deg, rgba(19, 23, 31, 0.94), rgba(12, 15, 21, 0.94));

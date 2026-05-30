@@ -25,6 +25,8 @@ import {
   resolveCaptureReplayRenderState,
   resolveCompositionIntent,
   setActiveCompositionSequenceVariant,
+  addCompositionScene,
+  removeCompositionScene,
   updateCutStatus,
   updateCompositionLayer,
   updateCompositionScene
@@ -897,6 +899,24 @@ describe('@afterimage/domain-operations', () => {
         requiredCapabilities: ['ffmpeg-overlay']
       }
     });
+
+    const withRegion = addCompositionScene(layerUpdated, {
+      sceneId: 'scene-pressure-room',
+      name: 'Pressure Room'
+    });
+    expect(withRegion.composition.scenes.map((scene) => scene.id)).toContain('scene-pressure-room');
+
+    const movedLayer = updateCompositionLayer(withRegion, 'layer-clip-intro', {
+      sceneId: 'scene-pressure-room'
+    });
+    expect(movedLayer.composition.layers.find((layer) => layer.id === 'layer-clip-intro')?.sceneId).toBe('scene-pressure-room');
+    expect(movedLayer.composition.scenes.find((scene) => scene.id === 'scene-main')?.layerIds).not.toContain('layer-clip-intro');
+    expect(movedLayer.composition.scenes.find((scene) => scene.id === 'scene-pressure-room')?.layerIds).toContain('layer-clip-intro');
+
+    const removedRegion = removeCompositionScene(movedLayer, 'scene-pressure-room');
+    expect(removedRegion.composition.scenes.map((scene) => scene.id)).not.toContain('scene-pressure-room');
+    expect(removedRegion.composition.layers.map((layer) => layer.id)).not.toContain('layer-clip-intro');
+    expect(validateProject(removedRegion).ok).toBe(true);
   });
 
   it('merges imported assets and toggles export profiles', () => {
@@ -2023,6 +2043,68 @@ describe('@afterimage/domain-operations', () => {
     expect(built.variants[0].clips.map((clip) => clip.cutId)).toEqual(['cut-long', 'cut-long', 'cut-long']);
     expect([...built.variants[0].clips.map((clip) => clip.sourceStartMs)].sort((left, right) => left - right)).toEqual([0, 1200, 2400]);
     expect(built.variants[0].clips.every((clip) => clip.durationMs <= 1600)).toBe(true);
+  });
+
+  it('splices short sub-clips from reviewed cuts onto music and sequence cues', () => {
+    const project = mergeImportedAssets(makeProject(), [
+      {
+        id: 'asset-alpha',
+        filename: 'alpha.mp4',
+        mediaType: 'video',
+        path: {
+          absolutePath: '/media/alpha.mp4'
+        },
+        hasAudio: true
+      },
+      {
+        id: 'asset-music',
+        filename: 'music.wav',
+        mediaType: 'audio',
+        path: {
+          absolutePath: '/media/music.wav'
+        },
+        durationMs: 6000,
+        hasAudio: true
+      }
+    ]);
+
+    const built = buildVariantFromReviewedCuts({
+      ...project,
+      variants: project.variants.map((variant) => variant.id === 'variant-main' ? {
+        ...variant,
+        markers: [
+          {
+            id: 'marker-hit-2',
+            timeMs: 4000,
+            label: 'Hit 2'
+          }
+        ],
+        musicAlignment: {
+          ...variant.musicAlignment,
+          primaryAssetId: 'asset-music',
+          beatMarkers: [
+            {
+              id: 'beat-hit-1',
+              timeMs: 2000,
+              label: 'Hit 1'
+            }
+          ]
+        }
+      } : variant),
+      cutCandidates: [
+        { id: 'fav-cloud', assetId: 'asset-alpha', startMs: 0, endMs: 5000, durationMs: 5000, status: 'favorite', favorite: true, sceneScore: 0.9 },
+        { id: 'keep-base', assetId: 'asset-alpha', startMs: 5000, endMs: 9000, durationMs: 4000, status: 'kept', favorite: false, sceneScore: 0.8 }
+      ]
+    }, 'variant-main', 'balanced');
+
+    const clips = built.variants[0].clips;
+    const cueClips = clips.filter((clip) => clip.id.includes('#cue-'));
+
+    expect(clips.reduce((total, clip) => total + clip.durationMs, 0)).toBe(6000);
+    expect(cueClips.map((clip) => clip.timelineStartMs)).toEqual([2000, 4000]);
+    expect(cueClips.every((clip) => clip.cutId === 'fav-cloud')).toBe(true);
+    expect(cueClips.every((clip) => clip.durationMs === 700)).toBe(true);
+    expect(clips.some((clip) => clip.id.includes('#part-') && clip.durationMs < 5000)).toBe(true);
   });
 
   it('ignores pathological micro-cuts when auto-building sequences', () => {

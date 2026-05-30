@@ -22,6 +22,8 @@ export function useWorkflowMetrics(): WorkflowMetrics {
     return role !== undefined && role !== 'transition-mask' && role !== 'transition-overlay' && (cut.status === 'kept' || cut.favorite);
   }).length;
   const sequenceClipCount = project.variants.reduce((largest, variant) => Math.max(largest, variant.clips.length), 0);
+  const rejectedCutIds = new Set(project.cutCandidates.filter((cut) => cut.status === 'rejected').map((cut) => cut.id));
+  const worldForceCount = project.composition.layers.filter((layer) => !layer.cutId || !rejectedCutIds.has(layer.cutId)).length;
   const filterCount = project.filterStacks.reduce((count, stack) => count + stack.filters.length, 0);
   const enabledExportProfileCount = project.exportSelections.filter((selection) => selection.enabled).length;
   const activeJobCount = jobs.filter((job) => job.status === 'queued' || job.status === 'running').length;
@@ -36,6 +38,7 @@ export function useWorkflowMetrics(): WorkflowMetrics {
     cutCount: reviewCutCount,
     keptCutCount: keptReviewCutCount,
     sequenceClipCount,
+    worldForceCount,
     variantCount: project.variants.length,
     filterCount,
     automationLaneCount: project.automationLanes.length,

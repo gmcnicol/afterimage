@@ -94,8 +94,10 @@ interface ProjectSessionState {
   duplicateVariant: (variantId: string) => void;
   deleteVariant: (variantId: string) => void;
   setActiveCompositionSequenceVariant: (sequenceId: string, variantId?: string) => void;
+  addCompositionScene: (input?: { sceneId?: string; name?: string; climate?: Partial<SceneClimate> }) => void;
+  removeCompositionScene: (sceneId: string) => void;
   updateCompositionScene: (sceneId: string, input: { name?: string; climate?: Partial<SceneClimate> }) => void;
-  updateCompositionLayer: (layerId: string, input: { name?: string; orderIndex?: number; mix?: number; renderIntent?: Partial<SceneLayerRenderIntent> }) => void;
+  updateCompositionLayer: (layerId: string, input: { name?: string; orderIndex?: number; mix?: number; sceneId?: string; renderIntent?: Partial<SceneLayerRenderIntent> }) => void;
   addMarker: (variantId: string, label: string, timeMs: number) => void;
   addSection: (variantId: string, label: string, startMs: number, endMs: number) => void;
   addFilterToSequenceStack: (type: SupportedFilterType, stackId?: string) => void;
@@ -176,6 +178,8 @@ export const useProjectSessionStore = create<ProjectSessionState>((set, get) => 
   duplicateVariant: (variantId) => dispatchProjectOperation(set, get, { type: 'duplicateVariant', variantId }),
   deleteVariant: (variantId) => dispatchProjectOperation(set, get, { type: 'deleteVariant', variantId }),
   setActiveCompositionSequenceVariant: (sequenceId, variantId) => dispatchProjectOperation(set, get, { type: 'setActiveCompositionSequenceVariant', sequenceId, variantId }),
+  addCompositionScene: (input) => dispatchProjectOperation(set, get, { type: 'addCompositionScene', ...input }),
+  removeCompositionScene: (sceneId) => dispatchProjectOperation(set, get, { type: 'removeCompositionScene', sceneId }),
   updateCompositionScene: (sceneId, input) => dispatchProjectOperation(set, get, { type: 'updateCompositionScene', sceneId, ...input }),
   updateCompositionLayer: (layerId, input) => dispatchProjectOperation(set, get, { type: 'updateCompositionLayer', layerId, ...input }),
   addMarker: (variantId, label, timeMs) => dispatchProjectOperation(set, get, { type: 'addMarker', variantId, label, timeMs }),

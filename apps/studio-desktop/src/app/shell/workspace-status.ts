@@ -22,8 +22,8 @@ export function getSurfaceStatus(tabId: StudioTab, metrics: WorkflowMetrics): { 
       }
       return metrics.keptCutCount > 0 ? { tone: 'ready', label: `${metrics.keptCutCount} approved` } : { tone: 'attention', label: 'needs review' };
     case 'world':
-      if (metrics.sequenceClipCount === 0) {
-        return { tone: 'attention', label: 'needs sequence' };
+      if (metrics.worldForceCount === 0) {
+        return { tone: 'attention', label: 'needs forces' };
       }
       return metrics.warningCount > 0 || metrics.missingMediaCount > 0
         ? { tone: 'attention', label: 'composition warnings' }
@@ -77,7 +77,7 @@ export function getSurfaceBadge(tabId: StudioTab, metrics: WorkflowMetrics): str
     case 'cuts':
       return metrics.cutCount > 0 ? `${metrics.cutCount}` : undefined;
     case 'world':
-      return metrics.sequenceClipCount > 0 ? `${metrics.sequenceClipCount}` : undefined;
+      return metrics.worldForceCount > 0 ? `${metrics.worldForceCount}` : undefined;
     case 'sequence':
       return metrics.sequenceClipCount > 0 ? `${metrics.sequenceClipCount}` : undefined;
     case 'performance':
