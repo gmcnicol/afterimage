@@ -16,6 +16,7 @@ import { useDiagnosticsStore } from '../../stores/diagnostics-store';
 import { useJobsStore } from '../../stores/jobs-store';
 import { useProjectSessionStore } from '../../stores/project-session-store';
 import { useUiStore } from '../../stores/ui-store';
+import { getAtmosphereSelectOptions, getAtmosphereValue } from '../../shared/atmosphere-options';
 import { deriveWorldSnapshot } from './helpers';
 
 type CutCandidate = NormalizedProjectFile['cutCandidates'][number];
@@ -425,6 +426,9 @@ function SceneShapePanel(props: {
   canRemove: boolean;
   onRemove: () => void;
 }) {
+  const atmosphereValue = getAtmosphereValue(props.region.climate.atmosphere);
+  const atmosphereSelectOptions = getAtmosphereSelectOptions(props.region.climate.atmosphere);
+
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div style={{ display: 'grid', gap: 8 }}>
@@ -441,11 +445,15 @@ function SceneShapePanel(props: {
           />
         </Label>
         <Label label="Atmosphere">
-          <input
-            value={props.region.climate.atmosphere ?? ''}
+          <select
+            value={atmosphereValue}
             onChange={(event) => props.onUpdateRegionAtmosphere(event.target.value)}
             style={fieldInputStyle()}
-          />
+          >
+            {atmosphereSelectOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
         </Label>
       </div>
       <div style={{ display: 'grid', gap: 10 }}>
