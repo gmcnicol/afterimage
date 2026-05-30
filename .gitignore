@@ -331,6 +331,7 @@ reports/
 generated/
 .generated/
 site/
+.codegraph/
 
 # ------------------------------------------------------------------------------
 # Explicitly keep important repo files that should always remain tracked
